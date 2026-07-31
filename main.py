@@ -62,6 +62,11 @@ from styles import (
     Colors,
 )
 
+APP_FIXED_SIZE = (1200, 915)
+CONTENT_COLUMN_WIDTH = 599
+PATH_DROPDOWN_SIZE = (320, 35)
+PAIRED_FRAME_WIDTH = 575
+
 mutex = ctypes.windll.kernel32.CreateMutexW(
     None,
     wintypes.BOOL(True),
@@ -139,7 +144,7 @@ class EXEBuilderApp(QWidget):
         self.last_build_seconds = 45
         self.last_build_counter = 0
         
-        self.setFixedSize(1050, 915)
+        self.setFixedSize(*APP_FIXED_SIZE)
         self.setWindowTitle(" ")
         self.setContentsMargins(0,0,0,0)
         
@@ -509,7 +514,7 @@ class EXEBuilderApp(QWidget):
         self.interpreter_btn = QPushButton("Py Interpreter")
     
         self.select_interpreter = QComboBox()
-        self.select_interpreter.setFixedSize(245,35)
+        self.select_interpreter.setFixedSize(*PATH_DROPDOWN_SIZE)
         self.select_interpreter.setFont(QFont("Rubik UI", 12))
         interpreter_popup_view = QListView()
         interpreter_popup_view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -614,7 +619,7 @@ class EXEBuilderApp(QWidget):
         self.icon_btn = QPushButton("Select ICO optional")
 
         self.select_recent_icons = QComboBox()
-        self.select_recent_icons.setFixedSize(245,35)
+        self.select_recent_icons.setFixedSize(*PATH_DROPDOWN_SIZE)
         self.select_recent_icons.setFont(QFont("Rubik UI", 12))
         self.select_recent_icons.addItem("Select Recent Icon")
 
@@ -708,7 +713,7 @@ class EXEBuilderApp(QWidget):
         self.folder_btn = QPushButton("Python File")
       
         self.recent_folder_dropdown = QComboBox()
-        self.recent_folder_dropdown.setFixedSize(245, 35)
+        self.recent_folder_dropdown.setFixedSize(*PATH_DROPDOWN_SIZE)
         self.recent_folder_dropdown.setFont(QFont("Rubik UI", 12))
         self.recent_folder_dropdown.addItem("Select Recent File")
         
@@ -968,11 +973,12 @@ class EXEBuilderApp(QWidget):
         build_layout.addWidget(self.build_btn, alignment=Qt.AlignCenter)
 
         output_frame_width = max(
-            500,
+            PAIRED_FRAME_WIDTH,
             self.output_btn.sizeHint().width() + self.date_time_dropdown.width() + 40,
         )
         self.output_frame.setFixedSize(output_frame_width, 170)
         self.interpreter_frame.setFixedSize(output_frame_width, self.output_frame.height())
+        self.env_sync_frame.setFixedWidth(output_frame_width)
 
         for frame in [
             self.env_sync_frame,
@@ -1183,7 +1189,7 @@ class EXEBuilderApp(QWidget):
                 btn.setFixedSize(160, 35)
             btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
         
-        self.recent_folder_dropdown.setFixedSize(245,35)
+        self.recent_folder_dropdown.setFixedSize(*PATH_DROPDOWN_SIZE)
 
         buttons = [
             self.appened_py_version,
@@ -1416,7 +1422,7 @@ class EXEBuilderApp(QWidget):
 
     def _create_content_column(self):
         content = QWidget()
-        content.setFixedWidth(524)
+        content.setFixedWidth(CONTENT_COLUMN_WIDTH)
         content.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         layout = QVBoxLayout(content)
