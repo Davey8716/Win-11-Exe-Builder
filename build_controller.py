@@ -451,7 +451,7 @@ class BuildController(QObject):
 
         return search_paths
 
-    def _get_project_png_data_args(self, project_root):
+    def _get_project_asset_data_args(self, project_root):
         if not project_root or not os.path.isdir(project_root):
             return []
 
@@ -488,7 +488,7 @@ class BuildController(QObject):
                     if dirname.lower() not in skipped_dirnames
                 )
                 for filename in sorted(filenames):
-                    if not filename.lower().endswith(".png"):
+                    if Path(filename).suffix.lower() not in {".ahk", ".png"}:
                         continue
 
                     source_path = os.path.normpath(os.path.join(folder, filename))
@@ -1397,7 +1397,7 @@ class BuildController(QObject):
         if project_root:
             cmd.append(f"--add-data={project_root}{os.pathsep}.")
 
-        cmd.extend(self._get_project_png_data_args(project_root))
+        cmd.extend(self._get_project_asset_data_args(project_root))
 
         icon_contract = resolve_build_icon_contract(icon)
 

@@ -1521,34 +1521,43 @@ def test_build_exe_suppresses_empty_clicked_disconnect_warning(tmp_path, monkeyp
     ]
 
 
-def test_get_project_png_data_args_preserves_relative_destinations(tmp_path):
+def test_get_project_asset_data_args_preserves_relative_destinations(tmp_path):
     project_root = tmp_path / "project with spaces"
     nested_dir = project_root / "Icons" / "Screen Mover"
     nested_dir.mkdir(parents=True)
 
     root_png = project_root / "root icon.PNG"
     nested_png = nested_dir / "move left.png"
+    root_ahk = project_root / "launcher.AHK"
+    nested_ahk = nested_dir / "window helper.ahk"
     ignored_svg = nested_dir / "move left.svg"
 
     root_png.write_text("root", encoding="utf-8")
     nested_png.write_text("nested", encoding="utf-8")
+    root_ahk.write_text("#Requires AutoHotkey v2.0", encoding="utf-8")
+    nested_ahk.write_text("ExitApp", encoding="utf-8")
     ignored_svg.write_text("ignored", encoding="utf-8")
 
     controller = BuildController(make_app())
 
-    args = controller._get_project_png_data_args(str(project_root))
+    args = controller._get_project_asset_data_args(str(project_root))
 
     assert args == [
+        f"--add-data={os.path.normpath(str(root_ahk))}{os.pathsep}.",
         f"--add-data={os.path.normpath(str(root_png))}{os.pathsep}.",
         (
             f"--add-data={os.path.normpath(str(nested_png))}{os.pathsep}"
+            f"{os.path.normpath(os.path.join('Icons', 'Screen Mover'))}"
+        ),
+        (
+            f"--add-data={os.path.normpath(str(nested_ahk))}{os.pathsep}"
             f"{os.path.normpath(os.path.join('Icons', 'Screen Mover'))}"
         ),
     ]
     assert str(ignored_svg) not in " ".join(args)
 
 
-def test_get_project_png_data_args_includes_parent_project_sibling_assets(tmp_path):
+def test_get_project_asset_data_args_includes_parent_project_sibling_assets(tmp_path):
     repo_root = tmp_path / "Browser-App-Mover"
     package_root = repo_root / "browser_app_mover"
     dock_icon_dir = repo_root / "Icon Pngs" / "Green"
@@ -1565,13 +1574,68 @@ def test_get_project_png_data_args_includes_parent_project_sibling_assets(tmp_pa
 
     controller = BuildController(make_app())
 
-    args = controller._get_project_png_data_args(str(package_root))
+    args = controller._get_project_asset_data_args(str(package_root))
 
     assert (
         f"--add-data={os.path.normpath(str(dock_icon))}{os.pathsep}"
         f"{os.path.normpath(os.path.join('Icon Pngs', 'Green'))}"
     ) in args
     assert f"--add-data={os.path.normpath(str(app_icon))}{os.pathsep}Icons" in args
+
+
+def test_get_project_asset_data_args_bundles_hover_controls_ahk_resource(tmp_path):
+    repo_root = tmp_path / "Hover Window Controls"
+    package_root = repo_root / "hover_window_controls"
+    resources_dir = repo_root / "resources"
+    package_root.mkdir(parents=True)
+    resources_dir.mkdir()
+    (repo_root / "requirements.txt").write_text("pyinstaller\n", encoding="utf-8")
+
+    ahk_script = resources_dir / "taskbar_restore.ahk"
+    ahk_script.write_text("#Requires AutoHotkey v2.0\nExitApp\n", encoding="utf-8")
+
+    controller = BuildController(make_app())
+
+    args = controller._get_project_asset_data_args(str(package_root))
+
+    assert (
+        f"--add-data={os.path.normpath(str(ahk_script))}{os.pathsep}resources"
+    ) in args
+
+
+def test_get_project_asset_data_args_skips_generated_and_environment_directories(tmp_path):
+    project_root = tmp_path / "project"
+    included_dir = project_root / "resources"
+    included_dir.mkdir(parents=True)
+    included = included_dir / "included.ahk"
+    included.write_text("ExitApp\n", encoding="utf-8")
+
+    excluded_files = []
+    excluded_dirnames = (
+        ".git",
+        "__pycache__",
+        "build",
+        "dist",
+        "env",
+        "spec",
+        "venv",
+        ".venv",
+    )
+    for dirname in excluded_dirnames:
+        excluded_dir = project_root / dirname
+        excluded_dir.mkdir()
+        excluded = excluded_dir / "excluded.ahk"
+        excluded.write_text("ExitApp\n", encoding="utf-8")
+        excluded_files.append(excluded)
+
+    controller = BuildController(make_app())
+
+    args = controller._get_project_asset_data_args(str(project_root))
+    command_text = " ".join(args)
+
+    assert f"--add-data={included}{os.pathsep}resources" in args
+    for excluded in excluded_files:
+        assert str(excluded) not in command_text
 
 
 def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
@@ -1583,6 +1647,10 @@ def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
     png_dir.mkdir()
     png_file = png_dir / "move.png"
     png_file.write_text("png", encoding="utf-8")
+    resources_dir = project_root / "resources"
+    resources_dir.mkdir()
+    ahk_file = resources_dir / "taskbar_restore.ahk"
+    ahk_file.write_text("ExitApp\n", encoding="utf-8")
 
     output_dir = tmp_path / "dist"
     output_dir.mkdir()
@@ -1627,8 +1695,12 @@ def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
     assert f"--paths={project_root}" in app.captured_cmd
     assert f"--add-data={project_root}{os.pathsep}." in app.captured_cmd
     assert f"--add-data={png_file}{os.pathsep}Icons" in app.captured_cmd
+    assert f"--add-data={ahk_file}{os.pathsep}resources" in app.captured_cmd
     assert app.captured_cmd.index(f"--paths={project_root}") < app.captured_cmd.index(str(script))
     assert app.captured_cmd.index(f"--add-data={png_file}{os.pathsep}Icons") < app.captured_cmd.index(str(script))
+    assert app.captured_cmd.index(
+        f"--add-data={ahk_file}{os.pathsep}resources"
+    ) < app.captured_cmd.index(str(script))
     assert f"--workpath={output_dir / 'build' / 'Builder_project'}" in app.captured_cmd
     assert f"--specpath={output_dir / 'spec' / 'Builder_project'}" in app.captured_cmd
     assert app.current_build_paths == [
