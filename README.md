@@ -113,6 +113,28 @@ The selected build interpreter is the interpreter used for `python -m PyInstalle
 
 Test coverage is intended to be run from a compatible Python 3.11+ environment with PySide6 installed. On this machine, the default `python` currently resolves to Python 3.9, and `pytest -q` fails during PySide6/Shiboken import, so that default interpreter is not a valid local test environment for this app.
 
+### Project-specific PyInstaller dependencies
+
+A project can add `.python-exe-builder.json` at its project root when
+PyInstaller cannot discover a dynamically imported dependency. Version 1
+supports only validated Python module names:
+
+```json
+{
+  "schema_version": 1,
+  "pyinstaller": {
+    "hidden_imports": ["package.dynamic_module"],
+    "collect_all": ["package_with_data_or_binaries"]
+  }
+}
+```
+
+`hidden_imports` maps to PyInstaller's `--hidden-import` option. `collect_all`
+maps to `--collect-all`, which includes the package's submodules, data files,
+and binaries. Both arrays are optional. Unknown fields, duplicate or invalid
+module names, malformed JSON, and unsupported schema versions stop the build
+with an error. Raw PyInstaller arguments and filesystem paths are not accepted.
+
 ---
 
 ## Limitations
@@ -122,7 +144,7 @@ This tool does not:
 * Determine compatibility of libraries with specific Python versions
 * Fix broken or unsupported dependencies
 * Modify, downgrade, or patch packages except when Environment Sync is explicitly used to install matching versions
-* Automatically resolve PyInstaller-specific issues
+* Automatically resolve PyInstaller-specific issues that are not declared in a project manifest
 
 It assumes a working Python environment and focuses on providing a safer, more predictable build process.
 

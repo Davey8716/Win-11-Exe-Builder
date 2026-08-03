@@ -21,6 +21,10 @@ from build_icon_contract import (
     clear_output_folder_icon_metadata,
     resolve_build_icon_contract,
 )
+from project_build_manifest import (
+    ProjectBuildManifestError,
+    load_project_build_manifest,
+)
 from styles import Colors, status_text_style
 
 CREATE_NO_WINDOW = 0x08000000
@@ -1224,6 +1228,12 @@ class BuildController(QObject):
             self._abort_current_build(error)
             return
 
+        try:
+            project_manifest = load_project_build_manifest(project_root)
+        except ProjectBuildManifestError as exc:
+            self._abort_current_build(f"Invalid project build manifest: {exc}")
+            return
+
         # ==================================================
         # ENTER BUILD MODE
         # ==================================================
@@ -1398,6 +1408,8 @@ class BuildController(QObject):
             cmd.append(f"--add-data={project_root}{os.pathsep}.")
 
         cmd.extend(self._get_project_asset_data_args(project_root))
+
+        cmd.extend(project_manifest.pyinstaller_args())
 
         icon_contract = resolve_build_icon_contract(icon)
 

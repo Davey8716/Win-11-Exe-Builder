@@ -1651,6 +1651,12 @@ def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
     resources_dir.mkdir()
     ahk_file = resources_dir / "taskbar_restore.ahk"
     ahk_file.write_text("ExitApp\n", encoding="utf-8")
+    manifest_file = project_root / ".python-exe-builder.json"
+    manifest_file.write_text(
+        '{"schema_version": 1, "pyinstaller": '
+        '{"collect_all": ["uiautomation"]}}',
+        encoding="utf-8",
+    )
 
     output_dir = tmp_path / "dist"
     output_dir.mkdir()
@@ -1696,10 +1702,14 @@ def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
     assert f"--add-data={project_root}{os.pathsep}." in app.captured_cmd
     assert f"--add-data={png_file}{os.pathsep}Icons" in app.captured_cmd
     assert f"--add-data={ahk_file}{os.pathsep}resources" in app.captured_cmd
+    assert "--collect-all=uiautomation" in app.captured_cmd
     assert app.captured_cmd.index(f"--paths={project_root}") < app.captured_cmd.index(str(script))
     assert app.captured_cmd.index(f"--add-data={png_file}{os.pathsep}Icons") < app.captured_cmd.index(str(script))
     assert app.captured_cmd.index(
         f"--add-data={ahk_file}{os.pathsep}resources"
+    ) < app.captured_cmd.index(str(script))
+    assert app.captured_cmd.index(
+        "--collect-all=uiautomation"
     ) < app.captured_cmd.index(str(script))
     assert f"--workpath={output_dir / 'build' / 'Builder_project'}" in app.captured_cmd
     assert f"--specpath={output_dir / 'spec' / 'Builder_project'}" in app.captured_cmd
