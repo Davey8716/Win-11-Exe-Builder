@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "pyinstaller": {
+    "exclude_modules": ["tkinter", "_tkinter", "tk"]
+  }
+}

@@ -44,20 +44,6 @@ class BuildCancellation:
             except Exception as e:
                 print(f"Failed to trash {path}: {e}")
 
-        # Trash PyInstaller build folder
-        build_root = os.path.join(
-            getattr(self.app, "output_path", ""),
-            "build"
-        )
-
-        if os.path.exists(build_root):
-            for name in os.listdir(build_root):
-                full = os.path.join(build_root, name)
-                try:
-                    send2trash.send2trash(os.path.normpath(full))
-                except Exception as e:
-                    print("Failed to remove:", full, e)
-
         # Reset build state
         self.app.build_process = None
         self.app.building = False

@@ -958,8 +958,10 @@ def test_mass_datetime_desktop_build_centers_all_outputs_after_final_success(tmp
 
     assert centered == [app.current_build_paths]
     assert all(str(path) in app.current_build_paths for path in built_dirs)
-    assert os.path.join(desktop_path, "build") in app.current_build_paths
-    assert os.path.join(desktop_path, "spec") in app.current_build_paths
+    for target_dir in built_dirs:
+        name = Path(target_dir).name
+        assert os.path.join(desktop_path, "build", name) in app.current_build_paths
+        assert os.path.join(desktop_path, "spec", name) in app.current_build_paths
     assert app.debug_log_path in app.current_build_paths
 
 
@@ -1521,6 +1523,90 @@ def test_build_exe_suppresses_empty_clicked_disconnect_warning(tmp_path, monkeyp
     ]
 
 
+def test_project_exclusions_are_added_without_forcing_tk_collection(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path)
+    manifest = Path(app.project_root) / ".python-exe-builder.json"
+    manifest.write_text(
+        '{"schema_version": 1, "pyinstaller": '
+        '{"exclude_modules": ["tkinter", "_tkinter", "tk"]}}',
+        encoding="utf-8",
+    )
+
+    BuildController(app).build_exe(None)
+
+    command = app.captured_cmds[0]
+    assert "--collect-all=tkinter" not in command
+    assert "--collect-all=tk" not in command
+    assert "--collect-all=qt_material" in command
+    assert "--exclude-module=tkinter" in command
+    assert "--exclude-module=_tkinter" in command
+    assert "--exclude-module=tk" in command
+
+
+def test_default_build_does_not_force_tk_into_non_tk_projects(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path)
+
+    BuildController(app).build_exe(None)
+
+    command = app.captured_cmds[0]
+    assert "--collect-all=tkinter" not in command
+    assert "--collect-all=tk" not in command
+    assert "--collect-all=qt_material" in command
+    assert not [arg for arg in command if arg.startswith("--exclude-module=")]
+
+
+def test_workpath_layout_keeps_repeated_youtube_name_below_resource_limit():
+    output_dir = (
+        r"C:\Users\davey\Desktop\Local EXES\Youtube Endless Scroll Blocker"
+    )
+    name = "Youtube Endless Scroll Blocker_Youtube Endless Scroll Blocker"
+
+    expected_exe = build_controller._expected_pyinstaller_exe_path(
+        os.path.join(output_dir, "build"),
+        name,
+    )
+
+    assert expected_exe == os.path.join(
+        output_dir,
+        "build",
+        name,
+        f"{name}.exe",
+    )
+    assert len(expected_exe) == 198
+    assert len(expected_exe) < build_controller.WINDOWS_RESOURCE_PATH_LIMIT
+
+
+def test_build_exe_rejects_path_too_long_for_windows_resources(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(
+        tmp_path,
+        exe_name_input=DummyInput("x" * 200),
+    )
+
+    BuildController(app).build_exe(None)
+
+    assert app.captured_cmds == []
+    assert "Generated build path is too long" in app.last_status
+    assert "Choose a shorter EXE name or output folder" in app.last_status
+
+
+def test_build_exe_cleans_only_project_specific_stale_workpath(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path)
+    build_root = Path(app.output_path_input.text()) / "build"
+    stale_project = build_root / "Builder"
+    sibling_project = build_root / "keep-existing-build"
+    stale_project.mkdir(parents=True)
+    sibling_project.mkdir()
+
+    BuildController(app).build_exe(None)
+
+    assert not stale_project.exists()
+    assert sibling_project.is_dir()
+
+
 def test_get_project_asset_data_args_preserves_relative_destinations(tmp_path):
     project_root = tmp_path / "project with spaces"
     nested_dir = project_root / "Icons" / "Screen Mover"
@@ -1711,12 +1797,12 @@ def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
     assert app.captured_cmd.index(
         "--collect-all=uiautomation"
     ) < app.captured_cmd.index(str(script))
-    assert f"--workpath={output_dir / 'build' / 'Builder_project'}" in app.captured_cmd
+    assert f"--workpath={output_dir / 'build'}" in app.captured_cmd
     assert f"--specpath={output_dir / 'spec' / 'Builder_project'}" in app.captured_cmd
     assert app.current_build_paths == [
         os.path.join(str(output_dir), "Builder_project"),
-        os.path.join(str(output_dir), "build"),
-        os.path.join(str(output_dir), "spec"),
+        os.path.join(str(output_dir), "build", "Builder_project"),
+        os.path.join(str(output_dir), "spec", "Builder_project"),
     ]
 
 

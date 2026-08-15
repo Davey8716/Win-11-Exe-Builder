@@ -28,6 +28,7 @@ from project_build_manifest import (
 from styles import Colors, status_text_style
 
 CREATE_NO_WINDOW = 0x08000000
+WINDOWS_RESOURCE_PATH_LIMIT = 260
 
 DATETIME_FORMAT_REGIONS = {
     "%Y-%m-%d": "ISO",
@@ -61,6 +62,12 @@ def _write_debug_log_stderr(file, stderr):
     for line in (stderr or "<empty>").splitlines():
         file.write(f"    {line}\n")
     file.write("\n")
+
+
+def _expected_pyinstaller_exe_path(build_root, final_exe_name):
+    return os.path.abspath(
+        os.path.join(build_root, final_exe_name, f"{final_exe_name}.exe")
+    )
 
 
 class BuildController(QObject):
@@ -1357,9 +1364,24 @@ class BuildController(QObject):
 
         final_exe_name = "_".join(parts)
 
-        build_path = os.path.join(outdir, "build", final_exe_name)
+        build_root = os.path.join(outdir, "build")
+        build_path = os.path.join(build_root, final_exe_name)
         spec_path = os.path.join(outdir, "spec", final_exe_name)
         target_dir = os.path.join(outdir, final_exe_name)
+
+        expected_exe_path = _expected_pyinstaller_exe_path(
+            build_root,
+            final_exe_name,
+        )
+        if len(expected_exe_path) >= WINDOWS_RESOURCE_PATH_LIMIT:
+            self._abort_current_build(
+                "Generated build path is too long for Windows resource tools "
+                f"({len(expected_exe_path)} characters; maximum is "
+                f"{WINDOWS_RESOURCE_PATH_LIMIT - 1}).\n"
+                "Choose a shorter EXE name or output folder.\n"
+                f"{expected_exe_path}"
+            )
+            return
 
         for stale_path in (target_dir, build_path, spec_path):
             if os.path.isdir(stale_path):
@@ -1375,17 +1397,29 @@ class BuildController(QObject):
                 except OSError:
                     pass
 
-        os.makedirs(build_path, exist_ok=True)
+        os.makedirs(build_root, exist_ok=True)
         os.makedirs(spec_path, exist_ok=True)
+
+        excluded_modules = set(project_manifest.exclude_modules)
+
+        # Tkinter is part of the standard library and PyInstaller discovers it
+        # when the entry point actually imports it. Forcing it into every build
+        # also forces pyi_rth__tkinter into non-Tk applications. With Python
+        # 3.14's Tcl 9 zipfs layout, PyInstaller can then install the runtime
+        # hook without collecting _tcl_data/_tk_data, making an otherwise valid
+        # PySide application fail before its own code starts.
+        default_collect_all = ("qt_material",)
 
         cmd = [
             *cmd_prefix,
             "--onedir",
             "--clean",
             "--noconfirm",
-            "--collect-all=tkinter",
-            "--collect-all=tk",
-            "--collect-all=qt_material",
+            *(
+                f"--collect-all={name}"
+                for name in default_collect_all
+                if name not in excluded_modules
+            ),
             "--windowed",
             "--noconsole",
             "--hidden-import=pynput",
@@ -1396,7 +1430,7 @@ class BuildController(QObject):
             "--hidden-import=pygetwindow",
             "--hidden-import=pystray",
             f"--distpath={outdir}",
-            f"--workpath={build_path}",
+            f"--workpath={build_root}",
             f"--specpath={spec_path}",
             f"--name={final_exe_name}",
         ]
@@ -1423,8 +1457,8 @@ class BuildController(QObject):
 
         app.current_build_paths = [
             target_dir,
-            os.path.join(outdir, "build"),
-            os.path.join(outdir, "spec"),
+            build_path,
+            spec_path,
         ]
 
         # ==================================================

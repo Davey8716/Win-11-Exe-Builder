@@ -20,11 +20,18 @@ class ProjectBuildManifestError(ValueError):
 class ProjectBuildManifest:
     hidden_imports: tuple[str, ...] = ()
     collect_all: tuple[str, ...] = ()
+    exclude_modules: tuple[str, ...] = ()
 
     def pyinstaller_args(self):
+        excluded = set(self.exclude_modules)
         return [
             *(f"--hidden-import={name}" for name in self.hidden_imports),
-            *(f"--collect-all={name}" for name in self.collect_all),
+            *(
+                f"--collect-all={name}"
+                for name in self.collect_all
+                if name not in excluded
+            ),
+            *(f"--exclude-module={name}" for name in self.exclude_modules),
         ]
 
 
@@ -62,13 +69,14 @@ def load_project_build_manifest(project_root):
     _require_object(pyinstaller, "pyinstaller")
     _reject_unknown_keys(
         pyinstaller,
-        {"hidden_imports", "collect_all"},
+        {"hidden_imports", "collect_all", "exclude_modules"},
         "pyinstaller",
     )
 
     return ProjectBuildManifest(
         hidden_imports=_module_names(pyinstaller, "hidden_imports"),
         collect_all=_module_names(pyinstaller, "collect_all"),
+        exclude_modules=_module_names(pyinstaller, "exclude_modules"),
     )
 
 

@@ -18,6 +18,7 @@ __pycache__/state_controller.cpython-313.pyc
 *.json
 exe_builder_state.json
 *.json
+!.python-exe-builder.json
 exe_builder_state.json
 exe_builder_state.json
 exe_builder_state.json

@@ -124,16 +124,21 @@ supports only validated Python module names:
   "schema_version": 1,
   "pyinstaller": {
     "hidden_imports": ["package.dynamic_module"],
-    "collect_all": ["package_with_data_or_binaries"]
+    "collect_all": ["package_with_data_or_binaries"],
+    "exclude_modules": ["unused_optional_package"]
   }
 }
 ```
 
 `hidden_imports` maps to PyInstaller's `--hidden-import` option. `collect_all`
 maps to `--collect-all`, which includes the package's submodules, data files,
-and binaries. Both arrays are optional. Unknown fields, duplicate or invalid
-module names, malformed JSON, and unsupported schema versions stop the build
-with an error. Raw PyInstaller arguments and filesystem paths are not accepted.
+and binaries. `exclude_modules` maps to `--exclude-module`; exclusions override
+matching `collect_all` entries, including any builder default collection.
+Tkinter is not forced into every application; PyInstaller discovers it when
+the project actually imports it.
+All arrays are optional. Unknown fields, duplicate or invalid module names,
+malformed JSON, and unsupported schema versions stop the build with an error.
+Raw PyInstaller arguments and filesystem paths are not accepted.
 
 ---
 

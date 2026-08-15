@@ -32,6 +32,7 @@ def test_valid_manifest_generates_only_supported_arguments(tmp_path):
             "pyinstaller": {
                 "hidden_imports": ["package.dynamic_module"],
                 "collect_all": ["uiautomation"],
+                "exclude_modules": ["tkinter", "_tkinter"],
             },
         },
     )
@@ -41,6 +42,28 @@ def test_valid_manifest_generates_only_supported_arguments(tmp_path):
     assert manifest.pyinstaller_args() == [
         "--hidden-import=package.dynamic_module",
         "--collect-all=uiautomation",
+        "--exclude-module=tkinter",
+        "--exclude-module=_tkinter",
+    ]
+
+
+def test_exclusions_override_matching_collect_all_entries(tmp_path):
+    write_manifest(
+        tmp_path,
+        {
+            "schema_version": 1,
+            "pyinstaller": {
+                "collect_all": ["tkinter", "uiautomation"],
+                "exclude_modules": ["tkinter"],
+            },
+        },
+    )
+
+    manifest = load_project_build_manifest(tmp_path)
+
+    assert manifest.pyinstaller_args() == [
+        "--collect-all=uiautomation",
+        "--exclude-module=tkinter",
     ]
 
 
@@ -66,9 +89,24 @@ def test_valid_manifest_generates_only_supported_arguments(tmp_path):
             "dotted Python module name",
         ),
         (
+            {"schema_version": 1, "pyinstaller": {"exclude_modules": "tkinter"}},
+            "must be an array",
+        ),
+        (
+            {"schema_version": 1, "pyinstaller": {"exclude_modules": ["bad-name"]}},
+            "dotted Python module name",
+        ),
+        (
             {
                 "schema_version": 1,
                 "pyinstaller": {"collect_all": ["pkg", "pkg"]},
+            },
+            "duplicate module",
+        ),
+        (
+            {
+                "schema_version": 1,
+                "pyinstaller": {"exclude_modules": ["tkinter", "tkinter"]},
             },
             "duplicate module",
         ),
