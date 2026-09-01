@@ -291,6 +291,119 @@ def test_open_app_data_opens_state_folder_when_file_missing(tmp_path):
     assert state_file.parent.is_dir()
 
 
+class DummySignal:
+    def __init__(self):
+        self.callback = None
+
+    def connect(self, callback):
+        self.callback = callback
+
+
+class DummyTimer:
+    instances = []
+
+    def __init__(self):
+        self.timeout = DummySignal()
+        self.interval = None
+        self.started = False
+        self.stopped = False
+        self.__class__.instances.append(self)
+
+    def setInterval(self, interval):
+        self.interval = interval
+
+    def start(self):
+        self.started = True
+
+    def stop(self):
+        self.stopped = True
+
+
+def _app_with_window_events(events):
+    return SimpleNamespace(
+        _is_closing=False,
+        showMinimized=lambda: events.append("minimize"),
+        showNormal=lambda: events.append("restore"),
+        raise_=lambda: events.append("raise"),
+        activateWindow=lambda: events.append("activate"),
+    )
+
+
+def test_app_data_monitor_minimizes_then_restores_when_folder_view_is_gone(monkeypatch, tmp_path):
+    events = []
+    DummyTimer.instances = []
+    handler = UIHandlers(_app_with_window_events(events))
+    folder_states = iter((True, False))
+
+    monkeypatch.setattr(ui_handlers, "QTimer", DummyTimer)
+    monkeypatch.setattr(
+        handler,
+        "_is_explorer_folder_open",
+        lambda _path: next(folder_states),
+    )
+
+    assert handler._start_app_data_monitor(str(tmp_path)) is True
+    timer = DummyTimer.instances[0]
+
+    assert events == ["minimize"]
+    assert timer.interval == 350
+    assert timer.started is True
+
+    timer.timeout.callback()
+
+    assert events == ["minimize", "restore", "raise", "activate"]
+    assert timer.stopped is True
+    assert handler._app_data_monitor is None
+
+
+def test_app_data_monitor_replaces_existing_timer(monkeypatch, tmp_path):
+    events = []
+    DummyTimer.instances = []
+    handler = UIHandlers(_app_with_window_events(events))
+
+    monkeypatch.setattr(ui_handlers, "QTimer", DummyTimer)
+    monkeypatch.setattr(handler, "_is_explorer_folder_open", lambda _path: True)
+
+    assert handler._start_app_data_monitor(str(tmp_path)) is True
+    first_timer = DummyTimer.instances[0]
+    assert handler._start_app_data_monitor(str(tmp_path)) is True
+
+    assert first_timer.stopped is True
+    assert len(DummyTimer.instances) == 2
+    assert events == ["minimize", "minimize"]
+
+
+def test_app_data_monitor_does_not_minimize_when_folder_cannot_be_detected(monkeypatch, tmp_path):
+    events = []
+    DummyTimer.instances = []
+    handler = UIHandlers(_app_with_window_events(events))
+
+    monkeypatch.setattr(ui_handlers, "QTimer", DummyTimer)
+    monkeypatch.setattr(handler, "_is_explorer_folder_open", lambda _path: None)
+
+    assert handler._start_app_data_monitor(str(tmp_path)) is False
+    assert events == []
+    assert DummyTimer.instances == []
+
+
+def test_app_data_monitor_shutdown_does_not_restore(monkeypatch, tmp_path):
+    events = []
+    DummyTimer.instances = []
+    app = _app_with_window_events(events)
+    handler = UIHandlers(app)
+
+    monkeypatch.setattr(ui_handlers, "QTimer", DummyTimer)
+    monkeypatch.setattr(handler, "_is_explorer_folder_open", lambda _path: True)
+
+    assert handler._start_app_data_monitor(str(tmp_path)) is True
+    timer = DummyTimer.instances[0]
+    app._is_closing = True
+    timer.timeout.callback()
+
+    assert timer.stopped is True
+    assert events == ["minimize"]
+
+
 def test_reset_output_to_desktop_keeps_remembered_non_desktop_output(monkeypatch, tmp_path):
     remembered_output = os.path.normpath(str(tmp_path / "dist"))
     state_ctrl = DummyStateController()

@@ -1,5 +1,6 @@
 
 import os,subprocess,time,webbrowser
+from PySide6.QtCore import QTimer
 from datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_SENTINEL,
     MASS_DATETIME_BUILD_SENTINEL,
@@ -29,6 +30,8 @@ def _find_no_datetime_index(dropdown):
 class UIHandlers:
     def __init__(self, app):
         self.app = app
+        self._app_data_monitor = None
+        self._app_data_monitor_path = ""
 
 
     def get_desktop_path(self):
@@ -158,6 +161,111 @@ class UIHandlers:
     def _select_file_in_explorer(self, file_path):
         subprocess.Popen(["explorer.exe", f"/select,{file_path}"])
 
+    def _normalize_explorer_path(self, path):
+        if not path:
+            return ""
+        return os.path.normcase(os.path.abspath(os.path.normpath(path)))
+
+    def _path_from_explorer_url(self, url):
+        if not url or not url.startswith("file:"):
+            return ""
+
+        try:
+            from urllib.parse import unquote, urlparse
+
+            parsed = urlparse(url)
+            path = unquote(parsed.path or "")
+            if parsed.netloc:
+                return os.path.normpath(f"//{parsed.netloc}{path}")
+            return os.path.normpath(path.lstrip("/"))
+        except Exception:
+            return ""
+
+    def _get_explorer_window_path(self, window):
+        try:
+            folder_path = window.Document.Folder.Self.Path
+        except Exception:
+            folder_path = ""
+
+        if folder_path:
+            return folder_path
+
+        try:
+            return self._path_from_explorer_url(window.LocationURL)
+        except Exception:
+            return ""
+
+    def _is_explorer_folder_open(self, folder_path):
+        target_path = self._normalize_explorer_path(folder_path)
+        if not target_path:
+            return False
+
+        try:
+            import win32com.client
+
+            windows = win32com.client.Dispatch("Shell.Application").Windows()
+            count = windows.Count
+        except Exception:
+            return None
+
+        for index in range(count):
+            try:
+                window = windows.Item(index)
+                window_path = self._normalize_explorer_path(
+                    self._get_explorer_window_path(window)
+                )
+            except Exception:
+                continue
+
+            if window_path == target_path:
+                return True
+
+        return False
+
+    def _stop_app_data_monitor(self):
+        timer = self._app_data_monitor
+        self._app_data_monitor = None
+        self._app_data_monitor_path = ""
+        if timer is not None:
+            timer.stop()
+
+    def _restore_after_app_data(self):
+        self._stop_app_data_monitor()
+        app = self.app
+        if getattr(app, "_is_closing", False):
+            return
+
+        app.showNormal()
+        app.raise_()
+        app.activateWindow()
+
+    def _poll_app_data_folder(self):
+        if getattr(self.app, "_is_closing", False):
+            self._stop_app_data_monitor()
+            return
+
+        if self._is_explorer_folder_open(self._app_data_monitor_path) is True:
+            return
+
+        self._restore_after_app_data()
+
+    def _start_app_data_monitor(self, state_dir):
+        self._stop_app_data_monitor()
+        if self._is_explorer_folder_open(state_dir) is not True:
+            return False
+
+        timer = QTimer()
+        timer.setInterval(150)
+        timer.timeout.connect(self._poll_app_data_folder)
+        self._app_data_monitor_path = state_dir
+        self._app_data_monitor = timer
+        self.app.showMinimized()
+        timer.start()
+        return True
+
+    def shutdown(self):
+        self._stop_app_data_monitor()
+
     def _pulse_window_topmost(self, hwnd):
         try:
             import win32con
@@ -242,6 +350,7 @@ class UIHandlers:
 
     def open_app_data(self):
         app = self.app
+        self._stop_app_data_monitor()
         state_file = app.state_ctrl._state_file_path()
         state_dir = os.path.dirname(state_file)
         os.makedirs(state_dir, exist_ok=True)
@@ -251,11 +360,13 @@ class UIHandlers:
                 self._select_file_in_explorer(state_file)
             else:
                 self._open_folder(state_dir)
-            self._force_app_data_folder_on_top(state_dir)
+            if self._force_app_data_folder_on_top(state_dir):
+                self._start_app_data_monitor(state_dir)
         except Exception:
             try:
                 self._open_folder(state_dir)
-                self._force_app_data_folder_on_top(state_dir)
+                if self._force_app_data_folder_on_top(state_dir):
+                    self._start_app_data_monitor(state_dir)
             except Exception:
                 pass
     

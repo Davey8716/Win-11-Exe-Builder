@@ -1506,6 +1506,7 @@ class EXEBuilderApp(QWidget):
             return
 
         self._is_closing = True
+        self.ui_handlers.shutdown()
         self.build_controller.shutdown()
         self.environment_sync_controller.shutdown()
         self.state_ctrl.save_state()
