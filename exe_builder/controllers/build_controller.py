@@ -499,7 +499,7 @@ class BuildController(QObject):
                     if dirname.lower() not in skipped_dirnames
                 )
                 for filename in sorted(filenames):
-                    if Path(filename).suffix.lower() not in {".ahk", ".png"}:
+                    if Path(filename).suffix.lower() not in {".ahk", ".png", ".svg"}:
                         continue
 
                     source_path = os.path.normpath(os.path.join(folder, filename))

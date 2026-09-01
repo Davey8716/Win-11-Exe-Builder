@@ -1616,13 +1616,13 @@ def test_get_project_asset_data_args_preserves_relative_destinations(tmp_path):
     nested_png = nested_dir / "move left.png"
     root_ahk = project_root / "launcher.AHK"
     nested_ahk = nested_dir / "window helper.ahk"
-    ignored_svg = nested_dir / "move left.svg"
+    nested_svg = nested_dir / "move left.svg"
 
     root_png.write_text("root", encoding="utf-8")
     nested_png.write_text("nested", encoding="utf-8")
     root_ahk.write_text("#Requires AutoHotkey v2.0", encoding="utf-8")
     nested_ahk.write_text("ExitApp", encoding="utf-8")
-    ignored_svg.write_text("ignored", encoding="utf-8")
+    nested_svg.write_text("<svg/>", encoding="utf-8")
 
     controller = BuildController(make_app())
 
@@ -1636,11 +1636,14 @@ def test_get_project_asset_data_args_preserves_relative_destinations(tmp_path):
             f"{os.path.normpath(os.path.join('Icons', 'Screen Mover'))}"
         ),
         (
+            f"--add-data={os.path.normpath(str(nested_svg))}{os.pathsep}"
+            f"{os.path.normpath(os.path.join('Icons', 'Screen Mover'))}"
+        ),
+        (
             f"--add-data={os.path.normpath(str(nested_ahk))}{os.pathsep}"
             f"{os.path.normpath(os.path.join('Icons', 'Screen Mover'))}"
         ),
     ]
-    assert str(ignored_svg) not in " ".join(args)
 
 
 def test_get_project_asset_data_args_includes_parent_project_sibling_assets(tmp_path):
@@ -1667,6 +1670,27 @@ def test_get_project_asset_data_args_includes_parent_project_sibling_assets(tmp_
         f"{os.path.normpath(os.path.join('Icon Pngs', 'Green'))}"
     ) in args
     assert f"--add-data={os.path.normpath(str(app_icon))}{os.pathsep}Icons" in args
+
+
+def test_get_project_asset_data_args_includes_parent_project_sibling_svg_assets(tmp_path):
+    repo_root = tmp_path / "Win-11-Resurface"
+    package_root = repo_root / "Code Windows Resurface"
+    icon_dir = repo_root / "App Icons" / "Light Theme"
+    package_root.mkdir(parents=True)
+    icon_dir.mkdir(parents=True)
+    (repo_root / "requirements.txt").write_text("PySide6\n", encoding="utf-8")
+
+    chevron = icon_dir / "Dropdown Chevron.svg"
+    chevron.write_text("<svg/>", encoding="utf-8")
+
+    controller = BuildController(make_app())
+
+    args = controller._get_project_asset_data_args(str(package_root))
+
+    assert (
+        f"--add-data={os.path.normpath(str(chevron))}{os.pathsep}"
+        f"{os.path.normpath(os.path.join('App Icons', 'Light Theme'))}"
+    ) in args
 
 
 def test_get_project_asset_data_args_bundles_hover_controls_ahk_resource(tmp_path):
