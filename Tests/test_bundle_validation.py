@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import bundle_validation
-from bundle_validation import validate_bundle_inputs
+from exe_builder.build import bundle_validation
+from exe_builder.build.bundle_validation import validate_bundle_inputs
 
 
 def make_app(tmp_path: Path, **overrides):

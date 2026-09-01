@@ -1,11 +1,11 @@
 import json
 import os
-import recent_controller
+from exe_builder.controllers import recent_controller
 from types import SimpleNamespace
 
 from PySide6.QtCore import Qt
 
-from recent_controller import Colors, RecentController, _wrap_delete_confirmation_path
+from exe_builder.controllers.recent_controller import Colors, RecentController, _wrap_delete_confirmation_path
 
 
 class DummyDropdownItem:

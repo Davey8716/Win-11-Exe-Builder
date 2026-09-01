@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from project_build_manifest import (
+from exe_builder.build.project_build_manifest import (
     MANIFEST_FILENAME,
     ProjectBuildManifestError,
     load_project_build_manifest,

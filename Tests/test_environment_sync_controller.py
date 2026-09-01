@@ -1,4 +1,4 @@
-from environment_sync_controller import (
+from exe_builder.controllers.environment_sync_controller import (
     EnvironmentSyncController,
     PythonEnvironmentProfile,
 )

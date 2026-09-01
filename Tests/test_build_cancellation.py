@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-import build_cancellation
-from build_cancellation import BuildCancellation
+from exe_builder.build import build_cancellation
+from exe_builder.build.build_cancellation import BuildCancellation
 
 
 def test_cancel_build_trashes_only_current_project_paths(tmp_path, monkeypatch):

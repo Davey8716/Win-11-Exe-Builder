@@ -2,15 +2,15 @@ from types import SimpleNamespace
 import os
 import sys
 
-import ui_handlers
-from datetime_build_options import (
+from exe_builder.controllers import ui_handlers
+from exe_builder.build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_SENTINEL,
     MASS_DATETIME_BUILD_SENTINEL,
     NO_DATETIME_LABEL,
     UK_MASS_DATETIME_BUILD_SENTINEL,
     USA_MASS_DATETIME_BUILD_SENTINEL,
 )
-from ui_handlers import UIHandlers
+from exe_builder.controllers.ui_handlers import UIHandlers
 
 
 class DummyDropdown:
@@ -346,7 +346,7 @@ def test_app_data_monitor_minimizes_then_restores_when_folder_view_is_gone(monke
     timer = DummyTimer.instances[0]
 
     assert events == ["minimize"]
-    assert timer.interval == 350
+    assert timer.interval == 150
     assert timer.started is True
 
     timer.timeout.callback()

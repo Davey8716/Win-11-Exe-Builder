@@ -4,10 +4,10 @@ from datetime import datetime as real_datetime
 from pathlib import Path
 from types import SimpleNamespace
 
-import build_controller
-import build_icon_contract
-from build_controller import BuildController, BuildWorker
-from datetime_build_options import (
+from exe_builder.controllers import build_controller
+from exe_builder.build import build_icon_contract
+from exe_builder.controllers.build_controller import BuildController, BuildWorker
+from exe_builder.build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_SENTINEL,
     MASS_DATETIME_BUILD_SENTINEL,
     NO_DATETIME_LABEL,
@@ -699,7 +699,7 @@ def test_shutdown_stops_running_build_thread_and_clears_state():
 
 
 def test_shutdown_cancels_active_build_process(monkeypatch):
-    import build_cancellation
+    from exe_builder.build import build_cancellation
 
     cancelled = []
     app = make_app(
@@ -1360,7 +1360,7 @@ def test_usa_mass_datetime_build_stops_on_failure_and_restores_state(tmp_path, m
 
 def test_mass_datetime_build_cancel_restores_state(tmp_path, monkeypatch):
     patch_build_runtime(monkeypatch)
-    import build_cancellation
+    from exe_builder.build import build_cancellation
 
     dropdown = mass_datetime_dropdown()
     app = make_buildable_app(
@@ -1397,7 +1397,7 @@ def test_mass_datetime_build_cancel_restores_state(tmp_path, monkeypatch):
 
 def test_iso_mass_datetime_build_cancel_restores_state(tmp_path, monkeypatch):
     patch_build_runtime(monkeypatch)
-    import build_cancellation
+    from exe_builder.build import build_cancellation
 
     dropdown = iso_mass_datetime_dropdown()
     app = make_buildable_app(
@@ -1434,7 +1434,7 @@ def test_iso_mass_datetime_build_cancel_restores_state(tmp_path, monkeypatch):
 
 def test_uk_mass_datetime_build_cancel_restores_state(tmp_path, monkeypatch):
     patch_build_runtime(monkeypatch)
-    import build_cancellation
+    from exe_builder.build import build_cancellation
 
     dropdown = uk_mass_datetime_dropdown()
     app = make_buildable_app(
@@ -1471,7 +1471,7 @@ def test_uk_mass_datetime_build_cancel_restores_state(tmp_path, monkeypatch):
 
 def test_usa_mass_datetime_build_cancel_restores_state(tmp_path, monkeypatch):
     patch_build_runtime(monkeypatch)
-    import build_cancellation
+    from exe_builder.build import build_cancellation
 
     dropdown = usa_mass_datetime_dropdown()
     app = make_buildable_app(

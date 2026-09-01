@@ -4,9 +4,9 @@ from types import SimpleNamespace
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QWidget
 
-import file_pickers
-from file_pickers import FilePickerController, ScriptPickerPopup
-from styles import Colors
+from exe_builder.controllers import file_pickers
+from exe_builder.controllers.file_pickers import FilePickerController, ScriptPickerPopup
+from exe_builder.ui.styles import Colors
 
 
 def _qapp():

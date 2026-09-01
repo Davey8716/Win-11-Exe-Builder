@@ -2,8 +2,8 @@ import os
 import sys
 from pathlib import Path
 
-import pyinstaller_tray_icon_hook as tray_icon_hook
-from tray_icon_support import (
+from exe_builder.build import pyinstaller_tray_icon_hook as tray_icon_hook
+from exe_builder.build.tray_icon_support import (
     TRAY_ICON_BUNDLE_NAME,
     get_tray_icon_hook_path,
     get_tray_icon_pyinstaller_args,

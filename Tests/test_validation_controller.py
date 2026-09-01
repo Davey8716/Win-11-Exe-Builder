@@ -1,8 +1,8 @@
 import os
 from types import SimpleNamespace
 
-import validation_controller
-from styles import (
+from exe_builder.controllers import validation_controller
+from exe_builder.ui.styles import (
     Colors,
     COMBO_BOX_LINE_EDIT_STYLE,
     COMBO_BOX_STYLE,
@@ -18,7 +18,7 @@ from styles import (
     line_edit_style,
     qcolor_name,
 )
-from validation_controller import ValidationController
+from exe_builder.controllers.validation_controller import ValidationController
 
 
 def test_combo_box_disabled_style_greys_drop_down_and_arrow():

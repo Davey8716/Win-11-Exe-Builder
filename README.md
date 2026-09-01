@@ -195,7 +195,7 @@ For PyInstaller onedir output, the generated EXE and its `_internal` folder must
 5. Run the app from source:
 
    ```text
-   python main.py
+   python -m exe_builder
    ```
 
 6. In the app, select the Python interpreter that has PyInstaller installed.

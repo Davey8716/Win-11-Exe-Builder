@@ -1,6 +1,6 @@
 import os
 
-from path_hover_text import build_path_hover_text
+from exe_builder.ui.path_hover_text import build_path_hover_text
 
 
 def test_path_hover_text_includes_help_when_tooltips_are_enabled():
