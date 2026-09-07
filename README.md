@@ -225,6 +225,10 @@ running to see its latest stage. Startup failures are also recorded. The compile
 builder clears its bundled DLL search paths when launching the selected Python
 interpreter, then restores them for its own use.
 
+For builds with a selected icon, the builder writes its embedded tray-icon runtime
+hook to a temporary Python file. This also works from the packaged builder without
+requiring loose Python source files in its `_internal` folder.
+
 Debug logs use timestamped names similar to:
 
 ```text

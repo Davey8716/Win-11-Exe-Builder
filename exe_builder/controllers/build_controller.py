@@ -1459,7 +1459,11 @@ class BuildController(QObject):
         if os.path.isfile(data_file):
             cmd.append(f"--add-data={data_file}{os.pathsep}.")
 
-        cmd.extend(icon_contract.pyinstaller_args)
+        try:
+            cmd.extend(icon_contract.pyinstaller_args)
+        except OSError as exc:
+            self._abort_current_build(f"Could not prepare build icon hook: {exc}")
+            return
 
         cmd.append(entry_point)
 
