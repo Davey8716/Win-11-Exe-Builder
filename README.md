@@ -220,6 +220,11 @@ The final onedir app folder contains the generated executable and its supporting
 
 The application writes debug logs directly into the selected output folder during builds.
 
+PyInstaller output is written live, so the log can be opened while a build is
+running to see its latest stage. Startup failures are also recorded. The compiled
+builder clears its bundled DLL search paths when launching the selected Python
+interpreter, then restores them for its own use.
+
 Debug logs use timestamped names similar to:
 
 ```text

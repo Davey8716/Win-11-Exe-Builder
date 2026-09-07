@@ -281,13 +281,21 @@ def test_build_worker_writes_sectioned_command_and_result_log(tmp_path, monkeypa
     class FakeProcess:
         returncode = 0
 
-        def communicate(self):
-            return "stdout text", "warning text"
+        def wait(self):
+            assert "warning text" in log_path.read_text(encoding="utf-8")
+            return self.returncode
+
+    def launch(*_args, **kwargs):
+        assert kwargs["stderr"] == build_controller.subprocess.STDOUT
+        assert kwargs["stdin"] == build_controller.subprocess.DEVNULL
+        kwargs["stdout"].write("stdout text\nwarning text\n")
+        kwargs["stdout"].flush()
+        return FakeProcess()
 
     monkeypatch.setattr(
         build_controller.subprocess,
         "Popen",
-        lambda *_args, **_kwargs: FakeProcess(),
+        launch,
     )
 
     worker = BuildWorker(app, ["python", "-m", "PyInstaller", "app.py"])
@@ -300,7 +308,24 @@ def test_build_worker_writes_sectioned_command_and_result_log(tmp_path, monkeypa
     assert "--- Build Result ---" in contents
     assert "  RETURN CODE: 0" in contents
     assert "  STDERR:" in contents
-    assert "    warning text" in contents
+    assert "warning text" in contents
+
+
+def test_build_worker_records_launch_failure_and_finishes(tmp_path, monkeypatch):
+    log_path = tmp_path / "build.log"
+    app = make_app(debug_log_path=str(log_path), build_process=None)
+
+    def fail_launch(*args, **kwargs):
+        raise OSError("Python launch failed")
+
+    monkeypatch.setattr(build_controller.subprocess, "Popen", fail_launch)
+    worker = BuildWorker(app, ["python", "-m", "PyInstaller"])
+    results = []
+    worker.finished.connect(lambda *result: results.append(result))
+    worker.run()
+
+    assert results == [(-1, "", "Python launch failed")]
+    assert "BUILD ERROR: Python launch failed" in log_path.read_text(encoding="utf-8")
 
 
 class DummySignal:

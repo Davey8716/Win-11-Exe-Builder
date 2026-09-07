@@ -1,6 +1,7 @@
 
 import os
 import subprocess
+from .external_python import external_python_environment
 
 INVALID_EXE_CHARS = set('<>:"/\\|?*')
 CREATE_NO_WINDOW = 0x08000000
@@ -41,13 +42,15 @@ def validate_bundle_inputs(app):
         return False, "Python interpreter path is invalid."
 
     try:
-        result = subprocess.run(
-            [python, "--version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=5,
-            creationflags=CREATE_NO_WINDOW
-        )
+        with external_python_environment() as env:
+            result = subprocess.run(
+                [python, "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=5,
+                env=env,
+                creationflags=CREATE_NO_WINDOW
+            )
     except Exception:
         return False, "Python interpreter could not be executed."
 

@@ -1,6 +1,7 @@
 import datetime,os,sys,subprocess,time,warnings
 from PySide6.QtGui import QFont
 from ..build.bundle_validation import validate_bundle_inputs
+from ..build.external_python import external_python_environment
 from ..build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_SENTINEL,
     ISO_MASS_DATETIME_BUILD_SEQUENCE,
@@ -1283,13 +1284,20 @@ class BuildController(QObject):
             )
             return  
 
-        result = subprocess.run(
-            [python, "-m", "PyInstaller", "--version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            creationflags=CREATE_NO_WINDOW
-        )
+        try:
+            with external_python_environment() as env:
+                result = subprocess.run(
+                    [python, "-m", "PyInstaller", "--version"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=30,
+                    env=env,
+                    creationflags=CREATE_NO_WINDOW
+                )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            self._abort_current_build(f"Could not start PyInstaller: {exc}")
+            return
 
         if result.returncode != 0:
             self._abort_current_build(
@@ -1602,18 +1610,25 @@ class BuildWorker(QObject):
                     ],
                 )
 
-            proc = subprocess.Popen(
-                self.cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                creationflags=CREATE_NO_WINDOW
-            )
-
-            self.app.build_process = proc
-
-            out, err = proc.communicate()
-            ret = proc.returncode
+            # Write directly to disk: output is visible while PyInstaller runs,
+            # and large builds cannot fill a pipe or accumulate unbounded RAM.
+            with open(self.app.debug_log_path, "a", encoding="utf-8") as log:
+                log.write("--- Live PyInstaller Output (stdout + stderr) ---\n")
+                log.flush()
+                with external_python_environment() as env:
+                    env["PYTHONUNBUFFERED"] = "1"
+                    env["PYTHONIOENCODING"] = "utf-8"
+                    proc = subprocess.Popen(
+                        self.cmd,
+                        stdin=subprocess.DEVNULL,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        env=env,
+                        creationflags=CREATE_NO_WINDOW
+                    )
+                self.app.build_process = proc
+                ret = proc.wait()
+            out, err = "", ""
 
             with open(self.app.debug_log_path, "a", encoding="utf-8") as f:
                 f.write("--- Build Result ---\n")
@@ -1624,5 +1639,10 @@ class BuildWorker(QObject):
             ret = -1
             out = ""
             err = str(e)
+            try:
+                with open(self.app.debug_log_path, "a", encoding="utf-8") as log:
+                    log.write(f"\nBUILD ERROR: {err}\n")
+            except OSError:
+                pass
 
         self.finished.emit(ret, out, err)
