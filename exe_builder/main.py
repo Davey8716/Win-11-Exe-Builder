@@ -1295,10 +1295,13 @@ class EXEBuilderApp(QWidget):
         dotnet_layout = QVBoxLayout(self.dotnet_mode_page)
         dotnet_layout.setContentsMargins(20, 12, 20, 12)
         dotnet_layout.setSpacing(8)
-        title = QLabel("C# .NET Publish")
-        title.setFont(QFont("Rubik UI", 18, QFont.Bold))
-        title.setAlignment(Qt.AlignCenter)
-        dotnet_layout.addWidget(title)
+        self.dotnet_mode_title = QLabel("C# .NET Publish")
+        self.dotnet_mode_title.setFont(QFont("Rubik UI", 18, QFont.Bold))
+        self.dotnet_mode_title.setAlignment(Qt.AlignCenter)
+        self.dotnet_mode_title.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        dotnet_layout.addWidget(self.dotnet_mode_title)
 
         panel = QFrame()
         panel.setObjectName("configurationFrame")
@@ -1380,7 +1383,11 @@ class EXEBuilderApp(QWidget):
         mode_layout = QHBoxLayout(mode_row)
         mode_layout.setContentsMargins(0, 4, 0, 4)
         mode_layout.addStretch()
-        mode_layout.addWidget(QLabel("Build mode:"))
+        self.build_mode_label = QLabel("Build mode:")
+        self.build_mode_label.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        mode_layout.addWidget(self.build_mode_label)
         self.python_mode_btn = QPushButton("Python EXE")
         self.dotnet_mode_btn = QPushButton("C# .NET Publish")
         for button in (self.python_mode_btn, self.dotnet_mode_btn):
