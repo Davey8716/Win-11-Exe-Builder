@@ -9,7 +9,12 @@ import xml.etree.ElementTree as ET
 from PySide6.QtCore import QObject, QThread, Signal
 
 from ..build.build_cancellation import BuildCancellation
-from ..ui.styles import Colors, status_text_style
+from ..ui.styles import (
+    Colors,
+    build_disabled_line_edit_style,
+    line_edit_style,
+    status_text_style,
+)
 
 
 CREATE_NO_WINDOW = 0x08000000
@@ -146,10 +151,52 @@ class DotnetPublishController(QObject):
         if not hasattr(self.app, "dotnet_publish_btn"):
             return
         building = getattr(self.app, "building", False)
+        values = self.values()
+        project_ok = bool(
+            values["project"]
+            and values["project"].lower().endswith(".csproj")
+            and os.path.isfile(values["project"])
+            and is_sdk_style_project(values["project"])
+        )
+        output_ok = bool(values["output"] and os.path.isdir(values["output"]))
+        icon_ok = bool(
+            values["icon"]
+            and values["icon"].lower().endswith(".ico")
+            and os.path.isfile(values["icon"])
+        )
+        if building:
+            styles = [build_disabled_line_edit_style()] * 4
+        else:
+            styles = [
+                line_edit_style(Colors.SUCCESS if project_ok else Colors.ERROR),
+                line_edit_style(Colors.SUCCESS if output_ok else Colors.ERROR),
+                line_edit_style(
+                    Colors.MUTED_BORDER if not values["icon"]
+                    else Colors.SUCCESS if icon_ok else Colors.ERROR
+                ),
+                line_edit_style(
+                    Colors.SUCCESS if not validate_executable_name(values["name"])
+                    else Colors.ERROR
+                ),
+            ]
+        for field, style in zip(
+            (
+                self.app.dotnet_project_input,
+                self.app.dotnet_output_input,
+                self.app.dotnet_icon_input,
+                self.app.dotnet_name_input,
+            ),
+            styles,
+        ):
+            field.setStyleSheet(style)
+
         error = self.validation_error()
         self.app.dotnet_publish_btn.setEnabled(building or not error)
         self.app.dotnet_publish_btn.setText("Cancel Publish" if building else "Publish")
         self.app.dotnet_open_output_btn.setEnabled(bool(self.output_path() and os.path.isdir(self.output_path()) and not building))
+        self.app.dotnet_status_label.setStyleSheet(
+            status_text_style(Colors.SUCCESS if building or not error else Colors.ERROR)
+        )
         if not building:
             self.app.dotnet_status_label.setText("Ready to publish" if not error else error)
 

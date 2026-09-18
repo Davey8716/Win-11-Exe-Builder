@@ -6,6 +6,7 @@ from exe_builder.controllers.dotnet_publish_controller import (
     is_sdk_style_project,
     validate_executable_name,
 )
+from exe_builder.ui.styles import Colors, qcolor_name
 
 
 class DummyInput:
@@ -14,6 +15,9 @@ class DummyInput:
 
     def text(self):
         return self.value
+
+    def setStyleSheet(self, value):
+        self.stylesheet = value
 
 
 class DummyCheck:
@@ -32,6 +36,22 @@ class DummyRuntime:
         return self.value
 
 
+class DummyButton:
+    def setEnabled(self, value):
+        self.enabled = value
+
+    def setText(self, value):
+        self.text = value
+
+
+class DummyStatus:
+    def setText(self, value):
+        self.text = value
+
+    def setStyleSheet(self, value):
+        self.stylesheet = value
+
+
 def make_controller(tmp_path, project_text='<Project Sdk="Microsoft.NET.Sdk"></Project>'):
     project = tmp_path / "Tool.csproj"
     project.write_text(project_text, encoding="utf-8")
@@ -44,6 +64,10 @@ def make_controller(tmp_path, project_text='<Project Sdk="Microsoft.NET.Sdk"></P
         dotnet_self_contained=DummyCheck(True),
         dotnet_single_file=DummyCheck(False),
         dotnet_trim=DummyCheck(False),
+        building=False,
+        dotnet_publish_btn=DummyButton(),
+        dotnet_open_output_btn=DummyButton(),
+        dotnet_status_label=DummyStatus(),
     )
     controller = DotnetPublishController(app)
     return controller, project
@@ -101,3 +125,40 @@ def test_windows_executable_name_rules():
     assert validate_executable_name("CON")
     assert validate_executable_name("Tool.")
     assert validate_executable_name("GoodTool") == ""
+
+
+def test_refresh_styles_dotnet_paths_like_python_validation(tmp_path):
+    controller, project = make_controller(tmp_path)
+    icon = tmp_path / "tool.ico"
+    icon.write_text("ico", encoding="utf-8")
+    controller.app.dotnet_icon_input.value = str(icon)
+
+    controller.refresh_ui()
+
+    for field in (
+        controller.app.dotnet_project_input,
+        controller.app.dotnet_output_input,
+        controller.app.dotnet_icon_input,
+        controller.app.dotnet_name_input,
+    ):
+        assert qcolor_name(Colors.PANEL_BG) in field.stylesheet
+        assert qcolor_name(Colors.SUCCESS) in field.stylesheet
+    assert qcolor_name(Colors.SUCCESS) in controller.app.dotnet_status_label.stylesheet
+    assert controller.app.dotnet_status_label.text == "Ready to publish"
+
+    controller.app.dotnet_project_input.value = str(project.with_name("missing.csproj"))
+    controller.app.dotnet_icon_input.value = ""
+    controller.refresh_ui()
+
+    assert qcolor_name(Colors.ERROR) in controller.app.dotnet_project_input.stylesheet
+    assert qcolor_name(Colors.MUTED_BORDER) in controller.app.dotnet_icon_input.stylesheet
+
+    controller.app.dotnet_name_input.value = "invalid/name"
+    controller.refresh_ui()
+    assert qcolor_name(Colors.ERROR) in controller.app.dotnet_name_input.stylesheet
+    assert qcolor_name(Colors.ERROR) in controller.app.dotnet_status_label.stylesheet
+
+    controller.app.building = True
+    controller.refresh_ui()
+    assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in controller.app.dotnet_project_input.stylesheet
+    assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in controller.app.dotnet_name_input.stylesheet
