@@ -52,12 +52,10 @@ def build_dotnet_publish_command(project, output_dir, name, runtime, self_contai
         "dotnet", "publish", project, "-c", "Release", "-r", runtime,
         "--self-contained", "true" if self_contained else "false",
         "-p:AssemblyName=" + name,
+        "-p:PublishSingleFile=" + ("true" if single_file else "false"),
+        "-p:PublishTrimmed=" + ("true" if trim else "false"),
         "-o", target,
     ]
-    if single_file:
-        cmd.append("-p:PublishSingleFile=true")
-    if trim:
-        cmd.append("-p:PublishTrimmed=true")
     if icon:
         cmd.append("-p:ApplicationIcon=" + icon)
     return cmd
@@ -250,14 +248,15 @@ class DotnetPublishController(QObject):
         self._cancelled = True
         if hasattr(self.app, "build_cancellation"):
             self.app.build_cancellation.cancel_build()
-        self.app.dotnet_status_label.setText("Publish cancelled.")
         self.refresh_ui()
+        self.app.dotnet_status_label.setText("Publish cancelled.")
 
     def _on_publish_finished(self, result, error):
         if getattr(self.app, "_is_closing", False):
             return
         self.app.building = False
         self.app.build_process = None
+        self.refresh_ui()
         if self._cancelled:
             self.app.dotnet_status_label.setText("Publish cancelled.")
         elif result == 0:
@@ -270,7 +269,6 @@ class DotnetPublishController(QObject):
         else:
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.ERROR, border_width=1))
             self.app.dotnet_status_label.setText(error or "Publish failed. See debug log.")
-        self.refresh_ui()
 
     def open_output_folder(self):
         target = self.output_path()

@@ -868,6 +868,161 @@ def test_rebuilding_same_output_with_no_icon_passes_explicit_none(tmp_path, monk
     assert_folder_has_no_generated_icon_metadata(target_dir)
 
 
+def test_rebuild_aborts_before_pyinstaller_when_existing_output_is_locked(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path)
+    controller = BuildController(app)
+    target_dir = Path(app.output_path_input.text()) / "Builder"
+    target_dir.mkdir()
+    locked_file = target_dir / "python314.dll"
+    locked_file.write_bytes(b"in use")
+    real_rmtree = build_controller.shutil.rmtree
+
+    def fail_for_locked_target(path, *args, **kwargs):
+        if Path(path) == target_dir:
+            raise PermissionError(5, "Access is denied", str(locked_file))
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(build_controller.shutil, "rmtree", fail_for_locked_target)
+
+    controller.build_exe(None)
+
+    assert app.captured_cmds == []
+    assert app.building is False
+    assert app.build_process is None
+    assert "Close any running copy of the generated EXE" in app.last_status
+    assert f"Locked path: {target_dir}" in app.last_status
+    assert "Access is denied" in app.last_status
+
+
+def test_frozen_self_rebuild_stages_icon_build_and_restarts(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    icon = tmp_path / "app.ico"
+    icon.write_bytes(b"icon")
+    app = make_buildable_app(tmp_path, icon_path=str(icon))
+    app.close_app = lambda: setattr(app, "closed", True)
+    controller = BuildController(app)
+    output_dir = Path(app.output_path_input.text())
+    live_target = output_dir / "Builder"
+    live_target.mkdir()
+    live_marker = live_target / "running.dll"
+    live_marker.write_bytes(b"still-running")
+    launched = []
+    monkeypatch.setattr(build_controller, "is_frozen_self_target", lambda path: Path(path) == live_target)
+    monkeypatch.setattr(build_controller, "launch_self_update", lambda plan: launched.append(plan))
+
+    controller.build_exe(None)
+
+    command = app.captured_cmds[0]
+    plan = controller._pending_self_update
+    assert plan is not None
+    assert command[command.index("--icon") + 1] == os.path.normpath(str(icon))
+    assert f"--distpath={plan.staging_root}" in command
+    assert live_marker.read_bytes() == b"still-running"
+    assert plan.staging_root in app.current_build_paths
+
+    staged_dir = Path(plan.staged_dir)
+    staged_dir.mkdir(parents=True)
+    (staged_dir / "Builder.exe").write_bytes(b"replacement")
+    controller._on_build_complete_ui(0, "", "")
+
+    assert launched == [plan]
+    assert app.closed is True
+    assert app.last_status == "Build complete. Restarting..."
+    assert live_marker.read_bytes() == b"still-running"
+
+
+def test_frozen_self_rebuild_with_no_icon_keeps_explicit_none(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path, icon_path="")
+    controller = BuildController(app)
+    live_target = Path(app.output_path_input.text()) / "Builder"
+    live_target.mkdir()
+    monkeypatch.setattr(build_controller, "is_frozen_self_target", lambda path: Path(path) == live_target)
+
+    controller.build_exe(None)
+
+    assert build_icon_arg(app.captured_cmds[0]) == "NONE"
+    assert f"--distpath={controller._pending_self_update.staging_root}" in app.captured_cmds[0]
+    assert live_target.is_dir()
+
+
+def test_self_update_launcher_failure_keeps_current_app_running(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path)
+    app.close_app = lambda: setattr(app, "closed", True)
+    controller = BuildController(app)
+    live_target = Path(app.output_path_input.text()) / "Builder"
+    live_target.mkdir()
+    monkeypatch.setattr(build_controller, "is_frozen_self_target", lambda path: Path(path) == live_target)
+    monkeypatch.setattr(
+        build_controller,
+        "launch_self_update",
+        lambda _plan: (_ for _ in ()).throw(build_controller.SelfUpdateError("helper unavailable")),
+    )
+
+    controller.build_exe(None)
+    plan = controller._pending_self_update
+    staged_dir = Path(plan.staged_dir)
+    staged_dir.mkdir(parents=True)
+    (staged_dir / "Builder.exe").write_bytes(b"replacement")
+    controller._on_build_complete_ui(0, "", "")
+
+    assert not getattr(app, "closed", False)
+    assert "restart setup failed" in app.last_status
+    assert "helper unavailable" in app.last_status
+    assert not Path(plan.staging_root).exists()
+
+
+def test_failed_self_rebuild_removes_staging_and_preserves_live_output(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path)
+    controller = BuildController(app)
+    live_target = Path(app.output_path_input.text()) / "Builder"
+    live_target.mkdir()
+    live_marker = live_target / "running.dll"
+    live_marker.write_bytes(b"current")
+    monkeypatch.setattr(build_controller, "is_frozen_self_target", lambda path: Path(path) == live_target)
+
+    controller.build_exe(None)
+    plan = controller._pending_self_update
+    Path(plan.staged_dir).mkdir(parents=True)
+    (Path(plan.staged_dir) / "partial.tmp").write_bytes(b"partial")
+    controller._on_build_complete_ui(1, "", "build failed")
+
+    assert controller._pending_self_update is None
+    assert not Path(plan.staging_root).exists()
+    assert live_marker.read_bytes() == b"current"
+
+
+def test_mass_build_defers_self_update_until_final_output_succeeds(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    app = make_buildable_app(tmp_path, date_time_dropdown=mass_datetime_dropdown())
+    app.close_app = lambda: setattr(app, "closed", True)
+    controller = BuildController(app)
+    live_target = Path(app.output_path_input.text()) / "Builder"
+    live_target.mkdir()
+    launched = []
+    monkeypatch.setattr(build_controller, "is_frozen_self_target", lambda path: Path(path) == live_target)
+    monkeypatch.setattr(build_controller, "launch_self_update", lambda plan: launched.append(plan))
+
+    controller.build_exe(None)
+    plan = controller._pending_self_update
+    Path(plan.staged_dir).mkdir(parents=True)
+    (Path(plan.staged_dir) / "Builder.exe").write_bytes(b"replacement")
+
+    controller._on_build_complete_ui(0, "", "")
+    assert launched == []
+    assert controller._mass_datetime_active is True
+
+    for _ in range(6):
+        controller._on_build_complete_ui(0, "", "")
+
+    assert launched == [plan]
+    assert app.closed is True
+    assert controller._mass_datetime_active is False
+
+
 def test_mass_datetime_build_uses_explicit_no_icon_for_every_output(tmp_path, monkeypatch):
     patch_build_runtime(monkeypatch)
 

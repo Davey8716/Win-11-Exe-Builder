@@ -101,6 +101,18 @@ def test_publish_command_contains_selected_options(tmp_path):
     assert command[command.index("-o") + 1].endswith("dist\\MyTool") or command[command.index("-o") + 1].endswith("dist/MyTool")
 
 
+def test_publish_command_explicitly_disables_unselected_project_options(tmp_path):
+    command = build_dotnet_publish_command(
+        str(tmp_path / "Tool.csproj"), str(tmp_path / "dist"), "MyTool",
+        "win-x64", False, False, False,
+    )
+
+    assert command[command.index("--self-contained") + 1] == "false"
+    assert "-p:PublishSingleFile=false" in command
+    assert "-p:PublishTrimmed=false" in command
+    assert not any(part.startswith("-p:ApplicationIcon=") for part in command)
+
+
 def test_validation_rejects_legacy_project_and_invalid_fields(tmp_path):
     controller, project = make_controller(tmp_path, '<Project ToolsVersion="15.0"></Project>')
     assert "SDK-style" in controller.validation_error()
@@ -125,6 +137,43 @@ def test_windows_executable_name_rules():
     assert validate_executable_name("CON")
     assert validate_executable_name("Tool.")
     assert validate_executable_name("GoodTool") == ""
+
+
+def test_publish_completion_leaves_executable_untouched(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    icon = tmp_path / "tool.ico"
+    icon.write_bytes(b"selected-icon")
+    target = tmp_path / "Tool"
+    target.mkdir()
+    executable = target / "Tool.exe"
+    executable.write_bytes(b"apphost-with-single-file-bundle")
+    controller.app.dotnet_icon_input.value = str(icon)
+    controller.app.debug_log_path = str(tmp_path / "publish.log")
+    controller.app.build_start_time = 0
+    controller.app.output_path = str(tmp_path)
+    controller.app.building = True
+    controller.app.build_process = object()
+    controller.app.last_build_seconds = 0
+    controller.app.state_ctrl = SimpleNamespace(save_state=lambda: None)
+    controller.app.build_controller = SimpleNamespace(
+        _present_successful_build_outputs=lambda: None,
+        _run_success_post_build_action=lambda: None,
+    )
+    controller._on_publish_finished(0, "")
+
+    assert executable.read_bytes() == b"apphost-with-single-file-bundle"
+    assert controller.app.dotnet_status_label.text == "Publish complete."
+
+
+def test_publish_failure_remains_visible_after_controls_refresh(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    controller.app.building = True
+    controller.app.build_process = object()
+
+    controller._on_publish_finished(1, "SDK publish failed")
+
+    assert controller.app.dotnet_status_label.text == "SDK publish failed"
+    assert qcolor_name(Colors.ERROR) in controller.app.dotnet_status_label.stylesheet
 
 
 def test_refresh_styles_dotnet_paths_like_python_validation(tmp_path):

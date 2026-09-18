@@ -26,6 +26,14 @@ from ..build.project_build_manifest import (
     ProjectBuildManifestError,
     load_project_build_manifest,
 )
+from ..build.self_update import (
+    SelfUpdateError,
+    cleanup_staging,
+    create_self_update_plan,
+    is_frozen_self_target,
+    launch_self_update,
+    validate_self_update_plan,
+)
 from ..ui.styles import Colors, status_text_style
 
 CREATE_NO_WINDOW = 0x08000000
@@ -87,6 +95,9 @@ class BuildController(QObject):
         self._mass_datetime_debug_log_prefix = "EXE_BUILDER_BUILD_ALL_DEBUG"
         self._mass_datetime_log_title = "DATE/TIME"
         self._mass_datetime_output_group = []
+        self._pending_self_update = None
+        self._active_self_update_plan = None
+        self._self_update_launched = False
         self.build_thread = None
         self.worker = None
 
@@ -274,9 +285,47 @@ class BuildController(QObject):
     def _cancel_mass_datetime_build(self):
         if self._mass_datetime_active:
             self._finish_mass_datetime_build()
+        self._discard_pending_self_update()
+
+    def _discard_pending_self_update(self):
+        plan = self._pending_self_update
+        self._pending_self_update = None
+        self._active_self_update_plan = None
+        if plan is not None and not self._self_update_launched:
+            cleanup_staging(plan)
+
+    def _schedule_pending_self_update(self):
+        plan = self._pending_self_update
+        if plan is None:
+            return False
+
+        app = self.app
+        try:
+            validate_self_update_plan(plan)
+            launch_self_update(plan)
+        except (OSError, SelfUpdateError) as exc:
+            cleanup_staging(plan)
+            self._pending_self_update = None
+            app.status_label.setStyleSheet(
+                status_text_style(Colors.ERROR, border_width=1)
+            )
+            app.set_status(f"Build completed, but restart setup failed: {exc}")
+            app.validation_controller.update_build_button()
+            app.validation_controller.update_ui_state()
+            return False
+
+        self._self_update_launched = True
+        app._status_lock = True
+        app.set_status("Build complete. Restarting...")
+        app.status_label.setStyleSheet(
+            status_text_style(Colors.SUCCESS, border_width=1)
+        )
+        QTimer.singleShot(0, app.close_app)
+        return True
 
     def _abort_current_build(self, message):
         app = self.app
+        self._discard_pending_self_update()
         app.build_cancellation.abort_build(message)
         self.stop_eta()
         app.building = False
@@ -319,6 +368,9 @@ class BuildController(QObject):
 
         if self._mass_datetime_active:
             self._finish_mass_datetime_build()
+
+        if not self._self_update_launched:
+            self._discard_pending_self_update()
 
         thread = getattr(self, "build_thread", None)
         if thread is not None:
@@ -1169,6 +1221,10 @@ class BuildController(QObject):
 
         datetime_dropdown_data = self._datetime_dropdown_data()
 
+        if not self._mass_datetime_active and not app.build_process:
+            self._discard_pending_self_update()
+            self._self_update_launched = False
+
         if (
             not self._mass_datetime_active
             and datetime_dropdown_data
@@ -1196,8 +1252,8 @@ class BuildController(QObject):
 
 
         if app.build_process:
-            self._cancel_mass_datetime_build()
             app.build_cancellation.cancel_build()
+            self._cancel_mass_datetime_build()
             return
 
       
@@ -1376,6 +1432,19 @@ class BuildController(QObject):
         build_path = os.path.join(build_root, final_exe_name)
         spec_path = os.path.join(outdir, "spec", final_exe_name)
         target_dir = os.path.join(outdir, final_exe_name)
+        self_update_plan = None
+        dist_path = outdir
+
+        if is_frozen_self_target(target_dir):
+            self_update_plan = create_self_update_plan(
+                target_dir,
+                final_exe_name + ".exe",
+                app.debug_log_path,
+            )
+            self._pending_self_update = self_update_plan
+            dist_path = self_update_plan.staging_root
+
+        self._active_self_update_plan = self_update_plan
 
         expected_exe_path = _expected_pyinstaller_exe_path(
             build_root,
@@ -1391,19 +1460,36 @@ class BuildController(QObject):
             )
             return
 
-        for stale_path in (target_dir, build_path, spec_path):
-            if os.path.isdir(stale_path):
-                if os.path.normcase(os.path.abspath(stale_path)) == os.path.normcase(os.path.abspath(target_dir)):
-                    try:
-                        clear_output_folder_icon_metadata(stale_path)
-                    except Exception:
-                        pass
-                shutil.rmtree(stale_path, ignore_errors=True)
-            elif os.path.exists(stale_path):
-                try:
+        output_cleanup_path = (
+            self_update_plan.staging_root if self_update_plan else target_dir
+        )
+        try:
+            for stale_path in (output_cleanup_path, build_path, spec_path):
+                if os.path.isdir(stale_path):
+                    if (
+                        not self_update_plan
+                        and os.path.normcase(os.path.abspath(stale_path))
+                        == os.path.normcase(os.path.abspath(target_dir))
+                    ):
+                        try:
+                            clear_output_folder_icon_metadata(stale_path)
+                        except Exception:
+                            pass
+                    shutil.rmtree(stale_path)
+                elif os.path.exists(stale_path):
                     os.remove(stale_path)
-                except OSError:
-                    pass
+
+                if os.path.exists(stale_path):
+                    raise OSError("The path still exists after cleanup.")
+        except OSError as exc:
+            self._abort_current_build(
+                "Could not replace the existing build output.\n"
+                "Close any running copy of the generated EXE, or any other "
+                "program using its files, then try again.\n"
+                f"Locked path: {stale_path}\n"
+                f"Windows reported: {exc}"
+            )
+            return
 
         os.makedirs(build_root, exist_ok=True)
         os.makedirs(spec_path, exist_ok=True)
@@ -1437,7 +1523,7 @@ class BuildController(QObject):
             "--hidden-import=win32process",
             "--hidden-import=pygetwindow",
             "--hidden-import=pystray",
-            f"--distpath={outdir}",
+            f"--distpath={dist_path}",
             f"--workpath={build_root}",
             f"--specpath={spec_path}",
             f"--name={final_exe_name}",
@@ -1468,7 +1554,7 @@ class BuildController(QObject):
         cmd.append(entry_point)
 
         app.current_build_paths = [
-            target_dir,
+            output_cleanup_path,
             build_path,
             spec_path,
         ]
@@ -1508,6 +1594,25 @@ class BuildController(QObject):
             app.build_process = None
             return
 
+        active_self_update = self._active_self_update_plan
+        self._active_self_update_plan = None
+        if ret == 0 and active_self_update is not None:
+            try:
+                validate_self_update_plan(active_self_update)
+            except SelfUpdateError as exc:
+                ret = -1
+                err = str(exc)
+            else:
+                app.current_build_paths = [
+                    active_self_update.target_dir
+                    if os.path.normcase(os.path.abspath(path))
+                    == os.path.normcase(
+                        os.path.abspath(active_self_update.staging_root)
+                    )
+                    else path
+                    for path in app.current_build_paths
+                ]
+
         mass_active = self._mass_datetime_active
         mass_completed_successfully = False
 
@@ -1535,6 +1640,7 @@ class BuildController(QObject):
             app.status_label.setStyleSheet(status_text_style(Colors.SUCCESS, border_width=1))
 
         else:
+            self._discard_pending_self_update()
             if mass_active:
                 failed_label = self._mass_datetime_current_label
                 self._finish_mass_datetime_build()
@@ -1553,6 +1659,10 @@ class BuildController(QObject):
         app.validation_controller.update_ui_state()
 
         if ret == 0:
+            if self._pending_self_update is not None:
+                app.state_ctrl.save_state()
+                self._schedule_pending_self_update()
+                return
             if mass_completed_successfully:
                 self._present_successful_mass_datetime_outputs()
             else:
