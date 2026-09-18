@@ -9,6 +9,7 @@ if __package__ in (None, ""):
 
 from ctypes import wintypes
 from exe_builder.controllers.build_controller import BuildController
+from exe_builder.controllers.dotnet_publish_controller import DotnetPublishController
 from exe_builder.build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_LABEL,
     MASS_DATETIME_BUILD_LABEL,
@@ -22,7 +23,7 @@ from exe_builder.controllers.environment_sync_controller import EnvironmentSyncC
 from exe_builder.ui.path_hover import attach_path_hovers
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialogButtonBox
+from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialogButtonBox,QStackedWidget,QFileDialog
 from exe_builder.controllers.validation_controller import ValidationController
 from exe_builder.controllers.activation_controller import ActivationController
 from PySide6.QtGui import QFont, QIcon, QPalette
@@ -116,6 +117,7 @@ class EXEBuilderApp(QWidget):
         self.ui_handlers = UIHandlers(self)
         self.environment_sync_controller = EnvironmentSyncController(self)
         self.build_controller = BuildController(self)
+        self.dotnet_publish_controller = DotnetPublishController(self)
         self.validation_controller = ValidationController(self)
         self.state_ctrl = StateController(self)
         self.validator = ValidationController(self)
@@ -162,6 +164,7 @@ class EXEBuilderApp(QWidget):
         self.output_path = getattr(self, "output_path", "")
         self.python_path = getattr(self, "python_path", "")
         self.exe_name = getattr(self, "exe_name", "")
+        self.build_mode = "python"
                     
         # =============================================================
         # Title + Tooltip Toggle
@@ -1215,7 +1218,10 @@ class EXEBuilderApp(QWidget):
         ]:
             widget.setAcceptDrops(True)
             widget.installEventFilter(self)
-        
+
+        # Keep the established Python UI together, then add the compact .NET
+        # page without forcing C# controls into the PyInstaller workflow.
+        self._install_build_mode_pages(root_layout)
         
         build_title_row_layout.addWidget(build_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
         build_frame_row_layout.addWidget(build_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
@@ -1270,8 +1276,172 @@ class EXEBuilderApp(QWidget):
 
         self.validator.update_ui_state()
         self.validation_controller.update_build_button()
+        self.dotnet_publish_controller.refresh_ui()
         self._sync_paired_section_geometry()
         self._sync_center_divider_height()
+
+    def _install_build_mode_pages(self, root_layout):
+        """Move the legacy screen into a Python page and create the .NET page."""
+        self.python_mode_page = QWidget()
+        python_layout = QVBoxLayout(self.python_mode_page)
+        python_layout.setContentsMargins(0, 0, 0, 0)
+        python_layout.setSpacing(0)
+        while root_layout.count():
+            item = root_layout.takeAt(0)
+            if item.widget() is not None:
+                python_layout.addWidget(item.widget())
+
+        self.dotnet_mode_page = QWidget()
+        dotnet_layout = QVBoxLayout(self.dotnet_mode_page)
+        dotnet_layout.setContentsMargins(20, 12, 20, 12)
+        dotnet_layout.setSpacing(8)
+        title = QLabel("C# .NET Publish")
+        title.setFont(QFont("Rubik UI", 18, QFont.Bold))
+        title.setAlignment(Qt.AlignCenter)
+        dotnet_layout.addWidget(title)
+
+        panel = QFrame()
+        panel.setObjectName("configurationFrame")
+        panel.setStyleSheet(MAIN_FRAME_STYLE)
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(12, 12, 12, 12)
+        panel_layout.setSpacing(7)
+
+        def path_row(label, attr, button_text, callback, placeholder):
+            row = QHBoxLayout()
+            button = QPushButton(button_text)
+            button.setFixedSize(160, 35)
+            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            button.setStyleSheet(button_base())
+            field = PathDisplayLineEdit()
+            field.setPlaceholderText(placeholder)
+            field.setReadOnly(True)
+            field.setFixedHeight(30)
+            field.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            setattr(self, attr, field)
+            button.clicked.connect(callback)
+            row.addWidget(button)
+            row.addWidget(field)
+            panel_layout.addWidget(QLabel(label))
+            panel_layout.addLayout(row)
+
+        path_row("Project", "dotnet_project_input", "Select .csproj", self._select_dotnet_project,
+                 "No C# project selected.")
+        path_row("Output folder", "dotnet_output_input", "Output Folder", self._select_dotnet_output,
+                 "No output folder selected.")
+        path_row("Application icon (optional)", "dotnet_icon_input", "Select ICO", self._select_dotnet_icon,
+                 "No icon selected.")
+
+        panel_layout.addWidget(QLabel("Executable name"))
+        self.dotnet_name_input = QLineEdit()
+        self.dotnet_name_input.setPlaceholderText("Application name")
+        self.dotnet_name_input.setFixedHeight(30)
+        panel_layout.addWidget(self.dotnet_name_input)
+
+        option_row = QHBoxLayout()
+        option_row.addWidget(QLabel("Target runtime"))
+        self.dotnet_runtime_combo = QComboBox()
+        self.dotnet_runtime_combo.addItem("Windows x64", "win-x64")
+        self.dotnet_runtime_combo.addItem("Windows ARM64", "win-arm64")
+        self.dotnet_runtime_combo.setStyleSheet(COMBO_BOX_STYLE)
+        option_row.addWidget(self.dotnet_runtime_combo)
+        self.dotnet_self_contained = QCheckBox("Self-contained")
+        self.dotnet_single_file = QCheckBox("Single file")
+        self.dotnet_trim = QCheckBox("Trim")
+        self.dotnet_self_contained.setChecked(True)
+        option_row.addWidget(self.dotnet_self_contained)
+        option_row.addWidget(self.dotnet_single_file)
+        option_row.addWidget(self.dotnet_trim)
+        option_row.addStretch()
+        panel_layout.addLayout(option_row)
+
+        self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
+        self.dotnet_status_label.setReadOnly(True)
+        self.dotnet_status_label.setFixedSize(520, 65)
+        self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        panel_layout.addWidget(self.dotnet_status_label, alignment=Qt.AlignHCenter)
+        actions = QHBoxLayout()
+        self.dotnet_publish_btn = QPushButton("Publish")
+        self.dotnet_open_output_btn = QPushButton("Open Output Folder")
+        for button in (self.dotnet_publish_btn, self.dotnet_open_output_btn):
+            button.setFixedSize(180, 35)
+            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            button.setStyleSheet(button_base())
+            actions.addWidget(button)
+        actions.addStretch()
+        panel_layout.addLayout(actions)
+        dotnet_layout.addWidget(panel, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        dotnet_layout.addStretch()
+
+        self.build_mode_stack = QStackedWidget()
+        self.build_mode_stack.addWidget(self.python_mode_page)
+        self.build_mode_stack.addWidget(self.dotnet_mode_page)
+        mode_row = QWidget()
+        mode_layout = QHBoxLayout(mode_row)
+        mode_layout.setContentsMargins(0, 4, 0, 4)
+        mode_layout.addStretch()
+        mode_layout.addWidget(QLabel("Build mode:"))
+        self.python_mode_btn = QPushButton("Python EXE")
+        self.dotnet_mode_btn = QPushButton("C# .NET Publish")
+        for button in (self.python_mode_btn, self.dotnet_mode_btn):
+            button.setCheckable(True)
+            button.setFixedSize(150, 32)
+            button.setStyleSheet(button_base())
+            mode_layout.addWidget(button)
+        mode_layout.addStretch()
+        self.python_mode_btn.setChecked(True)
+        self.python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
+        self.dotnet_mode_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
+        self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
+        self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
+        for widget in (
+            self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
+            self.dotnet_name_input,
+        ):
+            widget.textChanged.connect(self._on_dotnet_settings_changed)
+        self.dotnet_runtime_combo.currentIndexChanged.connect(self._on_dotnet_settings_changed)
+        for widget in (self.dotnet_self_contained, self.dotnet_single_file, self.dotnet_trim):
+            widget.toggled.connect(self._on_dotnet_settings_changed)
+        root_layout.addWidget(mode_row)
+        root_layout.addWidget(self.build_mode_stack)
+
+    def set_build_mode(self, mode, save=True):
+        if mode not in {"python", "dotnet"} or getattr(self, "building", False):
+            return
+        self.build_mode = mode
+        self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
+        self.python_mode_btn.setChecked(mode == "python")
+        self.dotnet_mode_btn.setChecked(mode == "dotnet")
+        self.setFixedSize(*(APP_FIXED_SIZE if mode == "python" else (700, 585)))
+        if mode == "python":
+            self.validation_controller.update_build_button()
+            self.validation_controller.update_ui_state()
+        else:
+            self.dotnet_publish_controller.refresh_ui()
+        if save and not getattr(self, "_loading_state", False):
+            self.state_ctrl.save_state()
+
+    def _on_dotnet_settings_changed(self, *_args):
+        self.dotnet_publish_controller.refresh_ui()
+        if not getattr(self, "_loading_state", False):
+            self.state_ctrl.save_state()
+
+    def _select_dotnet_project(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select C# Project", "", "C# Project Files (*.csproj)")
+        if path:
+            self.dotnet_project_input.set_display_path(os.path.normpath(path))
+            if not self.dotnet_name_input.text().strip():
+                self.dotnet_name_input.setText(Path(path).stem)
+
+    def _select_dotnet_output(self):
+        path = QFileDialog.getExistingDirectory(self, "Select Publish Output Folder", "")
+        if path:
+            self.dotnet_output_input.set_display_path(os.path.normpath(path))
+
+    def _select_dotnet_icon(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select Application Icon", "", "ICON Files (*.ico)")
+        if path:
+            self.dotnet_icon_input.set_display_path(os.path.normpath(path))
 
     def add_env_sync_status_row(self, version, package_count, status):
         if not hasattr(self, "env_sync_rows_layout"):

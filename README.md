@@ -30,6 +30,22 @@ It handles interpreter selection, input validation, output naming, and build exe
 * Optional output-folder opening after successful builds
 * Optional minimize-after-build, close-after-build, suppress-exit-dialogue, and tooltip toggles
 * Environment Sync for scanning and matching package sets across local Python installs
+* C#/.NET Release publishing for SDK-style `.csproj` projects
+
+---
+
+## C#/.NET Publish Mode
+
+Choose **C# .NET Publish** from the build-mode toggle to publish an SDK-style
+`.csproj` using the installed .NET SDK. The builder publishes `Release` output
+to `<output folder>\<executable name>` and supports `win-x64` and `win-arm64`,
+self-contained, single-file, and trim options.
+
+The executable name and optional `.ico` are passed as publish-time MSBuild
+properties; the selected project file is never changed. Trim can reduce output
+size, but applications that rely on reflection or dynamic loading may require
+additional project configuration. The output folder has an explicit **Open
+Output Folder** action as well as the existing post-build option.
 
 ---
 

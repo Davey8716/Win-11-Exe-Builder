@@ -94,6 +94,14 @@ class StateController:
                 "output_path_input",
                 "exe_name_input",
                 "python_entry_input",
+                "dotnet_project_input",
+                "dotnet_output_input",
+                "dotnet_icon_input",
+                "dotnet_name_input",
+                "dotnet_runtime_combo",
+                "dotnet_self_contained",
+                "dotnet_single_file",
+                "dotnet_trim",
             ):
                 widget = getattr(self.app, name, None)
                 if widget is not None:
@@ -134,6 +142,8 @@ class StateController:
             self.app.script_user_cleared = data.get("script_user_cleared", False)
             self.app.interpreter_user_cleared = data.get("interpreter_user_cleared", False)
             self.app.append_py_version = data.get("append_py_version", False)
+            dotnet = data.get("dotnet_publish", {})
+            self.app.build_mode = data.get("build_mode", "python")
 
             if self.app.python_interpreter_path:
                 self.app.last_python_dir = os.path.dirname(self.app.python_interpreter_path)
@@ -195,6 +205,18 @@ class StateController:
             if hasattr(self.app, "python_entry_input"):
                 self.app.python_entry_input.set_display_path(self.app.python_interpreter_path)
 
+            if hasattr(self.app, "dotnet_project_input"):
+                self.app.dotnet_project_input.set_display_path(_norm(dotnet.get("project_path", "")))
+                self.app.dotnet_output_input.set_display_path(_norm(dotnet.get("output_folder", "")))
+                self.app.dotnet_icon_input.set_display_path(_norm(dotnet.get("icon_path", "")))
+                self.app.dotnet_name_input.setText(dotnet.get("executable_name", ""))
+                runtime = dotnet.get("runtime", "win-x64")
+                index = self.app.dotnet_runtime_combo.findData(runtime)
+                self.app.dotnet_runtime_combo.setCurrentIndex(index if index >= 0 else 0)
+                self.app.dotnet_self_contained.setChecked(dotnet.get("self_contained", True))
+                self.app.dotnet_single_file.setChecked(dotnet.get("single_file", False))
+                self.app.dotnet_trim.setChecked(dotnet.get("trim", False))
+
             # --- restore datetime dropdown ---
             if hasattr(self.app, "date_time_dropdown"):
                 if self.app.datetime_format in {
@@ -244,6 +266,11 @@ class StateController:
                     )
                 
             self.app.validator.update_ui_state()
+            if hasattr(self.app, "set_build_mode"):
+                self.app.set_build_mode(
+                    self.app.build_mode if self.app.build_mode in {"python", "dotnet"} else "python",
+                    save=False,
+                )
 
         except Exception as e:
             self.app.state_data = {"recent_scripts": []}
@@ -341,6 +368,17 @@ class StateController:
             "append_datetime": getattr(self.app, "append_datetime", False),
             "datetime_format": getattr(self.app, "datetime_format", None),
             "append_py_version": getattr(self.app, "append_py_version", False),
+            "build_mode": getattr(self.app, "build_mode", "python"),
+            "dotnet_publish": {
+                "project_path": _norm(getattr(self.app, "dotnet_project_input", None).text() if hasattr(self.app, "dotnet_project_input") else ""),
+                "output_folder": _norm(getattr(self.app, "dotnet_output_input", None).text() if hasattr(self.app, "dotnet_output_input") else ""),
+                "icon_path": _norm(getattr(self.app, "dotnet_icon_input", None).text() if hasattr(self.app, "dotnet_icon_input") else ""),
+                "executable_name": getattr(self.app, "dotnet_name_input", None).text() if hasattr(self.app, "dotnet_name_input") else "",
+                "runtime": getattr(self.app, "dotnet_runtime_combo", None).currentData() if hasattr(self.app, "dotnet_runtime_combo") else "win-x64",
+                "self_contained": getattr(self.app, "dotnet_self_contained", None).isChecked() if hasattr(self.app, "dotnet_self_contained") else True,
+                "single_file": getattr(self.app, "dotnet_single_file", None).isChecked() if hasattr(self.app, "dotnet_single_file") else False,
+                "trim": getattr(self.app, "dotnet_trim", None).isChecked() if hasattr(self.app, "dotnet_trim") else False,
+            },
         }
 
         self.app.state_data = data

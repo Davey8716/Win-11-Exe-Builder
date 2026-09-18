@@ -40,8 +40,8 @@ class DummyCheckbox:
 
 
 class DummyInput:
-    def __init__(self):
-        self.value = ""
+    def __init__(self, value=""):
+        self.value = value
 
     def blockSignals(self, _value):
         pass
@@ -51,6 +51,9 @@ class DummyInput:
 
     def set_display_path(self, value):
         self.value = value
+
+    def text(self):
+        return self.value
 
 
 class DummyValidator:
@@ -113,6 +116,11 @@ class DummyDropdown:
             return ""
         return self.itemText(self.current_index)
 
+    def currentData(self):
+        if self.current_index is None:
+            return None
+        return self.options[self.current_index]["data"]
+
     def model(self):
         return DummyDropdownModel(
             [DummyDropdownItem(enabled=option.get("enabled", True)) for option in self.options]
@@ -157,6 +165,50 @@ def test_save_state_writes_current_values_and_preserves_recents(monkeypatch, tmp
     assert data["recent_scripts"] == ["one.py"]
     assert data["recent_icons"] == ["icon.ico"]
     assert data["recent_interpreters"] == ["python.exe"]
+
+
+def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    runtime = DummyDropdown([
+        {"text": "Windows x64", "data": "win-x64"},
+        {"text": "Windows ARM64", "data": "win-arm64"},
+    ])
+    runtime.setCurrentIndex(1)
+    self_contained = DummyCheckbox()
+    self_contained.checked = True
+    single_file = DummyCheckbox()
+    single_file.checked = True
+    trim = DummyCheckbox()
+    trim.checked = False
+    for checkbox in (self_contained, single_file, trim):
+        checkbox.isChecked = lambda checkbox=checkbox: checkbox.checked
+    app = make_app(
+        build_mode="dotnet",
+        dotnet_project_input=DummyInput(str(tmp_path / "Tool.csproj")),
+        dotnet_output_input=DummyInput(str(tmp_path / "publish")),
+        dotnet_icon_input=DummyInput(str(tmp_path / "tool.ico")),
+        dotnet_name_input=DummyInput("Tool"),
+        dotnet_runtime_combo=runtime,
+        dotnet_self_contained=self_contained,
+        dotnet_single_file=single_file,
+        dotnet_trim=trim,
+    )
+    controller = StateController(app)
+    controller.save_state()
+
+    with open(controller._state_file_path(), "r", encoding="utf-8") as state_file:
+        data = json.load(state_file)
+    assert data["build_mode"] == "dotnet"
+    assert data["dotnet_publish"] == {
+        "project_path": os.path.normpath(str(tmp_path / "Tool.csproj")),
+        "output_folder": os.path.normpath(str(tmp_path / "publish")),
+        "icon_path": os.path.normpath(str(tmp_path / "tool.ico")),
+        "executable_name": "Tool",
+        "runtime": "win-arm64",
+        "self_contained": True,
+        "single_file": True,
+        "trim": False,
+    }
     assert data["open_output_dir_after_build_enabled"] is False
 
 
