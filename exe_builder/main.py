@@ -1310,7 +1310,7 @@ class EXEBuilderApp(QWidget):
         panel_layout.setContentsMargins(12, 12, 12, 12)
         panel_layout.setSpacing(7)
 
-        def path_row(label, attr, button_text, callback, placeholder):
+        def path_row(label, attr, button_text, callback, placeholder, select_attr=None, reset_attr=None):
             row = QHBoxLayout()
             button = QPushButton(button_text)
             button.setFixedSize(160, 35)
@@ -1322,8 +1322,17 @@ class EXEBuilderApp(QWidget):
             field.setFixedHeight(30)
             field.setFont(QFont("Rubik UI", 11, QFont.Bold))
             setattr(self, attr, field)
+            if select_attr:
+                setattr(self, select_attr, button)
             button.clicked.connect(callback)
             row.addWidget(button)
+            if reset_attr:
+                reset_button = QPushButton("Reset ICO")
+                reset_button.setFixedSize(105, 35)
+                reset_button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+                reset_button.setStyleSheet(button_base())
+                setattr(self, reset_attr, reset_button)
+                row.addWidget(reset_button)
             row.addWidget(field)
             panel_layout.addWidget(QLabel(label))
             panel_layout.addLayout(row)
@@ -1333,7 +1342,7 @@ class EXEBuilderApp(QWidget):
         path_row("Output folder", "dotnet_output_input", "Output Folder", self._select_dotnet_output,
                  "No output folder selected.")
         path_row("Application icon (optional)", "dotnet_icon_input", "Select ICO", self._select_dotnet_icon,
-                 "No icon selected.")
+                 "No icon selected.", "dotnet_icon_select_btn", "dotnet_icon_reset_btn")
 
         panel_layout.addWidget(QLabel("Executable name"))
         self.dotnet_name_input = QLineEdit()
@@ -1409,6 +1418,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_mode_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
         self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
         self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
+        self.dotnet_icon_reset_btn.clicked.connect(self.dotnet_publish_controller.clear_icon)
         for widget in (
             self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
             self.dotnet_name_input,

@@ -120,6 +120,13 @@ class DotnetPublishController(QObject):
         values = self.values()
         return os.path.join(values["output"], values["name"]) if values["output"] and values["name"] else ""
 
+    def clear_icon(self):
+        """Clear the optional .NET application icon selection."""
+        if getattr(self.app, "building", False):
+            return
+        self.app.dotnet_icon_input.clear()
+        self.refresh_ui()
+
     def validation_error(self, check_sdk=False):
         values = self.values()
         if not values["project"] or not os.path.isfile(values["project"]):
@@ -192,6 +199,10 @@ class DotnetPublishController(QObject):
         self.app.dotnet_publish_btn.setEnabled(building or not error)
         self.app.dotnet_publish_btn.setText("Cancel Publish" if building else "Publish")
         self.app.dotnet_open_output_btn.setEnabled(bool(self.output_path() and os.path.isdir(self.output_path()) and not building))
+        if hasattr(self.app, "dotnet_icon_select_btn"):
+            self.app.dotnet_icon_select_btn.setEnabled(not building)
+        if hasattr(self.app, "dotnet_icon_reset_btn"):
+            self.app.dotnet_icon_reset_btn.setEnabled(bool(values["icon"]) and not building)
         self.app.dotnet_status_label.setStyleSheet(
             status_text_style(Colors.SUCCESS if building or not error else Colors.ERROR)
         )

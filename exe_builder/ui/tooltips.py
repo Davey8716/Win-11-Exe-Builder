@@ -362,6 +362,11 @@ def attach_tooltips(app):
         "Clear icon (build without an icon)."
     )
 
+    QtTooltip(
+        app.dotnet_icon_reset_btn,
+        "Clear the optional .NET application icon. The next publish uses no custom icon."
+    )
+
     # -----------------------------
     # Output / EXE name
     # -----------------------------

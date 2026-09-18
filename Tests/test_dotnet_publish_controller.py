@@ -19,6 +19,9 @@ class DummyInput:
     def setStyleSheet(self, value):
         self.stylesheet = value
 
+    def clear(self):
+        self.value = ""
+
 
 class DummyCheck:
     def __init__(self, checked=False):
@@ -67,6 +70,8 @@ def make_controller(tmp_path, project_text='<Project Sdk="Microsoft.NET.Sdk"></P
         building=False,
         dotnet_publish_btn=DummyButton(),
         dotnet_open_output_btn=DummyButton(),
+        dotnet_icon_select_btn=DummyButton(),
+        dotnet_icon_reset_btn=DummyButton(),
         dotnet_status_label=DummyStatus(),
     )
     controller = DotnetPublishController(app)
@@ -111,6 +116,39 @@ def test_publish_command_explicitly_disables_unselected_project_options(tmp_path
     assert "-p:PublishSingleFile=false" in command
     assert "-p:PublishTrimmed=false" in command
     assert not any(part.startswith("-p:ApplicationIcon=") for part in command)
+
+
+def test_clear_icon_removes_the_publish_icon_and_disables_reset(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    icon = tmp_path / "tool.ico"
+    icon.write_text("ico", encoding="utf-8")
+    controller.app.dotnet_icon_input.value = str(icon)
+
+    controller.refresh_ui()
+    assert controller.app.dotnet_icon_select_btn.enabled is True
+    assert controller.app.dotnet_icon_reset_btn.enabled is True
+
+    controller.clear_icon()
+
+    assert controller.app.dotnet_icon_input.value == ""
+    assert controller.app.dotnet_icon_reset_btn.enabled is False
+    assert qcolor_name(Colors.MUTED_BORDER) in controller.app.dotnet_icon_input.stylesheet
+    command = build_dotnet_publish_command(
+        str(tmp_path / "Tool.csproj"), str(tmp_path / "dist"), "MyTool",
+        "win-x64", True, False, False, controller.values()["icon"],
+    )
+    assert not any(part.startswith("-p:ApplicationIcon=") for part in command)
+
+
+def test_icon_controls_are_disabled_while_publishing(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_icon_input.value = str(tmp_path / "tool.ico")
+    controller.app.building = True
+
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_icon_select_btn.enabled is False
+    assert controller.app.dotnet_icon_reset_btn.enabled is False
 
 
 def test_validation_rejects_legacy_project_and_invalid_fields(tmp_path):
