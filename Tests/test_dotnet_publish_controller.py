@@ -48,6 +48,9 @@ class DummyButton:
     def setText(self, value):
         self.text = value
 
+    def setStyleSheet(self, value):
+        self.stylesheet = value
+
 
 class DummyStatus:
     def setText(self, value):
@@ -288,3 +291,24 @@ def test_refresh_styles_dotnet_paths_like_python_validation(tmp_path):
     controller.refresh_ui()
     assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in controller.app.dotnet_project_input.stylesheet
     assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in controller.app.dotnet_name_input.stylesheet
+
+
+def test_refresh_styles_dotnet_utility_buttons_like_python_buttons(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    for name in (
+        "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
+        "dotnet_project_reset_btn", "dotnet_icon_delete_btn",
+        "dotnet_icon_delete_all_btn", "dotnet_output_reset_btn",
+        "dotnet_name_reset_btn",
+    ):
+        setattr(controller.app, name, DummyButton())
+
+    controller.refresh_ui()
+
+    assert qcolor_name(Colors.TITLE_BG) in controller.app.dotnet_project_delete_btn.stylesheet
+    assert qcolor_name(Colors.TITLE_BG) in controller.app.dotnet_name_reset_btn.stylesheet
+
+    controller.app.building = True
+    controller.refresh_ui()
+
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_project_delete_btn.stylesheet

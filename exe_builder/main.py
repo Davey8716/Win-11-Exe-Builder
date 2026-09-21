@@ -65,6 +65,7 @@ from exe_builder.ui.styles import (
     button_base,
     qcolor_name,
     Colors,
+    utility_icon_button_style,
 )
 
 APP_FIXED_SIZE = (1200, 915)
@@ -1342,6 +1343,7 @@ class EXEBuilderApp(QWidget):
             button.setIcon(QIcon(str(icon_path)))
             button.setIconSize(QSize(*icon_size))
             button.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
+            button.setStyleSheet(utility_icon_button_style())
             return button
 
         def path_section(kind, title, column, select_text, placeholder):

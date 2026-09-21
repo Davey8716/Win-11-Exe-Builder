@@ -14,6 +14,8 @@ from ..ui.styles import (
     build_disabled_line_edit_style,
     line_edit_style,
     status_text_style,
+    utility_icon_button_disabled_style,
+    utility_icon_button_style,
 )
 from ..controllers.recent_controller import MAX_RECENTS, _recent_display_label
 from ..ui.ui_highlights import flash_add_highlight, flash_delete_highlight
@@ -327,6 +329,18 @@ class DotnetPublishController(QObject):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setEnabled"):
                 widget.setEnabled(not building)
+        for name in (
+            "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
+            "dotnet_project_reset_btn", "dotnet_icon_delete_btn",
+            "dotnet_icon_delete_all_btn", "dotnet_icon_reset_btn",
+            "dotnet_output_reset_btn", "dotnet_name_reset_btn",
+        ):
+            widget = getattr(self.app, name, None)
+            if widget is not None and hasattr(widget, "setStyleSheet"):
+                widget.setStyleSheet(
+                    utility_icon_button_disabled_style(True)
+                    if building else utility_icon_button_style()
+                )
         self.app.dotnet_status_label.setStyleSheet(
             status_text_style(Colors.SUCCESS if building or not error else Colors.ERROR)
         )
