@@ -59,6 +59,7 @@ from exe_builder.ui.styles import (
     REFRESH_BUTTON_TEXT,
     UTILITY_ICON_BUTTON_SIZE,
     apply_native_title_bar_style,
+    apply_build_options_title_bar_style,
     combo_box_popup_style,
     MAIN_FRAME_STYLE,
     TITLE_FRAME_STYLE,
@@ -260,11 +261,7 @@ class EXEBuilderApp(QWidget):
         self.build_options_dialog.setModal(True)
         self.build_options_dialog.setFixedSize(500, 150)
         self.build_options_dialog.setStyleSheet(BUILD_OPTIONS_DIALOG_STYLE)
-        apply_native_title_bar_style(
-            self.build_options_dialog,
-            caption=Colors.PANEL_BG,
-            border=Colors.PANEL_BG,
-        )
+        apply_build_options_title_bar_style(self.build_options_dialog)
 
         build_options_layout = QVBoxLayout(self.build_options_dialog)
         build_options_layout.setContentsMargins(12, 12, 12, 10)
@@ -1286,6 +1283,8 @@ class EXEBuilderApp(QWidget):
     def _show_build_options(self):
         """Open the compact dialog that contains the build option controls."""
         if not self.building:
+            # A mode switch can recreate the native handle; reapply DWM colours.
+            apply_build_options_title_bar_style(self.build_options_dialog)
             self.build_options_dialog.exec()
 
     def _install_build_mode_pages(self, root_layout):

@@ -10,6 +10,7 @@ from exe_builder.ui.styles import (
     qcolor_name,
     title_frame_minimum_width,
 )
+import exe_builder.ui.styles as styles
 
 
 def test_build_mode_buttons_match_dropdown_typography():
@@ -69,3 +70,17 @@ def test_build_options_dialog_has_white_enabled_text_and_blue_close_button():
     assert f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};" in BUILD_OPTIONS_DIALOG_STYLE
     assert "QDialogButtonBox QPushButton" in BUILD_OPTIONS_DIALOG_STYLE
     assert f"background-color: {qcolor_name(Colors.TITLE_BG)};" in BUILD_OPTIONS_DIALOG_STYLE
+
+
+def test_build_options_native_title_style_uses_panel_blue(monkeypatch):
+    calls = []
+    dialog = object()
+    monkeypatch.setattr(
+        styles,
+        "apply_native_title_bar_style",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    styles.apply_build_options_title_bar_style(dialog)
+
+    assert calls == [((dialog,), {"caption": Colors.PANEL_BG, "border": Colors.PANEL_BG})]

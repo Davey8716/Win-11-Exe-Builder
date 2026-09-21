@@ -115,6 +115,15 @@ def apply_native_title_bar_style(
         return
 
 
+def apply_build_options_title_bar_style(dialog) -> None:
+    """Apply the Global Build Options dialog's native Windows caption colours."""
+    apply_native_title_bar_style(
+        dialog,
+        caption=Colors.PANEL_BG,
+        border=Colors.PANEL_BG,
+    )
+
+
 def _resource_path(relative_path: str) -> Path:
     base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
     return base_dir / relative_path
