@@ -1413,6 +1413,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_name_input = QLineEdit()
         self.dotnet_name_input.setPlaceholderText("Exe has not been named.")
         self.dotnet_name_input.setFixedHeight(30)
+        self.dotnet_name_input.setFont(QFont("Rubik UI", 11, QFont.Bold))
         self.dotnet_name_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
         self.dotnet_name_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_name_from_project)
         name_entry.addWidget(self.dotnet_name_input)
