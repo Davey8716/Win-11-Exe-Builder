@@ -367,6 +367,8 @@ class ValidationController:
         )
                         
         # Tooltips
+        if hasattr(app, "build_options_btn"):
+            set_btn(app.build_options_btn, not building)
         set_btn(app.tooltips_checkbox, not building)
         if hasattr(app, "suppress_exit_dialogue"):
             set_btn(app.suppress_exit_dialogue, not building)
@@ -530,7 +532,6 @@ class ValidationController:
 
         section_title_frames = [
             getattr(app, "title_frame", None),
-            getattr(app, "build_options_title_frame", None),
             getattr(app, "env_sync_title_frame", None),
             getattr(app, "apps_title_frame", None),
             getattr(app, "icons_title_frame", None),

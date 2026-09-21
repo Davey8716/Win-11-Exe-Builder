@@ -53,6 +53,21 @@ def build_mode_button_font() -> QFont:
     return QFont("Rubik UI", 11, QFont.Bold)
 
 
+def title_frame_minimum_width(
+    text_width: int,
+    side_control_width: int,
+    horizontal_margins: int,
+    safety_padding: int = 16,
+) -> int:
+    """Return a title-frame width that leaves room for balanced side controls."""
+    return (
+        text_width
+        + (side_control_width * 2)
+        + horizontal_margins
+        + safety_padding
+    )
+
+
 def _windows_colorref(color: QColor) -> int:
     return color.red() | (color.green() << 8) | (color.blue() << 16)
 

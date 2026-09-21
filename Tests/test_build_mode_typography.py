@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QPushButton
 
-from exe_builder.ui.styles import build_mode_button_font
+from exe_builder.ui.styles import build_mode_button_font, title_frame_minimum_width
 
 
 def test_build_mode_buttons_match_dropdown_typography():
@@ -12,3 +12,7 @@ def test_build_mode_buttons_match_dropdown_typography():
         assert font.family() == "Rubik UI"
         assert font.pointSize() == 11
         assert font.bold()
+
+
+def test_title_frame_width_reserves_text_margins_and_balanced_controls():
+    assert title_frame_minimum_width(320, 34, 10) == 414

@@ -23,7 +23,7 @@ from exe_builder.controllers.environment_sync_controller import EnvironmentSyncC
 from exe_builder.ui.path_hover import attach_path_hovers
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialogButtonBox,QStackedWidget,QFileDialog
+from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog
 from exe_builder.controllers.validation_controller import ValidationController
 from exe_builder.controllers.activation_controller import ActivationController
 from PySide6.QtGui import QFont, QIcon, QPalette
@@ -53,7 +53,6 @@ from exe_builder.ui.styles import (
     ENV_SYNC_BUTTON_STYLE,
     ENV_SYNC_SCROLL_AREA_STYLE,
     ENV_SYNC_STATUS_LINE_STYLE,
-    BUILD_OPTIONS_FRAME_STYLE,
     REFRESH_BUTTON_ICON,
     REFRESH_BUTTON_ICON_SIZE,
     REFRESH_BUTTON_TEXT,
@@ -65,6 +64,7 @@ from exe_builder.ui.styles import (
     build_mode_button_font,
     button_base,
     qcolor_name,
+    title_frame_minimum_width,
     Colors,
     utility_icon_button_style,
 )
@@ -169,13 +169,13 @@ class EXEBuilderApp(QWidget):
         self.build_mode = "python"
                     
         # =============================================================
-        # Title + Tooltip Toggle
+        # Title + Build Options
         # =============================================================
         self.title_frame = QFrame()
         self.title_frame.setObjectName("appTitleFrame")
         self.title_frame.setFrameShape(QFrame.NoFrame)
         self.title_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.title_frame.setFixedSize(430,44)
+        self.title_frame.setFixedHeight(44)
         self.title_frame.setStyleSheet(APP_TITLE_CONTAINER_STYLE)
 
         title_layout = QHBoxLayout(self.title_frame)
@@ -189,39 +189,37 @@ class EXEBuilderApp(QWidget):
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet(APP_TITLE_LABEL_STYLE)
 
+        title_spacer = QWidget()
+        title_spacer.setFixedSize(34, 34)
+
+        self.build_options_btn = QPushButton("⚙")
+        self.build_options_btn.setObjectName("buildOptionsButton")
+        self.build_options_btn.setAccessibleName("Build options")
+        self.build_options_btn.setAccessibleDescription(
+            "Open build options and application preferences."
+        )
+        self.build_options_btn.setFixedSize(34, 34)
+        self.build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
+        self.build_options_btn.setStyleSheet(utility_icon_button_style())
+
+        title_frame_width = title_frame_minimum_width(
+            QFontMetrics(self.title_label.font()).horizontalAdvance(
+                self.title_label.text()
+            ),
+            self.build_options_btn.width(),
+            10,
+        )
+        self.title_frame.setFixedWidth(title_frame_width)
+
+        title_layout.addWidget(title_spacer)
         title_layout.addStretch()
         title_layout.addWidget(self.title_label)
         title_layout.addStretch()
+        title_layout.addWidget(self.build_options_btn)
 
         # -------------------------------
-        # TOGGLES FRAME
+        # BUILD OPTIONS DIALOG
         # -------------------------------
-
-        self.build_options_title_frame = QFrame()
-        self.build_options_title_frame.setFrameShape(QFrame.StyledPanel)
-        self.build_options_title_frame.setFrameShadow(QFrame.Raised)
-
-        build_options_title_layout = QHBoxLayout(self.build_options_title_frame)
-        build_options_title_layout.setContentsMargins(3,3,3,3)
-        build_options_title_layout.setSpacing(3)
-
-        self.build_options_title = QLabel("Build Options")
-        self.build_options_title.setFixedHeight(30)
-        self.build_options_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
-
-        build_options_title_layout.addStretch()
-        build_options_title_layout.addWidget(self.build_options_title)
-        build_options_title_layout.addStretch()
-
-        toggles_frame = QFrame()
-        toggles_frame.setFixedSize(500, 128)
-        toggles_frame.setFrameShape(QFrame.StyledPanel)
-        toggles_frame.setFrameShadow(QFrame.Raised)
-        toggles_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
-        toggles_layout = QVBoxLayout(toggles_frame)
-        toggles_layout.setContentsMargins(8, 8, 8, 8)
-        toggles_layout.setSpacing(2)
 
         self.tooltips_checkbox = QCheckBox("Tooltips")
         self.minimize_after_build = QCheckBox("Minimize After Build")
@@ -255,11 +253,23 @@ class EXEBuilderApp(QWidget):
         toggle_columns.addLayout(left_toggle_column, 1)
         toggle_columns.addLayout(right_toggle_column, 1)
 
-        # -------------------------------
-        # ATTACH
-        # -------------------------------
+        self.build_options_dialog = QDialog(self)
+        self.build_options_dialog.setWindowTitle("Build Options")
+        self.build_options_dialog.setModal(True)
+        self.build_options_dialog.setFixedSize(500, 150)
+        self.build_options_dialog.setStyleSheet(
+            f"QDialog {{ background-color: {qcolor_name(Colors.PANEL_BG)}; }}"
+        )
 
-        toggles_layout.addLayout(toggle_columns)
+        build_options_layout = QVBoxLayout(self.build_options_dialog)
+        build_options_layout.setContentsMargins(12, 12, 12, 10)
+        build_options_layout.setSpacing(6)
+        build_options_layout.addLayout(toggle_columns)
+
+        build_options_buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        build_options_buttons.rejected.connect(self.build_options_dialog.reject)
+        build_options_buttons.setCenterButtons(True)
+        build_options_layout.addWidget(build_options_buttons)
 
         # -------------------------------
         # MAIN LAYOUT
@@ -277,20 +287,6 @@ class EXEBuilderApp(QWidget):
         title_row_layout.setContentsMargins(0, 0, 0, 0)
         title_row_layout.setSpacing(20)
         title_row_layout.addWidget(self.title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
-
-        toggles_title_row = QWidget()
-        toggles_title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        toggles_title_row_layout = QHBoxLayout(toggles_title_row)
-        toggles_title_row_layout.setContentsMargins(0, 0, 0, 0)
-        toggles_title_row_layout.setSpacing(0)
-        toggles_title_row_layout.addWidget(self.build_options_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
-
-        toggles_row = QWidget()
-        toggles_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        toggles_row_layout = QHBoxLayout(toggles_row)
-        toggles_row_layout.setContentsMargins(0, 0, 0, 0)
-        toggles_row_layout.setSpacing(0)
-        toggles_row_layout.addWidget(toggles_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
 
         self.content_row = QWidget()
         self.content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -325,8 +321,6 @@ class EXEBuilderApp(QWidget):
         content_row_layout.addWidget(self.right_content, alignment=Qt.AlignTop)
 
         root_layout.addWidget(title_row)
-        root_layout.addWidget(toggles_title_row)
-        root_layout.addWidget(toggles_row)
         root_layout.addWidget(self.content_row)
         root_layout.addWidget(build_title_row)
         root_layout.addWidget(build_frame_row)
@@ -1026,10 +1020,7 @@ class EXEBuilderApp(QWidget):
                 frame.setObjectName("configurationFrame")
                 frame.setStyleSheet(MAIN_FRAME_STYLE)
 
-        toggles_frame.setStyleSheet(BUILD_OPTIONS_FRAME_STYLE)
-                
         frames = [
-            self.build_options_title_frame,
             self.env_sync_title_frame,
             self.apps_title_frame,
             self.icons_title_frame,
@@ -1047,7 +1038,6 @@ class EXEBuilderApp(QWidget):
             
                 
         for label in [
-            self.build_options_title,
             self.env_sync_title,
             self.apps_title,
             self.icons_title,
@@ -1063,7 +1053,6 @@ class EXEBuilderApp(QWidget):
         # -------------------------------
 
         title_pairs = [
-            (self.build_options_title_frame, self.build_options_title),
             (self.env_sync_title_frame, self.env_sync_title),
             (self.apps_title_frame, self.apps_title),
             (self.icons_title_frame, self.icons_title),
@@ -1268,6 +1257,7 @@ class EXEBuilderApp(QWidget):
         self.output_btn.clicked.connect(self.file_pickers.select_output_folder)
         self.output_refresh_btn.clicked.connect(self.ui_handlers.reset_output_to_desktop)
         self.open_app_data_btn.clicked.connect(self.ui_handlers.open_app_data)
+        self.build_options_btn.clicked.connect(self._show_build_options)
         self.refresh_btn.clicked.connect(self.ui_handlers.reset_exe_name_from_script)
         self.tooltips_checkbox.stateChanged.connect(self.ui_handlers.on_tooltips_toggle)
         self.exe_name_input.textChanged.connect(self.ui_handlers._on_exe_name_user_edit)
@@ -1283,6 +1273,11 @@ class EXEBuilderApp(QWidget):
         self.dotnet_publish_controller.refresh_ui()
         self._sync_paired_section_geometry()
         self._sync_center_divider_height()
+
+    def _show_build_options(self):
+        """Open the compact dialog that contains the build option controls."""
+        if not self.building:
+            self.build_options_dialog.exec()
 
     def _install_build_mode_pages(self, root_layout):
         """Move the legacy screen into a Python page and create the .NET page."""

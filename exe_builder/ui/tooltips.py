@@ -179,6 +179,11 @@ def attach_tooltips(app):
     # -----------------------------
 
     QtTooltip(
+        app.build_options_btn,
+        "Open build options and application preferences."
+    )
+
+    QtTooltip(
         app.tooltips_checkbox,
         "Toggle all tooltips on or off.\n"
         "Turn this off once you’re familiar with the interface."
