@@ -62,6 +62,7 @@ from exe_builder.ui.styles import (
     combo_box_popup_style,
     MAIN_FRAME_STYLE,
     TITLE_FRAME_STYLE,
+    apply_build_mode_button_state,
     build_mode_button_font,
     button_base,
     qcolor_name,
@@ -1487,6 +1488,7 @@ class EXEBuilderApp(QWidget):
         self.build_mode_label.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
         )
+        self.build_mode_label.setFont(build_mode_button_font())
         mode_layout.addWidget(self.build_mode_label)
         self.python_mode_btn = QPushButton("Python EXE")
         self.dotnet_mode_btn = QPushButton("C# .NET Publish")
@@ -1500,6 +1502,7 @@ class EXEBuilderApp(QWidget):
         self.python_mode_btn.setChecked(True)
         self.python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
         self.dotnet_mode_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
+        self._apply_build_mode_button_state("python")
         self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
         self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
         for widget in (
@@ -1513,13 +1516,20 @@ class EXEBuilderApp(QWidget):
         root_layout.addWidget(mode_row)
         root_layout.addWidget(self.build_mode_stack)
 
+    def _apply_build_mode_button_state(self, mode):
+        """Grey and lock the mode currently displayed in the build-mode stack."""
+        apply_build_mode_button_state(
+            self.python_mode_btn,
+            self.dotnet_mode_btn,
+            mode,
+        )
+
     def set_build_mode(self, mode, save=True):
         if mode not in {"python", "dotnet"} or getattr(self, "building", False):
             return
         self.build_mode = mode
         self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
-        self.python_mode_btn.setChecked(mode == "python")
-        self.dotnet_mode_btn.setChecked(mode == "dotnet")
+        self._apply_build_mode_button_state(mode)
         self.setFixedSize(*(APP_FIXED_SIZE if mode == "python" else (1200, 650)))
         if mode == "python":
             self.validation_controller.update_build_button()
