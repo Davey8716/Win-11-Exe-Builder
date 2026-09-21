@@ -239,22 +239,22 @@ class DotnetPublishController(QObject):
         self.refresh_ui()
 
     def _recent_paths(self, kind):
-        return list(getattr(self.app, "state_data", {}).get("dotnet_publish", {}).get(
+        return list(getattr(self.app, "csharp_state_data", {}).get(
             "recent_projects" if kind == "project" else "recent_icons", []
         ))
 
     def _save_recents(self, kind, paths):
-        data = getattr(self.app, "state_data", {})
-        dotnet = data.setdefault("dotnet_publish", {})
-        dotnet["recent_projects" if kind == "project" else "recent_icons"] = paths
-        self.app.state_ctrl.save_state()
+        data = getattr(self.app, "csharp_state_data", {})
+        data["recent_projects" if kind == "project" else "recent_icons"] = paths
+        self.app.csharp_state_data = data
+        getattr(self.app.state_ctrl, "save_csharp_state", self.app.state_ctrl.save_state)()
         self.populate_recents(kind)
 
     def populate_recents(self, kind):
         dropdown = self.app.dotnet_recent_projects if kind == "project" else self.app.dotnet_recent_icons
         raw = self._recent_paths(kind)
         key = "recent_projects" if kind == "project" else "recent_icons"
-        saved = getattr(self.app, "state_data", {}).get("dotnet_publish", {})
+        saved = getattr(self.app, "csharp_state_data", {})
         field = self.app.dotnet_project_input if kind == "project" else self.app.dotnet_icon_input
         if key not in saved and field.text() and os.path.isfile(field.text()):
             raw = [field.text()]
@@ -546,7 +546,7 @@ class DotnetPublishController(QObject):
             self.app.last_build_seconds = int(time.time() - self.app.build_start_time)
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.SUCCESS, border_width=1))
             self.app.dotnet_status_label.setText("Publish complete.")
-            self.app.state_ctrl.save_state()
+            getattr(self.app.state_ctrl, "save_csharp_state", self.app.state_ctrl.save_state)()
             self.app.build_controller._present_successful_build_outputs()
             self.app.build_controller._run_success_post_build_action()
         else:

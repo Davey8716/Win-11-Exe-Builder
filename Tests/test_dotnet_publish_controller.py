@@ -257,7 +257,7 @@ def test_dotnet_recents_select_and_delete_independently(tmp_path, monkeypatch):
     QApplication.instance() or QApplication([])
     controller, project = make_controller(tmp_path)
     app = controller.app
-    app.state_data = {"dotnet_publish": {}}
+    app.csharp_state_data = {}
     app.state_ctrl = SimpleNamespace(save_state=lambda: None)
     app.recent_controller = SimpleNamespace(
         _confirm_delete_recent_item=lambda *_: True,
@@ -283,11 +283,11 @@ def test_dotnet_recents_select_and_delete_independently(tmp_path, monkeypatch):
 
     controller.delete_recent("project")
     assert not app.dotnet_project_input.text()
-    assert not app.state_data["dotnet_publish"]["recent_projects"]
+    assert not app.csharp_state_data["recent_projects"]
     assert app.dotnet_icon_input.text() == str(icon)
     controller.delete_recent("icon", all_items=True)
     assert not app.dotnet_icon_input.text()
-    assert not app.state_data["dotnet_publish"]["recent_icons"]
+    assert not app.csharp_state_data["recent_icons"]
 
 
 def test_icon_controls_are_disabled_while_publishing(tmp_path):

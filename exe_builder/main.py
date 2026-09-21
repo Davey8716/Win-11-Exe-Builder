@@ -1537,12 +1537,12 @@ class EXEBuilderApp(QWidget):
         else:
             self.dotnet_publish_controller.refresh_ui()
         if save and not getattr(self, "_loading_state", False):
-            self.state_ctrl.save_state()
+            self.state_ctrl.save_preferences()
 
     def _on_dotnet_settings_changed(self, *_args):
         self.dotnet_publish_controller.refresh_ui()
         if not getattr(self, "_loading_state", False):
-            self.state_ctrl.save_state()
+            self.state_ctrl.save_csharp_state()
 
     def _select_dotnet_project(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select C# Project", "", "C# Project Files (*.csproj)")
@@ -1551,7 +1551,7 @@ class EXEBuilderApp(QWidget):
 
     def _select_dotnet_output(self):
         desktop = os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop"))
-        saved = getattr(self, "state_data", {}).get("dotnet_publish", {}).get("last_non_desktop_output_folder", "")
+        saved = getattr(self, "csharp_state_data", {}).get("last_non_desktop_output_folder", "")
         current = self.dotnet_output_input.text()
         start = next((p for p in (saved, current) if p and os.path.isdir(p) and os.path.normcase(os.path.normpath(p)) != os.path.normcase(desktop)), desktop)
         path = QFileDialog.getExistingDirectory(self, "Select Publish Output Folder", start)
@@ -1559,8 +1559,8 @@ class EXEBuilderApp(QWidget):
             path = os.path.normpath(path)
             self.dotnet_output_input.set_display_path(path)
             if os.path.normcase(path) != os.path.normcase(desktop):
-                self.state_data.setdefault("dotnet_publish", {})["last_non_desktop_output_folder"] = path
-                self.state_ctrl.save_state()
+                self.csharp_state_data.setdefault("last_non_desktop_output_folder", path)
+                self.state_ctrl.save_csharp_state()
             from exe_builder.ui.ui_highlights import flash_add_highlight
             flash_add_highlight(self.dotnet_output_select_btn, self.dotnet_output_input)
 
@@ -1809,7 +1809,7 @@ class EXEBuilderApp(QWidget):
         self.ui_handlers.shutdown()
         self.build_controller.shutdown()
         self.environment_sync_controller.shutdown()
-        self.state_ctrl.save_state()
+        self.state_ctrl.save_all_state()
         event.accept()
 
 # -------------------------------------------------------------

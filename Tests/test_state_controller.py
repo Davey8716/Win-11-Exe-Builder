@@ -133,7 +133,7 @@ def test_state_file_path_uses_localappdata(monkeypatch, tmp_path):
 
     state_path = controller._state_file_path()
 
-    assert state_path == os.path.join(str(tmp_path), "EXEBuilder", "exe_builder_state.json")
+    assert state_path == os.path.join(str(tmp_path), "EXEBuilder", "python_exe_builder_state.json")
     assert os.path.isdir(os.path.dirname(state_path))
 
 
@@ -194,12 +194,11 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         dotnet_trim=trim,
     )
     controller = StateController(app)
-    controller.save_state()
+    controller.save_csharp_state()
 
-    with open(controller._state_file_path(), "r", encoding="utf-8") as state_file:
+    with open(controller.csharp_state_file_path(), "r", encoding="utf-8") as state_file:
         data = json.load(state_file)
-    assert data["build_mode"] == "dotnet"
-    assert data["dotnet_publish"] == {
+    assert data == {
         "project_path": os.path.normpath(str(tmp_path / "Tool.csproj")),
         "output_folder": os.path.normpath(str(tmp_path / "publish")),
         "icon_path": os.path.normpath(str(tmp_path / "tool.ico")),
@@ -211,8 +210,29 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         "recent_projects": [],
         "recent_icons": [],
         "last_non_desktop_output_folder": "",
+        "last_build_seconds": 45,
     }
-    assert data["open_output_dir_after_build_enabled"] is False
+    assert not controller.python_state_file_path() == controller.csharp_state_file_path()
+
+
+def test_legacy_state_is_partitioned_and_removed(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    controller = StateController(make_app(validator=DummyValidator()))
+    legacy_path = controller.legacy_state_file_path()
+    with open(legacy_path, "w", encoding="utf-8") as state_file:
+        json.dump({
+            "last_script_path": "main.py",
+            "dotnet_publish": {"project_path": "Tool.csproj"},
+            "tooltips_enabled": False,
+            "build_mode": "dotnet",
+        }, state_file)
+
+    controller._migrate_legacy_state()
+
+    assert not os.path.exists(legacy_path)
+    assert controller._read(controller.python_state_file_path())["last_script_path"] == "main.py"
+    assert controller._read(controller.csharp_state_file_path())["project_path"] == "Tool.csproj"
+    assert controller._read(controller.preferences_file_path())["build_mode"] == "dotnet"
 
 
 def test_save_state_writes_environment_sync_profiles(monkeypatch, tmp_path):
@@ -232,7 +252,7 @@ def test_save_state_writes_environment_sync_profiles(monkeypatch, tmp_path):
     controller = StateController(app)
     controller.save_state()
 
-    with open(controller._state_file_path(), "r", encoding="utf-8") as state_file:
+    with open(controller.python_state_file_path(), "r", encoding="utf-8") as state_file:
         data = json.load(state_file)
 
     assert data["env_sync_profiles"] == env_sync_profiles
@@ -276,7 +296,7 @@ def test_load_state_restores_last_non_desktop_output_folder(monkeypatch, tmp_pat
     )
     controller = StateController(app)
 
-    state_path = controller._state_file_path()
+    state_path = controller.python_state_file_path()
     os.makedirs(os.path.dirname(state_path), exist_ok=True)
     with open(state_path, "w", encoding="utf-8") as state_file:
         json.dump(
@@ -303,7 +323,7 @@ def test_save_state_persists_open_output_directory_toggle(monkeypatch, tmp_path)
     controller = StateController(app)
     controller.save_state()
 
-    with open(controller._state_file_path(), "r", encoding="utf-8") as state_file:
+    with open(controller.preferences_file_path(), "r", encoding="utf-8") as state_file:
         data = json.load(state_file)
 
     assert data["open_output_dir_after_build_enabled"] is True
@@ -350,7 +370,7 @@ def test_load_state_restores_open_output_directory_toggle(monkeypatch, tmp_path)
     )
     controller = StateController(app)
 
-    state_path = controller._state_file_path()
+    state_path = controller.preferences_file_path()
     os.makedirs(os.path.dirname(state_path), exist_ok=True)
     with open(state_path, "w", encoding="utf-8") as state_file:
         json.dump({"open_output_dir_after_build_enabled": True}, state_file)
