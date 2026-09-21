@@ -597,6 +597,40 @@ BUILD_OPTIONS_FRAME_STYLE = f"""
     }}
 """
 
+BUILD_OPTIONS_DIALOG_STYLE = f"""
+    QDialog {{
+        background-color: {qcolor_name(Colors.PANEL_BG)};
+    }}
+    QDialog QCheckBox {{
+        color: {qcolor_name(Colors.TEXT_LIGHT)};
+    }}
+    QDialog QCheckBox:disabled {{
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+    QDialog QCheckBox::indicator {{
+        width: 14px;
+        height: 14px;
+        background-color: {qcolor_name(Colors.WHITE)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 3px;
+    }}
+    QDialog QCheckBox::indicator:checked {{
+        background-color: {qcolor_name(Colors.WHITE)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        image: url({CHECKBOX_CHECK_BLACK_ICON});
+    }}
+    QDialogButtonBox QPushButton {{
+        background-color: {qcolor_name(Colors.TITLE_BG)};
+        color: {qcolor_name(Colors.TEXT_LIGHT)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 4px;
+        font-weight: bold;
+    }}
+    QDialogButtonBox QPushButton:hover {{
+        background-color: {qcolor_name(Colors.SURFACE_SELECTED_HOVER)};
+    }}
+"""
+
 TITLE_FRAME_STYLE = f"""
     QFrame {{
         border: none;

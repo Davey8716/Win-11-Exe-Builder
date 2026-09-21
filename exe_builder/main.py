@@ -40,6 +40,7 @@ from exe_builder.ui.styles import (
     APPEND_PY_VERSION_INITIAL_STYLE,
     APP_TITLE_CONTAINER_STYLE,
     APP_TITLE_LABEL_STYLE,
+    BUILD_OPTIONS_DIALOG_STYLE,
     CENTER_DIVIDER_STYLE,
     COMBO_BOX_STYLE,
     COMBO_BOX_LINE_EDIT_STYLE,
@@ -254,11 +255,14 @@ class EXEBuilderApp(QWidget):
         toggle_columns.addLayout(right_toggle_column, 1)
 
         self.build_options_dialog = QDialog(self)
-        self.build_options_dialog.setWindowTitle("Build Options")
+        self.build_options_dialog.setWindowTitle("Global Build Options")
         self.build_options_dialog.setModal(True)
         self.build_options_dialog.setFixedSize(500, 150)
-        self.build_options_dialog.setStyleSheet(
-            f"QDialog {{ background-color: {qcolor_name(Colors.PANEL_BG)}; }}"
+        self.build_options_dialog.setStyleSheet(BUILD_OPTIONS_DIALOG_STYLE)
+        apply_native_title_bar_style(
+            self.build_options_dialog,
+            caption=Colors.PANEL_BG,
+            border=Colors.PANEL_BG,
         )
 
         build_options_layout = QVBoxLayout(self.build_options_dialog)
@@ -269,6 +273,10 @@ class EXEBuilderApp(QWidget):
         build_options_buttons = QDialogButtonBox(QDialogButtonBox.Close)
         build_options_buttons.rejected.connect(self.build_options_dialog.reject)
         build_options_buttons.setCenterButtons(True)
+        self.build_options_close_btn = build_options_buttons.button(
+            QDialogButtonBox.Close
+        )
+        self.build_options_close_btn.setFixedSize(120, 32)
         build_options_layout.addWidget(build_options_buttons)
 
         # -------------------------------
