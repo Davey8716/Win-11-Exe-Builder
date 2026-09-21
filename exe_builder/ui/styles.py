@@ -3,7 +3,7 @@ import sys
 from ctypes import wintypes
 from pathlib import Path
 
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 from . import qt_resources_rc  # noqa: F401
 
 
@@ -46,6 +46,11 @@ class Colors:
 
 def qcolor_name(color: QColor) -> str:
     return color.name(QColor.HexRgb)
+
+
+def build_mode_button_font() -> QFont:
+    """Return the typography shared by the build-mode toggle buttons."""
+    return QFont("Rubik UI", 11, QFont.Bold)
 
 
 def _windows_colorref(color: QColor) -> int:

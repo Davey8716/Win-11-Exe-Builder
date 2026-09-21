@@ -62,6 +62,7 @@ from exe_builder.ui.styles import (
     combo_box_popup_style,
     MAIN_FRAME_STYLE,
     TITLE_FRAME_STYLE,
+    build_mode_button_font,
     button_base,
     qcolor_name,
     Colors,
@@ -1489,6 +1490,7 @@ class EXEBuilderApp(QWidget):
         for button in (self.python_mode_btn, self.dotnet_mode_btn):
             button.setCheckable(True)
             button.setFixedSize(150, 32)
+            button.setFont(build_mode_button_font())
             button.setStyleSheet(button_base())
             mode_layout.addWidget(button)
         mode_layout.addStretch()

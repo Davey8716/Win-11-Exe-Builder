@@ -1,0 +1,113 @@
+Date : 2026-09-21 22:08:09
+Directory : c:\Users\davey\Desktop\Projects\Win 11 Exe Builder
+Total : 74 files,  13298 codes, 728 comments, 3387 blanks, all 17413 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Python   |         57 |     12,660 |        723 |      3,200 |     16,583 |
+| XML      |         11 |        387 |          5 |         16 |        408 |
+| Markdown |          3 |        240 |          0 |        167 |        407 |
+| JSON     |          1 |          6 |          0 |          1 |          7 |
+| Ini      |          1 |          4 |          0 |          1 |          5 |
+| YAML     |          1 |          1 |          0 |          2 |          3 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                      | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                         |         74 |     13,298 |        728 |      3,387 |     17,413 |
+| . (Files)                                                                                                 |          2 |        196 |          0 |         93 |        289 |
+| .github                                                                                                   |          1 |          1 |          0 |          2 |          3 |
+| Icons                                                                                                     |         13 |        437 |          5 |         91 |        533 |
+| Tests                                                                                                     |         23 |      4,560 |          2 |      1,296 |      5,858 |
+| exe_builder                                                                                               |         35 |      8,104 |        721 |      1,905 |     10,730 |
+| exe_builder (Files)                                                                                       |          3 |      1,431 |         94 |        312 |      1,837 |
+| exe_builder\build                                                                                         |         11 |        680 |         46 |        174 |        900 |
+| exe_builder\controllers                                                                                   |         11 |      4,693 |        384 |      1,166 |      6,243 |
+| exe_builder\tools                                                                                         |          2 |         85 |         21 |         38 |        144 |
+| exe_builder\ui                                                                                            |          8 |      1,215 |        176 |        215 |      1,606 |
++-----------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                                  | language | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\.github\FUNDING.yml                                    | YAML     |          1 |          0 |          2 |          3 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\.python-exe-builder.json                               | JSON     |          6 |          0 |          1 |          7 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\CONTRIBUTING.md                                  | Markdown |          2 |          0 |          1 |          3 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\Double Cross.svg                                 | XML      |         83 |          1 |          2 |         86 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\Double_Cross_Inkscape.svg                        | XML      |         53 |          1 |          2 |         56 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\README.md                                        | Markdown |         48 |          0 |         74 |        122 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\Refresh.svg                                      | XML      |         87 |          1 |          2 |         90 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\Refresh_Inkscape.svg                             | XML      |         87 |          1 |          2 |         90 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\White Cross.svg                                  | XML      |         53 |          1 |          2 |         56 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\check_black.svg                                  | XML      |          6 |          0 |          1 |          7 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\check_disabled.svg                               | XML      |          6 |          0 |          1 |          7 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\scroll_down_black.svg                            | XML      |          3 |          0 |          1 |          4 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\scroll_down_white.svg                            | XML      |          3 |          0 |          1 |          4 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\scroll_up_black.svg                              | XML      |          3 |          0 |          1 |          4 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Icons\scroll_up_white.svg                              | XML      |          3 |          0 |          1 |          4 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\README.md                                              | Markdown |        190 |          0 |         92 |        282 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\__init__.py                                      | Python   |          0 |          0 |          2 |          2 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\conftest.py                                      | Python   |          5 |          0 |          4 |          9 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\pytest.ini                                       | Ini      |          4 |          0 |          1 |          5 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\run_all_tests.py                                 | Python   |         18 |          0 |          8 |         26 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_build_cancellation.py                       | Python   |         41 |          0 |          7 |         48 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_build_controller.py                         | Python   |      1,937 |          0 |        514 |      2,451 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_build_mode_typography.py                    | Python   |         10 |          0 |          5 |         15 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_bundle_validation.py                        | Python   |         48 |          0 |         29 |         77 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_datetime_build_options.py                   | Python   |         26 |          0 |          4 |         30 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_dotnet_publish_controller.py                | Python   |        380 |          0 |        113 |        493 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_dotnet_tooltips.py                          | Python   |         32 |          0 |         10 |         42 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_environment_sync_controller.py              | Python   |        162 |          0 |         44 |        206 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_external_python.py                          | Python   |         39 |          0 |         10 |         49 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_file_pickers.py                             | Python   |        214 |          0 |         66 |        280 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_path_display_line_edit.py                   | Python   |         14 |          0 |          6 |         20 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_path_hover.py                               | Python   |         18 |          0 |         13 |         31 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_project_build_manifest.py                   | Python   |        101 |          0 |         19 |        120 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_recent_controller.py                        | Python   |        247 |          0 |         84 |        331 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_self_update.py                              | Python   |         69 |          0 |         22 |         91 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_state_controller.py                         | Python   |        431 |          0 |        101 |        532 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_tray_icon_support.py                        | Python   |         74 |          2 |         24 |        100 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_ui_handlers.py                              | Python   |        371 |          0 |        110 |        481 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\Tests\test_validation_controller.py                    | Python   |        319 |          0 |        100 |        419 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\__init__.py                                | Python   |          0 |          1 |          1 |          2 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\__main__.py                                | Python   |          2 |          0 |          3 |          5 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\__init__.py                          | Python   |          0 |          1 |          1 |          2 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\build_cancellation.py                | Python   |         45 |          7 |         13 |         65 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\build_icon_contract.py               | Python   |        125 |          0 |         32 |        157 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\bundle_validation.py                 | Python   |         57 |         25 |         24 |        106 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\datetime_build_options.py            | Python   |         44 |          0 |          5 |         49 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\external_python.py                   | Python   |         33 |          3 |          8 |         44 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\project_build_manifest.py            | Python   |         92 |          0 |         23 |        115 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\pyinstaller_tray_icon_hook.py        | Python   |          2 |          4 |          3 |          9 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\self_update.py                       | Python   |        196 |          3 |         34 |        233 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\tray_icon_hook_source.py             | Python   |         57 |          1 |         22 |         80 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\build\tray_icon_support.py                 | Python   |         29 |          2 |          9 |         40 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\__init__.py                    | Python   |          0 |          1 |          1 |          2 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\activation_controller.py       | Python   |         28 |         11 |         14 |         53 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\build_controller.py            | Python   |      1,394 |         57 |        312 |      1,763 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\dotnet_publish_controller.py   | Python   |        502 |          7 |         51 |        560 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\environment_sync_controller.py | Python   |        513 |          0 |        111 |        624 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\file_pickers.py                | Python   |        289 |         80 |        114 |        483 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\json_import_controller.py      | Python   |         84 |         16 |         31 |        131 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\recent_controller.py           | Python   |        634 |         40 |        225 |        899 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\state_controller.py            | Python   |        286 |         36 |         73 |        395 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\ui_handlers.py                 | Python   |        412 |         46 |        107 |        565 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\controllers\validation_controller.py       | Python   |        551 |         90 |        127 |        768 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\main.py                                    | Python   |      1,429 |         93 |        308 |      1,830 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\tools\__init__.py                          | Python   |          0 |          1 |          1 |          2 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\tools\stress_test.py                       | Python   |         85 |         20 |         37 |        142 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\__init__.py                             | Python   |          0 |          1 |          1 |          2 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\path_display_line_edit.py               | Python   |         27 |          0 |          8 |         35 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\path_hover.py                           | Python   |         96 |          0 |         19 |        115 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\path_hover_text.py                      | Python   |          9 |          0 |          5 |         14 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\qt_resources_rc.py                      | Python   |         74 |          4 |          8 |         86 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\styles.py                               | Python   |        592 |        141 |         68 |        801 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\tooltips.py                             | Python   |        359 |         30 |         88 |        477 |
+| c:\Users\davey\Desktop\Projects\Win 11 Exe Builder\exe_builder\ui\ui_highlights.py                        | Python   |         58 |          0 |         18 |         76 |
+| Total                                                                                                     |          |     13,298 |        728 |      3,387 |     17,413 |
++-----------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
