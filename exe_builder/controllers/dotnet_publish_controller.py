@@ -15,6 +15,8 @@ from ..ui.styles import (
     line_edit_style,
     status_text_style,
 )
+from ..controllers.recent_controller import MAX_RECENTS, _recent_display_label
+from ..ui.ui_highlights import flash_add_highlight, flash_delete_highlight
 
 
 CREATE_NO_WINDOW = 0x08000000
@@ -125,7 +127,120 @@ class DotnetPublishController(QObject):
         if getattr(self.app, "building", False):
             return
         self.app.dotnet_icon_input.clear()
+        if hasattr(self.app, "dotnet_recent_icons"):
+            self.app.dotnet_recent_icons.blockSignals(True)
+            self.app.dotnet_recent_icons.setCurrentIndex(1)
+            self.app.dotnet_recent_icons.blockSignals(False)
+        if hasattr(self.app.dotnet_icon_input, "setProperty"):
+            flash_delete_highlight(getattr(self.app, "dotnet_icon_reset_btn", None), self.app.dotnet_icon_input)
         self.refresh_ui()
+
+    def _recent_paths(self, kind):
+        return list(getattr(self.app, "state_data", {}).get("dotnet_publish", {}).get(
+            "recent_projects" if kind == "project" else "recent_icons", []
+        ))
+
+    def _save_recents(self, kind, paths):
+        data = getattr(self.app, "state_data", {})
+        dotnet = data.setdefault("dotnet_publish", {})
+        dotnet["recent_projects" if kind == "project" else "recent_icons"] = paths
+        self.app.state_ctrl.save_state()
+        self.populate_recents(kind)
+
+    def populate_recents(self, kind):
+        dropdown = self.app.dotnet_recent_projects if kind == "project" else self.app.dotnet_recent_icons
+        raw = self._recent_paths(kind)
+        key = "recent_projects" if kind == "project" else "recent_icons"
+        saved = getattr(self.app, "state_data", {}).get("dotnet_publish", {})
+        field = self.app.dotnet_project_input if kind == "project" else self.app.dotnet_icon_input
+        if key not in saved and field.text() and os.path.isfile(field.text()):
+            raw = [field.text()]
+        paths = []
+        for path in raw:
+            normalized = os.path.abspath(os.path.normpath(path)) if path else ""
+            if normalized and os.path.isfile(normalized) and normalized not in paths:
+                paths.append(normalized)
+        dropdown.blockSignals(True)
+        dropdown.clear()
+        dropdown.addItem("Select Recent File" if kind == "project" else "Select Recent Icon")
+        dropdown.model().item(0).setEnabled(False)
+        if kind == "icon":
+            dropdown.addItem("No Icon", "")
+        for index, path in enumerate(sorted(paths, key=lambda p: os.path.basename(p).lower()), 1):
+            dropdown.addItem(_recent_display_label(index, os.path.basename(os.path.dirname(path)), os.path.basename(path)), path)
+        dropdown.setCurrentIndex(0)
+        dropdown.blockSignals(False)
+        if field.text() and os.path.abspath(os.path.normpath(field.text())) not in paths:
+            field.clear()
+        if paths != raw or key not in saved:
+            self._save_recents(kind, paths)
+
+    def select_path(self, kind, path):
+        if not path or getattr(self.app, "building", False):
+            return
+        path = os.path.abspath(os.path.normpath(path))
+        field = self.app.dotnet_project_input if kind == "project" else self.app.dotnet_icon_input
+        previous = self.app.dotnet_project_input.text()
+        old_derived = os.path.splitext(os.path.basename(previous))[0] if previous else ""
+        field.set_display_path(path)
+        if kind == "project" and self.app.dotnet_name_input.text().strip() in {"", old_derived}:
+            self.app.dotnet_name_input.setText(os.path.splitext(os.path.basename(path))[0])
+        button = self.app.dotnet_project_select_btn if kind == "project" else self.app.dotnet_icon_select_btn
+        flash_add_highlight(button, field)
+        paths = self._recent_paths(kind)
+        paths = [p for p in paths if os.path.normcase(os.path.abspath(os.path.normpath(p))) != os.path.normcase(path)]
+        self._save_recents(kind, [path] + paths[:MAX_RECENTS - 1])
+
+    def on_recent_selected(self, kind):
+        dropdown = self.app.dotnet_recent_projects if kind == "project" else self.app.dotnet_recent_icons
+        if dropdown.currentIndex() == 0:
+            return
+        path = dropdown.currentData()
+        if kind == "icon" and not path:
+            self.clear_icon()
+        elif path:
+            self.select_path(kind, path)
+
+    def clear_project(self):
+        if getattr(self.app, "building", False):
+            return
+        self.app.dotnet_project_input.clear()
+        flash_delete_highlight(self.app.dotnet_project_reset_btn, self.app.dotnet_project_input)
+
+    def reset_output_to_desktop(self):
+        if getattr(self.app, "building", False):
+            return
+        desktop = os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop"))
+        self.app.dotnet_output_input.set_display_path(desktop)
+        flash_delete_highlight(self.app.dotnet_output_reset_btn, self.app.dotnet_output_input)
+
+    def reset_name_from_project(self):
+        project = self.app.dotnet_project_input.text()
+        if project:
+            self.app.dotnet_name_input.setText(os.path.splitext(os.path.basename(project))[0])
+
+    def delete_recent(self, kind, all_items=False):
+        if getattr(self.app, "building", False):
+            return
+        field = self.app.dotnet_project_input if kind == "project" else self.app.dotnet_icon_input
+        path = field.text()
+        if not all_items and not path:
+            return
+        title = ("Delete All Recent " if all_items else "Delete Recent ") + ("Files" if kind == "project" else "Icons")
+        if all_items:
+            confirmed = self.app.recent_controller._show_recent_delete_confirmation(
+                title, f"Are you sure you want to delete ALL recent {'files' if kind == 'project' else 'icons'}?"
+            )
+        else:
+            confirmed = self.app.recent_controller._confirm_delete_recent_item(title, path)
+        if not confirmed:
+            return
+        button = (self.app.dotnet_project_delete_all_btn if all_items else self.app.dotnet_project_delete_btn) if kind == "project" else (self.app.dotnet_icon_delete_all_btn if all_items else self.app.dotnet_icon_delete_btn)
+        flash_delete_highlight(button, field)
+        if all_items or path:
+            field.clear()
+        paths = [] if all_items else [p for p in self._recent_paths(kind) if os.path.normcase(os.path.abspath(os.path.normpath(p))) != os.path.normcase(os.path.abspath(os.path.normpath(path)))]
+        self._save_recents(kind, paths)
 
     def validation_error(self, check_sdk=False):
         values = self.values()
@@ -203,6 +318,15 @@ class DotnetPublishController(QObject):
             self.app.dotnet_icon_select_btn.setEnabled(not building)
         if hasattr(self.app, "dotnet_icon_reset_btn"):
             self.app.dotnet_icon_reset_btn.setEnabled(bool(values["icon"]) and not building)
+        for name in (
+            "dotnet_project_select_btn", "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
+            "dotnet_project_reset_btn", "dotnet_recent_projects", "dotnet_icon_delete_btn",
+            "dotnet_icon_delete_all_btn", "dotnet_recent_icons", "dotnet_output_select_btn",
+            "dotnet_output_reset_btn", "dotnet_name_reset_btn", "dotnet_name_input",
+        ):
+            widget = getattr(self.app, name, None)
+            if widget is not None and hasattr(widget, "setEnabled"):
+                widget.setEnabled(not building)
         self.app.dotnet_status_label.setStyleSheet(
             status_text_style(Colors.SUCCESS if building or not error else Colors.ERROR)
         )

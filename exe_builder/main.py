@@ -1230,6 +1230,8 @@ class EXEBuilderApp(QWidget):
         attach_path_hovers(self)
         self._loading_state = False
         self.state_ctrl.load_state()
+        self.dotnet_publish_controller.populate_recents("project")
+        self.dotnet_publish_controller.populate_recents("icon")
         self.recent_controller.populate_recent_dropdown()
         self.validator.validation_status_message()
         self.json_import_controller.attach()
@@ -1303,52 +1305,124 @@ class EXEBuilderApp(QWidget):
         )
         dotnet_layout.addWidget(self.dotnet_mode_title)
 
+        columns = QHBoxLayout()
+        columns.setSpacing(4)
+        dotnet_layout.addLayout(columns)
+        left_column = QVBoxLayout()
+        right_column = QVBoxLayout()
+        left_column.setSpacing(4)
+        right_column.setSpacing(4)
+        columns.addLayout(left_column)
+        columns.addLayout(right_column)
+
+        def section(title, column):
+            heading = QFrame()
+            heading.setStyleSheet(TITLE_FRAME_STYLE)
+            heading_layout = QHBoxLayout(heading)
+            heading_layout.setContentsMargins(3, 3, 3, 3)
+            label = QLabel(title)
+            label.setFixedHeight(30)
+            label.setFont(QFont("Rubik UI", 14, QFont.Bold))
+            heading_layout.addStretch()
+            heading_layout.addWidget(label)
+            heading_layout.addStretch()
+            frame = QFrame()
+            frame.setObjectName("configurationFrame")
+            frame.setStyleSheet(MAIN_FRAME_STYLE)
+            frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+            layout = QVBoxLayout(frame)
+            layout.setContentsMargins(3, 3, 3, 3)
+            layout.setSpacing(3)
+            column.addWidget(heading, alignment=Qt.AlignHCenter)
+            column.addWidget(frame, alignment=Qt.AlignHCenter)
+            return layout
+
+        def utility_button(icon_path, icon_size, caption):
+            button = QPushButton(caption)
+            button.setIcon(QIcon(str(icon_path)))
+            button.setIconSize(QSize(*icon_size))
+            button.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
+            return button
+
+        def path_section(kind, title, column, select_text, placeholder):
+            layout = section(title, column)
+            row = QHBoxLayout()
+            row.setSpacing(5)
+            select = QPushButton(select_text)
+            select.setFixedSize(160, 35)
+            select.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            select.setStyleSheet(button_base())
+            recent = QComboBox()
+            recent.setFixedSize(*PATH_DROPDOWN_SIZE)
+            recent.setFont(QFont("Rubik UI", 12))
+            recent.setEditable(True)
+            recent.lineEdit().setReadOnly(True)
+            recent.setStyleSheet(COMBO_BOX_STYLE)
+            delete = utility_button(DELETE_BUTTON_ICON, DELETE_BUTTON_ICON_SIZE, DELETE_BUTTON_TEXT)
+            delete_all = utility_button(DELETE_ALL_BUTTON_ICON, DELETE_ALL_BUTTON_ICON_SIZE, DELETE_ALL_BUTTON_TEXT)
+            for widget in (select, recent, delete, delete_all):
+                row.addWidget(widget)
+            row.addStretch()
+            layout.addLayout(row)
+            entry = QHBoxLayout()
+            field = PathDisplayLineEdit()
+            field.setPlaceholderText(placeholder)
+            field.setFixedHeight(30)
+            reset = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
+            entry.addWidget(field)
+            entry.addWidget(reset)
+            layout.addLayout(entry)
+            prefix = "dotnet_project" if kind == "project" else "dotnet_icon"
+            setattr(self, prefix + "_input", field)
+            setattr(self, prefix + "_select_btn", select)
+            setattr(self, prefix + "_delete_btn", delete)
+            setattr(self, prefix + "_delete_all_btn", delete_all)
+            setattr(self, prefix + "_reset_btn", reset)
+            setattr(self, "dotnet_recent_projects" if kind == "project" else "dotnet_recent_icons", recent)
+            select.clicked.connect(self._select_dotnet_project if kind == "project" else self._select_dotnet_icon)
+            recent.currentIndexChanged.connect(lambda _index, k=kind: self.dotnet_publish_controller.on_recent_selected(k))
+            delete.clicked.connect(lambda _checked=False, k=kind: self.dotnet_publish_controller.delete_recent(k))
+            delete_all.clicked.connect(lambda _checked=False, k=kind: self.dotnet_publish_controller.delete_recent(k, True))
+            reset.clicked.connect(self.dotnet_publish_controller.clear_project if kind == "project" else self.dotnet_publish_controller.clear_icon)
+
+        path_section("project", "File Select", left_column, "C# Project File", "No C# project selected.")
+        path_section("icon", "Icons Select", right_column, "Select ICO optional", "No icon selected.")
+
+        output_layout = section("Output Select", right_column)
+        output_select_row = QHBoxLayout()
+        self.dotnet_output_select_btn = QPushButton("Output Folder")
+        self.dotnet_output_select_btn.setFixedSize(160, 35)
+        self.dotnet_output_select_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_output_select_btn.setStyleSheet(button_base())
+        self.dotnet_output_select_btn.clicked.connect(self._select_dotnet_output)
+        output_select_row.addWidget(self.dotnet_output_select_btn)
+        output_select_row.addStretch()
+        output_layout.addLayout(output_select_row)
+        output_entry = QHBoxLayout()
+        self.dotnet_output_input = PathDisplayLineEdit()
+        self.dotnet_output_input.setPlaceholderText("No output folder selected.")
+        self.dotnet_output_input.setFixedHeight(30)
+        self.dotnet_output_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
+        self.dotnet_output_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_output_to_desktop)
+        output_entry.addWidget(self.dotnet_output_input)
+        output_entry.addWidget(self.dotnet_output_reset_btn)
+        output_layout.addLayout(output_entry)
+        name_entry = QHBoxLayout()
+        self.dotnet_name_input = QLineEdit()
+        self.dotnet_name_input.setPlaceholderText("Exe has not been named.")
+        self.dotnet_name_input.setFixedHeight(30)
+        self.dotnet_name_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
+        self.dotnet_name_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_name_from_project)
+        name_entry.addWidget(self.dotnet_name_input)
+        name_entry.addWidget(self.dotnet_name_reset_btn)
+        output_layout.addLayout(name_entry)
+
         panel = QFrame()
         panel.setObjectName("configurationFrame")
         panel.setStyleSheet(MAIN_FRAME_STYLE)
         panel_layout = QVBoxLayout(panel)
         panel_layout.setContentsMargins(12, 12, 12, 12)
         panel_layout.setSpacing(7)
-
-        def path_row(label, attr, button_text, callback, placeholder, select_attr=None, reset_attr=None):
-            row = QHBoxLayout()
-            button = QPushButton(button_text)
-            button.setFixedSize(160, 35)
-            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
-            button.setStyleSheet(button_base())
-            field = PathDisplayLineEdit()
-            field.setPlaceholderText(placeholder)
-            field.setReadOnly(True)
-            field.setFixedHeight(30)
-            field.setFont(QFont("Rubik UI", 11, QFont.Bold))
-            setattr(self, attr, field)
-            if select_attr:
-                setattr(self, select_attr, button)
-            button.clicked.connect(callback)
-            row.addWidget(button)
-            if reset_attr:
-                reset_button = QPushButton("Reset ICO")
-                reset_button.setFixedSize(105, 35)
-                reset_button.setFont(QFont("Rubik UI", 11, QFont.Bold))
-                reset_button.setStyleSheet(button_base())
-                setattr(self, reset_attr, reset_button)
-                row.addWidget(reset_button)
-            row.addWidget(field)
-            panel_layout.addWidget(QLabel(label))
-            panel_layout.addLayout(row)
-
-        path_row("Project", "dotnet_project_input", "Select .csproj", self._select_dotnet_project,
-                 "No C# project selected.")
-        path_row("Output folder", "dotnet_output_input", "Output Folder", self._select_dotnet_output,
-                 "No output folder selected.")
-        path_row("Application icon (optional)", "dotnet_icon_input", "Select ICO", self._select_dotnet_icon,
-                 "No icon selected.", "dotnet_icon_select_btn", "dotnet_icon_reset_btn")
-
-        panel_layout.addWidget(QLabel("Executable name"))
-        self.dotnet_name_input = QLineEdit()
-        self.dotnet_name_input.setPlaceholderText("Application name")
-        self.dotnet_name_input.setFixedHeight(30)
-        panel_layout.addWidget(self.dotnet_name_input)
 
         option_row = QHBoxLayout()
         option_row.addWidget(QLabel("Target runtime"))
@@ -1390,7 +1464,9 @@ class EXEBuilderApp(QWidget):
             actions.addWidget(button)
         actions.addStretch()
         panel_layout.addLayout(actions)
-        dotnet_layout.addWidget(panel, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        left_column.addWidget(panel, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        left_column.addStretch()
+        right_column.addStretch()
         dotnet_layout.addStretch()
 
         self.build_mode_stack = QStackedWidget()
@@ -1418,7 +1494,6 @@ class EXEBuilderApp(QWidget):
         self.dotnet_mode_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
         self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
         self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
-        self.dotnet_icon_reset_btn.clicked.connect(self.dotnet_publish_controller.clear_icon)
         for widget in (
             self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
             self.dotnet_name_input,
@@ -1437,7 +1512,7 @@ class EXEBuilderApp(QWidget):
         self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
         self.python_mode_btn.setChecked(mode == "python")
         self.dotnet_mode_btn.setChecked(mode == "dotnet")
-        self.setFixedSize(*(APP_FIXED_SIZE if mode == "python" else (700, 585)))
+        self.setFixedSize(*(APP_FIXED_SIZE if mode == "python" else (1200, 650)))
         if mode == "python":
             self.validation_controller.update_build_button()
             self.validation_controller.update_ui_state()
@@ -1454,19 +1529,27 @@ class EXEBuilderApp(QWidget):
     def _select_dotnet_project(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select C# Project", "", "C# Project Files (*.csproj)")
         if path:
-            self.dotnet_project_input.set_display_path(os.path.normpath(path))
-            if not self.dotnet_name_input.text().strip():
-                self.dotnet_name_input.setText(Path(path).stem)
+            self.dotnet_publish_controller.select_path("project", path)
 
     def _select_dotnet_output(self):
-        path = QFileDialog.getExistingDirectory(self, "Select Publish Output Folder", "")
+        desktop = os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop"))
+        saved = getattr(self, "state_data", {}).get("dotnet_publish", {}).get("last_non_desktop_output_folder", "")
+        current = self.dotnet_output_input.text()
+        start = next((p for p in (saved, current) if p and os.path.isdir(p) and os.path.normcase(os.path.normpath(p)) != os.path.normcase(desktop)), desktop)
+        path = QFileDialog.getExistingDirectory(self, "Select Publish Output Folder", start)
         if path:
-            self.dotnet_output_input.set_display_path(os.path.normpath(path))
+            path = os.path.normpath(path)
+            self.dotnet_output_input.set_display_path(path)
+            if os.path.normcase(path) != os.path.normcase(desktop):
+                self.state_data.setdefault("dotnet_publish", {})["last_non_desktop_output_folder"] = path
+                self.state_ctrl.save_state()
+            from exe_builder.ui.ui_highlights import flash_add_highlight
+            flash_add_highlight(self.dotnet_output_select_btn, self.dotnet_output_input)
 
     def _select_dotnet_icon(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select Application Icon", "", "ICON Files (*.ico)")
         if path:
-            self.dotnet_icon_input.set_display_path(os.path.normpath(path))
+            self.dotnet_publish_controller.select_path("icon", path)
 
     def add_env_sync_status_row(self, version, package_count, status):
         if not hasattr(self, "env_sync_rows_layout"):

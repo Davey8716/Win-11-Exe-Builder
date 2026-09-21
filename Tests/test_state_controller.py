@@ -208,6 +208,9 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         "self_contained": True,
         "single_file": True,
         "trim": False,
+        "recent_projects": [],
+        "recent_icons": [],
+        "last_non_desktop_output_folder": "",
     }
     assert data["open_output_dir_after_build_enabled"] is False
 

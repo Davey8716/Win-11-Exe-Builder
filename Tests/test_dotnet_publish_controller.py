@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+from PySide6.QtWidgets import QApplication, QComboBox, QPushButton
+from exe_builder.ui.path_display_line_edit import PathDisplayLineEdit
 
 from exe_builder.controllers.dotnet_publish_controller import (
     DotnetPublishController,
@@ -138,6 +140,43 @@ def test_clear_icon_removes_the_publish_icon_and_disables_reset(tmp_path):
         "win-x64", True, False, False, controller.values()["icon"],
     )
     assert not any(part.startswith("-p:ApplicationIcon=") for part in command)
+
+
+def test_dotnet_recents_select_and_delete_independently(tmp_path, monkeypatch):
+    QApplication.instance() or QApplication([])
+    controller, project = make_controller(tmp_path)
+    app = controller.app
+    app.state_data = {"dotnet_publish": {}}
+    app.state_ctrl = SimpleNamespace(save_state=lambda: None)
+    app.recent_controller = SimpleNamespace(
+        _confirm_delete_recent_item=lambda *_: True,
+        _show_recent_delete_confirmation=lambda *_: True,
+    )
+    for kind in ("project", "icon"):
+        setattr(app, f"dotnet_{kind}_input", PathDisplayLineEdit())
+        setattr(app, f"dotnet_{kind}_select_btn", QPushButton())
+        setattr(app, f"dotnet_{kind}_delete_btn", QPushButton())
+        setattr(app, f"dotnet_{kind}_delete_all_btn", QPushButton())
+    app.dotnet_recent_projects = QComboBox()
+    app.dotnet_recent_icons = QComboBox()
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.flash_add_highlight", lambda *_: None)
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.flash_delete_highlight", lambda *_: None)
+
+    controller.select_path("project", str(project))
+    assert app.dotnet_name_input.value == "Tool"
+    assert app.dotnet_recent_projects.count() == 2
+    icon = tmp_path / "tool.ico"
+    icon.write_bytes(b"icon")
+    controller.select_path("icon", str(icon))
+    assert app.dotnet_recent_icons.count() == 3  # heading, No Icon, selected icon
+
+    controller.delete_recent("project")
+    assert not app.dotnet_project_input.text()
+    assert not app.state_data["dotnet_publish"]["recent_projects"]
+    assert app.dotnet_icon_input.text() == str(icon)
+    controller.delete_recent("icon", all_items=True)
+    assert not app.dotnet_icon_input.text()
+    assert not app.state_data["dotnet_publish"]["recent_icons"]
 
 
 def test_icon_controls_are_disabled_while_publishing(tmp_path):

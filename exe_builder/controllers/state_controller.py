@@ -370,6 +370,9 @@ class StateController:
             "append_py_version": getattr(self.app, "append_py_version", False),
             "build_mode": getattr(self.app, "build_mode", "python"),
             "dotnet_publish": {
+                "recent_projects": getattr(self.app, "state_data", {}).get("dotnet_publish", {}).get("recent_projects", existing_data.get("dotnet_publish", {}).get("recent_projects", [])),
+                "recent_icons": getattr(self.app, "state_data", {}).get("dotnet_publish", {}).get("recent_icons", existing_data.get("dotnet_publish", {}).get("recent_icons", [])),
+                "last_non_desktop_output_folder": getattr(self.app, "state_data", {}).get("dotnet_publish", {}).get("last_non_desktop_output_folder", existing_data.get("dotnet_publish", {}).get("last_non_desktop_output_folder", "")),
                 "project_path": _norm(getattr(self.app, "dotnet_project_input", None).text() if hasattr(self.app, "dotnet_project_input") else ""),
                 "output_folder": _norm(getattr(self.app, "dotnet_output_input", None).text() if hasattr(self.app, "dotnet_output_input") else ""),
                 "icon_path": _norm(getattr(self.app, "dotnet_icon_input", None).text() if hasattr(self.app, "dotnet_icon_input") else ""),
