@@ -6,11 +6,16 @@ import subprocess
 import time
 import xml.etree.ElementTree as ET
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, QSize, QThread, Signal
+from PySide6.QtGui import QIcon
 
 from ..build.build_cancellation import BuildCancellation
 from ..ui.styles import (
     Colors,
+    REFRESH_BUTTON_ICON,
+    REFRESH_BUTTON_ICON_SIZE,
+    REFRESH_BUTTON_TEXT,
+    build_disabled_button,
     build_disabled_line_edit_style,
     line_edit_style,
     status_text_style,
@@ -281,6 +286,11 @@ class DotnetPublishController(QObject):
             and is_sdk_style_project(values["project"])
         )
         output_ok = bool(values["output"] and os.path.isdir(values["output"]))
+        desktop = os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop"))
+        output_is_desktop = bool(
+            values["output"]
+            and os.path.normcase(values["output"]) == os.path.normcase(desktop)
+        )
         icon_ok = bool(
             values["icon"]
             and values["icon"].lower().endswith(".ico")
@@ -324,16 +334,28 @@ class DotnetPublishController(QObject):
             "dotnet_project_select_btn", "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
             "dotnet_project_reset_btn", "dotnet_recent_projects", "dotnet_icon_delete_btn",
             "dotnet_icon_delete_all_btn", "dotnet_recent_icons", "dotnet_output_select_btn",
-            "dotnet_output_reset_btn", "dotnet_name_reset_btn", "dotnet_name_input",
+            "dotnet_name_reset_btn", "dotnet_name_input",
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setEnabled"):
                 widget.setEnabled(not building)
+        output_reset = getattr(self.app, "dotnet_output_reset_btn", None)
+        if output_reset is not None:
+            output_reset.setEnabled(not building and not output_is_desktop)
+            if building or output_is_desktop:
+                output_reset.setStyleSheet(build_disabled_button())
+                output_reset.setIcon(QIcon())
+                output_reset.setText("")
+            else:
+                output_reset.setStyleSheet(utility_icon_button_style())
+                output_reset.setIcon(QIcon(str(REFRESH_BUTTON_ICON)))
+                output_reset.setIconSize(QSize(*REFRESH_BUTTON_ICON_SIZE))
+                output_reset.setText(REFRESH_BUTTON_TEXT)
         for name in (
             "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
             "dotnet_project_reset_btn", "dotnet_icon_delete_btn",
             "dotnet_icon_delete_all_btn", "dotnet_icon_reset_btn",
-            "dotnet_output_reset_btn", "dotnet_name_reset_btn",
+            "dotnet_name_reset_btn",
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setStyleSheet"):

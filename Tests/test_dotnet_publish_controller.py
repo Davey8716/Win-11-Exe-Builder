@@ -51,6 +51,12 @@ class DummyButton:
     def setStyleSheet(self, value):
         self.stylesheet = value
 
+    def setIcon(self, value):
+        self.icon = value
+
+    def setIconSize(self, value):
+        self.icon_size = value
+
 
 class DummyStatus:
     def setText(self, value):
@@ -312,3 +318,34 @@ def test_refresh_styles_dotnet_utility_buttons_like_python_buttons(tmp_path):
     controller.refresh_ui()
 
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_project_delete_btn.stylesheet
+
+
+def test_output_refresh_matches_python_desktop_state(tmp_path, monkeypatch):
+    controller, _ = make_controller(tmp_path)
+    desktop = tmp_path / "Desktop"
+    desktop.mkdir()
+    controller.app.dotnet_output_reset_btn = DummyButton()
+    monkeypatch.setattr(
+        "exe_builder.controllers.dotnet_publish_controller.os.path.expanduser",
+        lambda _path: str(tmp_path),
+    )
+
+    controller.app.dotnet_output_input.value = str(desktop).upper()
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_output_reset_btn.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_output_reset_btn.stylesheet
+    assert controller.app.dotnet_output_reset_btn.icon.isNull()
+
+    controller.app.dotnet_output_input.value = str(tmp_path)
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_output_reset_btn.enabled is True
+    assert qcolor_name(Colors.TITLE_BG) in controller.app.dotnet_output_reset_btn.stylesheet
+    assert not controller.app.dotnet_output_reset_btn.icon.isNull()
+
+    controller.app.building = True
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_output_reset_btn.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_output_reset_btn.stylesheet
