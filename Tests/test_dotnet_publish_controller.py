@@ -1,11 +1,17 @@
 from types import SimpleNamespace
+import pytest
 from PySide6.QtWidgets import QApplication, QComboBox, QPushButton
 from exe_builder.ui.path_display_line_edit import PathDisplayLineEdit
 
 from exe_builder.controllers.dotnet_publish_controller import (
     DotnetPublishController,
+    DotnetPublishWorker,
+    TRAY_ICON_MARKER_NAME,
+    TRAY_ICON_NAME,
+    build_dotnet_clean_command,
     build_dotnet_publish_command,
     is_sdk_style_project,
+    sync_published_tray_icon,
     validate_executable_name,
 )
 from exe_builder.ui.styles import Colors, qcolor_name
@@ -117,6 +123,45 @@ def test_publish_command_contains_selected_options(tmp_path):
     assert command[command.index("-o") + 1].endswith("dist\\MyTool") or command[command.index("-o") + 1].endswith("dist/MyTool")
 
 
+def test_clean_command_uses_same_project_configuration(tmp_path):
+    project = str(tmp_path / "Tool.csproj")
+    assert build_dotnet_clean_command(project, "MyTool", "win-arm64") == [
+        "dotnet", "clean", project, "-c", "Release", "-r", "win-arm64",
+        "-p:AssemblyName=MyTool",
+    ]
+
+
+@pytest.mark.parametrize("clean_result,expected", [
+    (0, [["dotnet", "clean"], ["dotnet", "publish"]]),
+    (1, [["dotnet", "clean"]]),
+])
+def test_publish_worker_cleans_before_publish_and_stops_if_clean_fails(
+    tmp_path, monkeypatch, clean_result, expected,
+):
+    commands = []
+    results = iter([clean_result, 0])
+
+    class FakeProcess:
+        def wait(self):
+            return next(results)
+
+    def fake_popen(command, **_kwargs):
+        commands.append(command)
+        return FakeProcess()
+
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.subprocess.Popen", fake_popen)
+    app = SimpleNamespace(build_process=None)
+    worker = DotnetPublishWorker(app, ["dotnet", "clean"], ["dotnet", "publish"], str(tmp_path / "publish.log"))
+    finished = []
+    worker.finished.connect(lambda code, error: finished.append((code, error)))
+
+    worker.run()
+
+    assert commands == expected
+    assert finished == [(clean_result, "")]
+    assert app.build_process is None
+
+
 def test_publish_command_explicitly_disables_unselected_project_options(tmp_path):
     command = build_dotnet_publish_command(
         str(tmp_path / "Tool.csproj"), str(tmp_path / "dist"), "MyTool",
@@ -126,7 +171,7 @@ def test_publish_command_explicitly_disables_unselected_project_options(tmp_path
     assert command[command.index("--self-contained") + 1] == "false"
     assert "-p:PublishSingleFile=false" in command
     assert "-p:PublishTrimmed=false" in command
-    assert not any(part.startswith("-p:ApplicationIcon=") for part in command)
+    assert "-p:ApplicationIcon=" in command
 
 
 def test_clear_icon_removes_the_publish_icon_and_disables_reset(tmp_path):
@@ -148,7 +193,64 @@ def test_clear_icon_removes_the_publish_icon_and_disables_reset(tmp_path):
         str(tmp_path / "Tool.csproj"), str(tmp_path / "dist"), "MyTool",
         "win-x64", True, False, False, controller.values()["icon"],
     )
-    assert not any(part.startswith("-p:ApplicationIcon=") for part in command)
+    assert "-p:ApplicationIcon=" in command
+
+
+def test_no_icon_overrides_project_application_icon(tmp_path):
+    controller, project = make_controller(
+        tmp_path,
+        '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
+        '<ApplicationIcon>old.ico</ApplicationIcon></PropertyGroup></Project>',
+    )
+    before = project.read_bytes()
+
+    assert controller.validation_error() == ""
+    command = build_dotnet_publish_command(
+        str(project), str(tmp_path), "Tool", "win-x64", True, False, False,
+        controller.values()["icon"],
+    )
+
+    assert "-p:ApplicationIcon=" in command
+    assert project.read_bytes() == before
+
+
+def test_no_icon_rejects_project_win32_resource(tmp_path):
+    controller, _ = make_controller(
+        tmp_path,
+        '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
+        '<Win32Resource>custom.res</Win32Resource></PropertyGroup></Project>',
+    )
+    assert "Win32Resource" in controller.validation_error()
+
+
+def test_tray_sidecar_replaced_and_removed_across_publishes(tmp_path):
+    target = tmp_path / "Tool"
+    target.mkdir()
+    (target / "Tool.exe").write_bytes(b"single-file executable")
+    first = tmp_path / "first.ico"
+    second = tmp_path / "second.ico"
+    first.write_bytes(b"first icon")
+    second.write_bytes(b"second icon")
+
+    sync_published_tray_icon(str(target), str(first))
+    assert (target / TRAY_ICON_NAME).read_bytes() == b"first icon"
+    sync_published_tray_icon(str(target), str(second))
+    assert (target / TRAY_ICON_NAME).read_bytes() == b"second icon"
+    assert (target / "Tool.exe").read_bytes() == b"single-file executable"
+    sync_published_tray_icon(str(target), "")
+    assert not (target / TRAY_ICON_NAME).exists()
+    assert not (target / TRAY_ICON_MARKER_NAME).exists()
+
+
+def test_no_icon_keeps_unmanaged_sidecar(tmp_path):
+    target = tmp_path / "Tool"
+    target.mkdir()
+    sidecar = target / TRAY_ICON_NAME
+    sidecar.write_bytes(b"user icon")
+
+    sync_published_tray_icon(str(target), "")
+
+    assert sidecar.read_bytes() == b"user icon"
 
 
 def test_dotnet_recents_select_and_delete_independently(tmp_path, monkeypatch):
@@ -248,7 +350,46 @@ def test_publish_completion_leaves_executable_untouched(tmp_path):
     controller._on_publish_finished(0, "")
 
     assert executable.read_bytes() == b"apphost-with-single-file-bundle"
+    assert (target / TRAY_ICON_NAME).read_bytes() == b"selected-icon"
     assert controller.app.dotnet_status_label.text == "Publish complete."
+
+
+@pytest.mark.parametrize("result,cancelled", [(1, False), (0, True)])
+def test_failed_or_cancelled_publish_keeps_existing_tray_sidecar(tmp_path, result, cancelled):
+    controller, project = make_controller(tmp_path)
+    project_before = project.read_bytes()
+    target = tmp_path / "Tool"
+    target.mkdir()
+    original = tmp_path / "original.ico"
+    replacement = tmp_path / "replacement.ico"
+    original.write_bytes(b"original")
+    replacement.write_bytes(b"replacement")
+    sync_published_tray_icon(str(target), str(original))
+    controller._publish_target = str(target)
+    controller._publish_icon_path = str(replacement)
+    controller._cancelled = cancelled
+    controller.app.building = True
+    controller.app.build_process = object()
+
+    controller._on_publish_finished(result, "publish failed")
+
+    assert (target / TRAY_ICON_NAME).read_bytes() == b"original"
+    assert project.read_bytes() == project_before
+
+
+def test_cancel_keeps_existing_publish_folder(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    target = tmp_path / "Tool"
+    target.mkdir()
+    existing = target / "user-data.txt"
+    existing.write_text("keep", encoding="utf-8")
+    controller.app.building = True
+    controller.app.build_process = None
+
+    controller.cancel()
+
+    assert existing.read_text(encoding="utf-8") == "keep"
+    assert controller._cancelled is True
 
 
 def test_publish_failure_remains_visible_after_controls_refresh(tmp_path):

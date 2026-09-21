@@ -1,10 +1,12 @@
 from PySide6.QtCore import QTimer, Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QLineEdit
 
 
 class PathDisplayLineEdit(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setFont(QFont("Rubik UI", 11, QFont.Bold))
         self.setReadOnly(True)
         self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self._reset_timer = QTimer(self)
