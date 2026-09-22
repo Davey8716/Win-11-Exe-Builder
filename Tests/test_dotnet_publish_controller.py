@@ -528,7 +528,7 @@ def test_refresh_styles_dotnet_utility_buttons_like_python_buttons(tmp_path):
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_project_delete_btn.stylesheet
 
 
-def test_publish_lock_greys_full_csharp_configuration_page(tmp_path):
+def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
     controller, _ = make_controller(tmp_path)
     app = controller.app
     for name in (
@@ -575,7 +575,7 @@ def test_publish_lock_greys_full_csharp_configuration_page(tmp_path):
     for frame in app.dotnet_section_title_frames:
         assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in frame.stylesheet
     for frame in app.dotnet_configuration_frames:
-        assert qcolor_name(Colors.BUILD_DISABLED_BG) in frame.stylesheet
+        assert qcolor_name(Colors.PANEL_BG) in frame.stylesheet
     assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in app.dotnet_mode_title.stylesheet
 
     app.building = False

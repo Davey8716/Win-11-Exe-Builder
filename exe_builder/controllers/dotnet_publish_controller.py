@@ -14,7 +14,6 @@ from PySide6.QtCore import QObject, QSize, QThread, Signal
 from PySide6.QtGui import QIcon
 
 from ..ui.styles import (
-    BUILD_DISABLED_MAIN_FRAME_STYLE,
     BUILD_DISABLED_TITLE_FRAME_STYLE,
     Colors,
     MAIN_FRAME_STYLE,
@@ -519,9 +518,9 @@ class DotnetPublishController(QObject):
                 BUILD_DISABLED_TITLE_FRAME_STYLE if building else TITLE_FRAME_STYLE
             )
         for frame in getattr(self.app, "dotnet_configuration_frames", []):
-            frame.setStyleSheet(
-                BUILD_DISABLED_MAIN_FRAME_STYLE if building else MAIN_FRAME_STYLE
-            )
+            # Python mode keeps configuration panels blue while its controls are
+            # locked.  Mirror that visual hierarchy for a .NET publish.
+            frame.setStyleSheet(MAIN_FRAME_STYLE)
         title = getattr(self.app, "dotnet_mode_title", None)
         if title is not None and hasattr(title, "setStyleSheet"):
             title.setStyleSheet(
