@@ -31,3 +31,5 @@ test-temp/
 .pytest_cache/
 pytest-cache-files-*/
 /Tests/__pycache__
+bin/
+obj/

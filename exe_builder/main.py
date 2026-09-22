@@ -9,6 +9,7 @@ if __package__ in (None, ""):
 
 from ctypes import wintypes
 from exe_builder.controllers.build_controller import BuildController
+from exe_builder.controllers.dotnet_publish_controller import DotnetPublishController
 from exe_builder.build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_LABEL,
     MASS_DATETIME_BUILD_LABEL,
@@ -22,7 +23,7 @@ from exe_builder.controllers.environment_sync_controller import EnvironmentSyncC
 from exe_builder.ui.path_hover import attach_path_hovers
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialogButtonBox
+from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog
 from exe_builder.controllers.validation_controller import ValidationController
 from exe_builder.controllers.activation_controller import ActivationController
 from PySide6.QtGui import QFont, QIcon, QPalette
@@ -39,6 +40,7 @@ from exe_builder.ui.styles import (
     APPEND_PY_VERSION_INITIAL_STYLE,
     APP_TITLE_CONTAINER_STYLE,
     APP_TITLE_LABEL_STYLE,
+    BUILD_OPTIONS_DIALOG_STYLE,
     CENTER_DIVIDER_STYLE,
     COMBO_BOX_STYLE,
     COMBO_BOX_LINE_EDIT_STYLE,
@@ -52,18 +54,22 @@ from exe_builder.ui.styles import (
     ENV_SYNC_BUTTON_STYLE,
     ENV_SYNC_SCROLL_AREA_STYLE,
     ENV_SYNC_STATUS_LINE_STYLE,
-    BUILD_OPTIONS_FRAME_STYLE,
     REFRESH_BUTTON_ICON,
     REFRESH_BUTTON_ICON_SIZE,
     REFRESH_BUTTON_TEXT,
     UTILITY_ICON_BUTTON_SIZE,
     apply_native_title_bar_style,
+    apply_build_options_title_bar_style,
     combo_box_popup_style,
     MAIN_FRAME_STYLE,
     TITLE_FRAME_STYLE,
+    apply_build_mode_button_state,
+    build_mode_button_font,
     button_base,
     qcolor_name,
+    title_frame_minimum_width,
     Colors,
+    utility_icon_button_style,
 )
 
 APP_FIXED_SIZE = (1200, 915)
@@ -116,6 +122,7 @@ class EXEBuilderApp(QWidget):
         self.ui_handlers = UIHandlers(self)
         self.environment_sync_controller = EnvironmentSyncController(self)
         self.build_controller = BuildController(self)
+        self.dotnet_publish_controller = DotnetPublishController(self)
         self.validation_controller = ValidationController(self)
         self.state_ctrl = StateController(self)
         self.validator = ValidationController(self)
@@ -162,15 +169,16 @@ class EXEBuilderApp(QWidget):
         self.output_path = getattr(self, "output_path", "")
         self.python_path = getattr(self, "python_path", "")
         self.exe_name = getattr(self, "exe_name", "")
+        self.build_mode = "python"
                     
         # =============================================================
-        # Title + Tooltip Toggle
+        # Title + Build Options
         # =============================================================
         self.title_frame = QFrame()
         self.title_frame.setObjectName("appTitleFrame")
         self.title_frame.setFrameShape(QFrame.NoFrame)
         self.title_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.title_frame.setFixedSize(430,44)
+        self.title_frame.setFixedHeight(44)
         self.title_frame.setStyleSheet(APP_TITLE_CONTAINER_STYLE)
 
         title_layout = QHBoxLayout(self.title_frame)
@@ -184,39 +192,37 @@ class EXEBuilderApp(QWidget):
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet(APP_TITLE_LABEL_STYLE)
 
+        title_spacer = QWidget()
+        title_spacer.setFixedSize(34, 34)
+
+        self.build_options_btn = QPushButton("⚙")
+        self.build_options_btn.setObjectName("buildOptionsButton")
+        self.build_options_btn.setAccessibleName("Build options")
+        self.build_options_btn.setAccessibleDescription(
+            "Open build options and application preferences."
+        )
+        self.build_options_btn.setFixedSize(34, 34)
+        self.build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
+        self.build_options_btn.setStyleSheet(utility_icon_button_style())
+
+        title_frame_width = title_frame_minimum_width(
+            QFontMetrics(self.title_label.font()).horizontalAdvance(
+                self.title_label.text()
+            ),
+            self.build_options_btn.width(),
+            10,
+        )
+        self.title_frame.setFixedWidth(title_frame_width)
+
+        title_layout.addWidget(title_spacer)
         title_layout.addStretch()
         title_layout.addWidget(self.title_label)
         title_layout.addStretch()
+        title_layout.addWidget(self.build_options_btn)
 
         # -------------------------------
-        # TOGGLES FRAME
+        # BUILD OPTIONS DIALOG
         # -------------------------------
-
-        self.build_options_title_frame = QFrame()
-        self.build_options_title_frame.setFrameShape(QFrame.StyledPanel)
-        self.build_options_title_frame.setFrameShadow(QFrame.Raised)
-
-        build_options_title_layout = QHBoxLayout(self.build_options_title_frame)
-        build_options_title_layout.setContentsMargins(3,3,3,3)
-        build_options_title_layout.setSpacing(3)
-
-        self.build_options_title = QLabel("Build Options")
-        self.build_options_title.setFixedHeight(30)
-        self.build_options_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
-
-        build_options_title_layout.addStretch()
-        build_options_title_layout.addWidget(self.build_options_title)
-        build_options_title_layout.addStretch()
-
-        toggles_frame = QFrame()
-        toggles_frame.setFixedSize(500, 128)
-        toggles_frame.setFrameShape(QFrame.StyledPanel)
-        toggles_frame.setFrameShadow(QFrame.Raised)
-        toggles_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
-        toggles_layout = QVBoxLayout(toggles_frame)
-        toggles_layout.setContentsMargins(8, 8, 8, 8)
-        toggles_layout.setSpacing(2)
 
         self.tooltips_checkbox = QCheckBox("Tooltips")
         self.minimize_after_build = QCheckBox("Minimize After Build")
@@ -250,11 +256,26 @@ class EXEBuilderApp(QWidget):
         toggle_columns.addLayout(left_toggle_column, 1)
         toggle_columns.addLayout(right_toggle_column, 1)
 
-        # -------------------------------
-        # ATTACH
-        # -------------------------------
+        self.build_options_dialog = QDialog(self)
+        self.build_options_dialog.setWindowTitle("Global Build Options")
+        self.build_options_dialog.setModal(True)
+        self.build_options_dialog.setFixedSize(500, 150)
+        self.build_options_dialog.setStyleSheet(BUILD_OPTIONS_DIALOG_STYLE)
+        apply_build_options_title_bar_style(self.build_options_dialog)
 
-        toggles_layout.addLayout(toggle_columns)
+        build_options_layout = QVBoxLayout(self.build_options_dialog)
+        build_options_layout.setContentsMargins(12, 12, 12, 10)
+        build_options_layout.setSpacing(6)
+        build_options_layout.addLayout(toggle_columns)
+
+        build_options_buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        build_options_buttons.rejected.connect(self.build_options_dialog.reject)
+        build_options_buttons.setCenterButtons(True)
+        self.build_options_close_btn = build_options_buttons.button(
+            QDialogButtonBox.Close
+        )
+        self.build_options_close_btn.setFixedSize(120, 32)
+        build_options_layout.addWidget(build_options_buttons)
 
         # -------------------------------
         # MAIN LAYOUT
@@ -272,20 +293,6 @@ class EXEBuilderApp(QWidget):
         title_row_layout.setContentsMargins(0, 0, 0, 0)
         title_row_layout.setSpacing(20)
         title_row_layout.addWidget(self.title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
-
-        toggles_title_row = QWidget()
-        toggles_title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        toggles_title_row_layout = QHBoxLayout(toggles_title_row)
-        toggles_title_row_layout.setContentsMargins(0, 0, 0, 0)
-        toggles_title_row_layout.setSpacing(0)
-        toggles_title_row_layout.addWidget(self.build_options_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
-
-        toggles_row = QWidget()
-        toggles_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        toggles_row_layout = QHBoxLayout(toggles_row)
-        toggles_row_layout.setContentsMargins(0, 0, 0, 0)
-        toggles_row_layout.setSpacing(0)
-        toggles_row_layout.addWidget(toggles_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
 
         self.content_row = QWidget()
         self.content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -320,8 +327,6 @@ class EXEBuilderApp(QWidget):
         content_row_layout.addWidget(self.right_content, alignment=Qt.AlignTop)
 
         root_layout.addWidget(title_row)
-        root_layout.addWidget(toggles_title_row)
-        root_layout.addWidget(toggles_row)
         root_layout.addWidget(self.content_row)
         root_layout.addWidget(build_title_row)
         root_layout.addWidget(build_frame_row)
@@ -1021,10 +1026,7 @@ class EXEBuilderApp(QWidget):
                 frame.setObjectName("configurationFrame")
                 frame.setStyleSheet(MAIN_FRAME_STYLE)
 
-        toggles_frame.setStyleSheet(BUILD_OPTIONS_FRAME_STYLE)
-                
         frames = [
-            self.build_options_title_frame,
             self.env_sync_title_frame,
             self.apps_title_frame,
             self.icons_title_frame,
@@ -1042,7 +1044,6 @@ class EXEBuilderApp(QWidget):
             
                 
         for label in [
-            self.build_options_title,
             self.env_sync_title,
             self.apps_title,
             self.icons_title,
@@ -1058,7 +1059,6 @@ class EXEBuilderApp(QWidget):
         # -------------------------------
 
         title_pairs = [
-            (self.build_options_title_frame, self.build_options_title),
             (self.env_sync_title_frame, self.env_sync_title),
             (self.apps_title_frame, self.apps_title),
             (self.icons_title_frame, self.icons_title),
@@ -1215,7 +1215,10 @@ class EXEBuilderApp(QWidget):
         ]:
             widget.setAcceptDrops(True)
             widget.installEventFilter(self)
-        
+
+        # Keep the established Python UI together, then add the compact .NET
+        # page without forcing C# controls into the PyInstaller workflow.
+        self._install_build_mode_pages(root_layout)
         
         build_title_row_layout.addWidget(build_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
         build_frame_row_layout.addWidget(build_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
@@ -1224,6 +1227,8 @@ class EXEBuilderApp(QWidget):
         attach_path_hovers(self)
         self._loading_state = False
         self.state_ctrl.load_state()
+        self.dotnet_publish_controller.populate_recents("project")
+        self.dotnet_publish_controller.populate_recents("icon")
         self.recent_controller.populate_recent_dropdown()
         self.validator.validation_status_message()
         self.json_import_controller.attach()
@@ -1258,6 +1263,7 @@ class EXEBuilderApp(QWidget):
         self.output_btn.clicked.connect(self.file_pickers.select_output_folder)
         self.output_refresh_btn.clicked.connect(self.ui_handlers.reset_output_to_desktop)
         self.open_app_data_btn.clicked.connect(self.ui_handlers.open_app_data)
+        self.build_options_btn.clicked.connect(self._show_build_options)
         self.refresh_btn.clicked.connect(self.ui_handlers.reset_exe_name_from_script)
         self.tooltips_checkbox.stateChanged.connect(self.ui_handlers.on_tooltips_toggle)
         self.exe_name_input.textChanged.connect(self.ui_handlers._on_exe_name_user_edit)
@@ -1270,8 +1276,304 @@ class EXEBuilderApp(QWidget):
 
         self.validator.update_ui_state()
         self.validation_controller.update_build_button()
+        self.dotnet_publish_controller.refresh_ui()
         self._sync_paired_section_geometry()
         self._sync_center_divider_height()
+
+    def _show_build_options(self):
+        """Open the compact dialog that contains the build option controls."""
+        if not self.building:
+            # A mode switch can recreate the native handle; reapply DWM colours.
+            apply_build_options_title_bar_style(self.build_options_dialog)
+            self.build_options_dialog.exec()
+
+    def _install_build_mode_pages(self, root_layout):
+        """Move the legacy screen into a Python page and create the .NET page."""
+        self.python_mode_page = QWidget()
+        python_layout = QVBoxLayout(self.python_mode_page)
+        python_layout.setContentsMargins(0, 0, 0, 0)
+        python_layout.setSpacing(0)
+        while root_layout.count():
+            item = root_layout.takeAt(0)
+            if item.widget() is not None:
+                python_layout.addWidget(item.widget())
+
+        self.dotnet_mode_page = QWidget()
+        dotnet_layout = QVBoxLayout(self.dotnet_mode_page)
+        dotnet_layout.setContentsMargins(20, 12, 20, 12)
+        dotnet_layout.setSpacing(8)
+        self.dotnet_mode_title = QLabel("C# .NET Publish")
+        self.dotnet_mode_title.setFont(QFont("Rubik UI", 18, QFont.Bold))
+        self.dotnet_mode_title.setAlignment(Qt.AlignCenter)
+        self.dotnet_mode_title.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        self.dotnet_section_title_frames = []
+        self.dotnet_configuration_frames = []
+        dotnet_layout.addWidget(self.dotnet_mode_title)
+
+        columns = QHBoxLayout()
+        columns.setSpacing(4)
+        dotnet_layout.addLayout(columns)
+        left_column = QVBoxLayout()
+        right_column = QVBoxLayout()
+        left_column.setSpacing(4)
+        right_column.setSpacing(4)
+        columns.addLayout(left_column)
+        columns.addLayout(right_column)
+
+        def section(title, column):
+            heading = QFrame()
+            heading.setStyleSheet(TITLE_FRAME_STYLE)
+            self.dotnet_section_title_frames.append(heading)
+            heading_layout = QHBoxLayout(heading)
+            heading_layout.setContentsMargins(3, 3, 3, 3)
+            label = QLabel(title)
+            label.setFixedHeight(30)
+            label.setFont(QFont("Rubik UI", 14, QFont.Bold))
+            heading_layout.addStretch()
+            heading_layout.addWidget(label)
+            heading_layout.addStretch()
+            frame = QFrame()
+            frame.setObjectName("configurationFrame")
+            frame.setStyleSheet(MAIN_FRAME_STYLE)
+            self.dotnet_configuration_frames.append(frame)
+            frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+            layout = QVBoxLayout(frame)
+            layout.setContentsMargins(3, 3, 3, 3)
+            layout.setSpacing(3)
+            column.addWidget(heading, alignment=Qt.AlignHCenter)
+            column.addWidget(frame, alignment=Qt.AlignHCenter)
+            return layout
+
+        def utility_button(icon_path, icon_size, caption):
+            button = QPushButton(caption)
+            button.setIcon(QIcon(str(icon_path)))
+            button.setIconSize(QSize(*icon_size))
+            button.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
+            button.setStyleSheet(utility_icon_button_style())
+            return button
+
+        def path_section(kind, title, column, select_text, placeholder):
+            layout = section(title, column)
+            row = QHBoxLayout()
+            row.setSpacing(5)
+            select = QPushButton(select_text)
+            select.setFixedSize(160, 35)
+            select.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            select.setStyleSheet(button_base())
+            recent = QComboBox()
+            recent.setFixedSize(*PATH_DROPDOWN_SIZE)
+            recent.setFont(QFont("Rubik UI", 12))
+            recent.setEditable(True)
+            recent.lineEdit().setReadOnly(True)
+            recent.setStyleSheet(COMBO_BOX_STYLE)
+            delete = utility_button(DELETE_BUTTON_ICON, DELETE_BUTTON_ICON_SIZE, DELETE_BUTTON_TEXT)
+            delete_all = utility_button(DELETE_ALL_BUTTON_ICON, DELETE_ALL_BUTTON_ICON_SIZE, DELETE_ALL_BUTTON_TEXT)
+            for widget in (select, recent, delete, delete_all):
+                row.addWidget(widget)
+            row.addStretch()
+            layout.addLayout(row)
+            entry = QHBoxLayout()
+            field = PathDisplayLineEdit()
+            field.setPlaceholderText(placeholder)
+            field.setFixedHeight(30)
+            reset = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
+            entry.addWidget(field)
+            entry.addWidget(reset)
+            layout.addLayout(entry)
+            prefix = "dotnet_project" if kind == "project" else "dotnet_icon"
+            setattr(self, prefix + "_input", field)
+            setattr(self, prefix + "_select_btn", select)
+            setattr(self, prefix + "_delete_btn", delete)
+            setattr(self, prefix + "_delete_all_btn", delete_all)
+            setattr(self, prefix + "_reset_btn", reset)
+            setattr(self, "dotnet_recent_projects" if kind == "project" else "dotnet_recent_icons", recent)
+            select.clicked.connect(self._select_dotnet_project if kind == "project" else self._select_dotnet_icon)
+            recent.currentIndexChanged.connect(lambda _index, k=kind: self.dotnet_publish_controller.on_recent_selected(k))
+            delete.clicked.connect(lambda _checked=False, k=kind: self.dotnet_publish_controller.delete_recent(k))
+            delete_all.clicked.connect(lambda _checked=False, k=kind: self.dotnet_publish_controller.delete_recent(k, True))
+            reset.clicked.connect(self.dotnet_publish_controller.clear_project if kind == "project" else self.dotnet_publish_controller.clear_icon)
+
+        path_section("project", "File Select", left_column, "C# Project File", "No C# project selected.")
+        path_section("icon", "Icons Select", right_column, "Select ICO optional", "No icon selected.")
+
+        output_layout = section("Output Select", right_column)
+        output_select_row = QHBoxLayout()
+        self.dotnet_output_select_btn = QPushButton("Output Folder")
+        self.dotnet_output_select_btn.setFixedSize(160, 35)
+        self.dotnet_output_select_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_output_select_btn.setStyleSheet(button_base())
+        self.dotnet_output_select_btn.clicked.connect(self._select_dotnet_output)
+        output_select_row.addWidget(self.dotnet_output_select_btn)
+        output_select_row.addStretch()
+        output_layout.addLayout(output_select_row)
+        output_entry = QHBoxLayout()
+        self.dotnet_output_input = PathDisplayLineEdit()
+        self.dotnet_output_input.setPlaceholderText("No output folder selected.")
+        self.dotnet_output_input.setFixedHeight(30)
+        self.dotnet_output_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
+        self.dotnet_output_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_output_to_desktop)
+        output_entry.addWidget(self.dotnet_output_input)
+        output_entry.addWidget(self.dotnet_output_reset_btn)
+        output_layout.addLayout(output_entry)
+        name_entry = QHBoxLayout()
+        self.dotnet_name_input = QLineEdit()
+        self.dotnet_name_input.setPlaceholderText("Exe has not been named.")
+        self.dotnet_name_input.setFixedHeight(30)
+        self.dotnet_name_input.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_name_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
+        self.dotnet_name_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_name_from_project)
+        name_entry.addWidget(self.dotnet_name_input)
+        name_entry.addWidget(self.dotnet_name_reset_btn)
+        output_layout.addLayout(name_entry)
+
+        panel = QFrame()
+        panel.setObjectName("configurationFrame")
+        panel.setStyleSheet(MAIN_FRAME_STYLE)
+        self.dotnet_configuration_frames.append(panel)
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(12, 12, 12, 12)
+        panel_layout.setSpacing(7)
+
+        option_row = QHBoxLayout()
+        option_row.addWidget(QLabel("Target runtime"))
+        self.dotnet_runtime_combo = QComboBox()
+        self.dotnet_runtime_combo.addItem("Windows x64", "win-x64")
+        self.dotnet_runtime_combo.addItem("Windows ARM64", "win-arm64")
+        self.dotnet_runtime_combo.setStyleSheet(COMBO_BOX_STYLE)
+        option_row.addWidget(self.dotnet_runtime_combo)
+        self.dotnet_self_contained = QCheckBox("Self-contained")
+        self.dotnet_single_file = QCheckBox("Single file")
+        self.dotnet_trim = QCheckBox("Trim")
+        self.dotnet_self_contained.setChecked(True)
+        option_row.addWidget(self.dotnet_self_contained)
+        option_row.addWidget(self.dotnet_single_file)
+        option_row.addWidget(self.dotnet_trim)
+        option_row.addStretch()
+        panel_layout.addLayout(option_row)
+
+        self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
+        self.dotnet_status_label.setReadOnly(True)
+        self.dotnet_status_label.setFixedSize(520, 65)
+        self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_status_frame = QFrame()
+        self.dotnet_status_frame.setObjectName("configurationFrame")
+        self.dotnet_status_frame.setStyleSheet(MAIN_FRAME_STYLE)
+        self.dotnet_configuration_frames.append(self.dotnet_status_frame)
+        self.dotnet_status_frame.setFixedSize(530, 75)
+        status_layout = QVBoxLayout(self.dotnet_status_frame)
+        status_layout.setContentsMargins(3, 3, 3, 3)
+        status_layout.setSpacing(0)
+        status_layout.addWidget(self.dotnet_status_label)
+        panel_layout.addWidget(self.dotnet_status_frame, alignment=Qt.AlignHCenter)
+        actions = QHBoxLayout()
+        self.dotnet_publish_btn = QPushButton("Publish")
+        self.dotnet_open_output_btn = QPushButton("Open Output Folder")
+        for button in (self.dotnet_publish_btn, self.dotnet_open_output_btn):
+            button.setFixedSize(180, 35)
+            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            button.setStyleSheet(button_base())
+            actions.addWidget(button)
+        actions.addStretch()
+        panel_layout.addLayout(actions)
+        left_column.addWidget(panel, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        left_column.addStretch()
+        right_column.addStretch()
+        dotnet_layout.addStretch()
+
+        self.build_mode_stack = QStackedWidget()
+        self.build_mode_stack.addWidget(self.python_mode_page)
+        self.build_mode_stack.addWidget(self.dotnet_mode_page)
+        mode_row = QWidget()
+        mode_layout = QHBoxLayout(mode_row)
+        mode_layout.setContentsMargins(0, 4, 0, 4)
+        mode_layout.addStretch()
+        self.build_mode_label = QLabel("Build mode:")
+        self.build_mode_label.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        self.build_mode_label.setFont(build_mode_button_font())
+        mode_layout.addWidget(self.build_mode_label)
+        self.python_mode_btn = QPushButton("Python EXE")
+        self.dotnet_mode_btn = QPushButton("C# .NET Publish")
+        for button in (self.python_mode_btn, self.dotnet_mode_btn):
+            button.setCheckable(True)
+            button.setFixedSize(150, 32)
+            button.setFont(build_mode_button_font())
+            button.setStyleSheet(button_base())
+            mode_layout.addWidget(button)
+        mode_layout.addStretch()
+        self.python_mode_btn.setChecked(True)
+        self.python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
+        self.dotnet_mode_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
+        self._apply_build_mode_button_state("python")
+        self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
+        self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
+        for widget in (
+            self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
+            self.dotnet_name_input,
+        ):
+            widget.textChanged.connect(self._on_dotnet_settings_changed)
+        self.dotnet_runtime_combo.currentIndexChanged.connect(self._on_dotnet_settings_changed)
+        for widget in (self.dotnet_self_contained, self.dotnet_single_file, self.dotnet_trim):
+            widget.toggled.connect(self._on_dotnet_settings_changed)
+        root_layout.addWidget(mode_row)
+        root_layout.addWidget(self.build_mode_stack)
+
+    def _apply_build_mode_button_state(self, mode):
+        """Refresh build-mode selectors for the displayed mode and build state."""
+        apply_build_mode_button_state(
+            self.python_mode_btn,
+            self.dotnet_mode_btn,
+            mode,
+            getattr(self, "building", False),
+        )
+
+    def set_build_mode(self, mode, save=True):
+        if mode not in {"python", "dotnet"} or getattr(self, "building", False):
+            return
+        self.build_mode = mode
+        self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
+        self._apply_build_mode_button_state(mode)
+        self.setFixedSize(*(APP_FIXED_SIZE if mode == "python" else (1200, 650)))
+        if mode == "python":
+            self.validation_controller.update_build_button()
+            self.validation_controller.update_ui_state()
+        else:
+            self.dotnet_publish_controller.refresh_ui()
+        if save and not getattr(self, "_loading_state", False):
+            self.state_ctrl.save_preferences()
+
+    def _on_dotnet_settings_changed(self, *_args):
+        self.dotnet_publish_controller.refresh_ui()
+        if not getattr(self, "_loading_state", False):
+            self.state_ctrl.save_csharp_state()
+
+    def _select_dotnet_project(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select C# Project", "", "C# Project Files (*.csproj)")
+        if path:
+            self.dotnet_publish_controller.select_path("project", path)
+
+    def _select_dotnet_output(self):
+        desktop = os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop"))
+        saved = getattr(self, "csharp_state_data", {}).get("last_non_desktop_output_folder", "")
+        current = self.dotnet_output_input.text()
+        start = next((p for p in (saved, current) if p and os.path.isdir(p) and os.path.normcase(os.path.normpath(p)) != os.path.normcase(desktop)), desktop)
+        path = QFileDialog.getExistingDirectory(self, "Select Publish Output Folder", start)
+        if path:
+            path = os.path.normpath(path)
+            self.dotnet_output_input.set_display_path(path)
+            if os.path.normcase(path) != os.path.normcase(desktop):
+                self.csharp_state_data.setdefault("last_non_desktop_output_folder", path)
+                self.state_ctrl.save_csharp_state()
+            from exe_builder.ui.ui_highlights import flash_add_highlight
+            flash_add_highlight(self.dotnet_output_select_btn, self.dotnet_output_input)
+
+    def _select_dotnet_icon(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select Application Icon", "", "ICON Files (*.ico)")
+        if path:
+            self.dotnet_publish_controller.select_path("icon", path)
 
     def add_env_sync_status_row(self, version, package_count, status):
         if not hasattr(self, "env_sync_rows_layout"):
@@ -1513,7 +1815,7 @@ class EXEBuilderApp(QWidget):
         self.ui_handlers.shutdown()
         self.build_controller.shutdown()
         self.environment_sync_controller.shutdown()
-        self.state_ctrl.save_state()
+        self.state_ctrl.save_all_state()
         event.accept()
 
 # -------------------------------------------------------------

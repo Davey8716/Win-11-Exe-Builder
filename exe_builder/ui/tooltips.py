@@ -1,6 +1,7 @@
 from PySide6.QtCore import QObject, QEvent, QTimer, QPoint
 from PySide6.QtWidgets import QLabel
 from PySide6.QtGui import Qt, QCursor
+from .path_hover import PathHover
 from .styles import TOOLTIP_STYLE
 
 # -------------------------------------------------------------
@@ -176,6 +177,11 @@ def attach_tooltips(app):
     # -----------------------------
     # Title / global controls
     # -----------------------------
+
+    QtTooltip(
+        app.build_options_btn,
+        "Open build options and application preferences."
+    )
 
     QtTooltip(
         app.tooltips_checkbox,
@@ -362,6 +368,11 @@ def attach_tooltips(app):
         "Clear icon (build without an icon)."
     )
 
+    QtTooltip(
+        app.dotnet_icon_reset_btn,
+        "Clear the optional .NET application icon. The next publish uses no custom icon."
+    )
+
     # -----------------------------
     # Output / EXE name
     # -----------------------------
@@ -405,4 +416,66 @@ def attach_tooltips(app):
         app.build_btn,
         "Builds your Python project into a standalone Windows EXE using PyInstaller."
     )
+
+    attach_dotnet_tooltips(app)
+
+
+def attach_dotnet_tooltips(app):
+    """Register help for controls shown by the C# .NET Publish mode."""
+
+    tooltip_text = {
+        "dotnet_project_select_btn": "Select the SDK-style C# project file (.csproj) to publish.",
+        "dotnet_recent_projects": "Choose a recently used C# project file.",
+        "dotnet_project_delete_btn": "Remove the selected project from the recent-project list.",
+        "dotnet_project_delete_all_btn": "Remove all saved C# projects from the recent-project list.",
+        "dotnet_project_reset_btn": "Clear the selected C# project.",
+        "dotnet_icon_select_btn": "Choose an optional .ico file for the published application.",
+        "dotnet_recent_icons": "Choose a recently used application icon, or select No Icon.",
+        "dotnet_icon_delete_btn": "Remove the selected icon from the recent-icon list.",
+        "dotnet_icon_delete_all_btn": "Remove all saved icons from the recent-icon list.",
+        "dotnet_icon_reset_btn": "Clear the optional application icon for the next publish.",
+        "dotnet_output_select_btn": "Choose the folder where the Release publish output will be created.",
+        "dotnet_output_reset_btn": "Reset the publish output folder to Desktop.",
+        "dotnet_name_input": "Set the published executable name. Do not include .exe.",
+        "dotnet_name_reset_btn": "Reset the executable name to match the selected C# project.",
+        "dotnet_runtime_combo": "Choose the Windows architecture for the published application.",
+        "dotnet_self_contained": (
+            "Include the .NET runtime in the publish output. This runs without a separate "
+            ".NET install but increases output size."
+        ),
+        "dotnet_single_file": (
+            "Bundle the application into a single executable where supported. Startup and "
+            "runtime extraction behavior can vary by application."
+        ),
+        "dotnet_trim": (
+            "Remove unused framework code to reduce size. Test carefully if the application "
+            "uses reflection or dynamic loading."
+        ),
+        "dotnet_status_label": "Shows C# publish readiness, progress, success, and failure messages.",
+        "dotnet_publish_btn": "Clean and publish the selected C# project in Release configuration.",
+        "dotnet_open_output_btn": "Open the current C# publish output folder in File Explorer.",
+        "dotnet_mode_btn": "Switch to the C# .NET Publish workflow.",
+    }
+
+    for name, text in tooltip_text.items():
+        QtTooltip(getattr(app, name), text)
+
+    tooltips_enabled = lambda: getattr(app, "tooltips_enabled", True)
+    app._dotnet_path_hovers = [
+        PathHover(
+            app.dotnet_project_input,
+            help_text="File path to the selected SDK-style C# project file.",
+            help_enabled_getter=tooltips_enabled,
+        ),
+        PathHover(
+            app.dotnet_icon_input,
+            help_text="File path to the optional application icon used for this publish.",
+            help_enabled_getter=tooltips_enabled,
+        ),
+        PathHover(
+            app.dotnet_output_input,
+            help_text="File path to the folder that will receive the C# publish output.",
+            help_enabled_getter=tooltips_enabled,
+        ),
+    ]
 

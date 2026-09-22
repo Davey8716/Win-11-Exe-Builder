@@ -3,7 +3,7 @@ import sys
 from ctypes import wintypes
 from pathlib import Path
 
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 from . import qt_resources_rc  # noqa: F401
 
 
@@ -48,6 +48,38 @@ def qcolor_name(color: QColor) -> str:
     return color.name(QColor.HexRgb)
 
 
+def build_mode_button_font() -> QFont:
+    """Return the typography shared by the build-mode toggle buttons."""
+    return QFont("Rubik UI", 11, QFont.Bold)
+
+
+def apply_build_mode_button_state(
+    python_button, dotnet_button, mode: str, building: bool = False
+) -> None:
+    """Apply normal mode selection or lock both selectors during a build."""
+    for button, button_mode in ((python_button, "python"), (dotnet_button, "dotnet")):
+        is_active = button_mode == mode
+        button.setChecked(is_active)
+        is_disabled = building or is_active
+        button.setEnabled(not is_disabled)
+        button.setStyleSheet(build_disabled_button() if is_disabled else button_base())
+
+
+def title_frame_minimum_width(
+    text_width: int,
+    side_control_width: int,
+    horizontal_margins: int,
+    safety_padding: int = 16,
+) -> int:
+    """Return a title-frame width that leaves room for balanced side controls."""
+    return (
+        text_width
+        + (side_control_width * 2)
+        + horizontal_margins
+        + safety_padding
+    )
+
+
 def _windows_colorref(color: QColor) -> int:
     return color.red() | (color.green() << 8) | (color.blue() << 16)
 
@@ -84,6 +116,15 @@ def apply_native_title_bar_style(
             )
     except (AttributeError, OSError, TypeError, ValueError):
         return
+
+
+def apply_build_options_title_bar_style(dialog) -> None:
+    """Apply the Global Build Options dialog's native Windows caption colours."""
+    apply_native_title_bar_style(
+        dialog,
+        caption=Colors.PANEL_BG,
+        border=Colors.PANEL_BG,
+    )
 
 
 def _resource_path(relative_path: str) -> Path:
@@ -550,6 +591,22 @@ MAIN_FRAME_STYLE = f"""
     }}
 """
 
+BUILD_DISABLED_MAIN_FRAME_STYLE = f"""
+    QFrame#configurationFrame,
+    QWidget#configurationFrame {{
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 6px;
+        background-color: {qcolor_name(Colors.BUILD_DISABLED_BG)};
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+    QLabel {{
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+    QCheckBox {{
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+"""
+
 BUILD_OPTIONS_FRAME_STYLE = f"""
     QFrame {{
         border: none;
@@ -574,6 +631,40 @@ BUILD_OPTIONS_FRAME_STYLE = f"""
         background-color: {qcolor_name(Colors.WHITE)};
         border: 2px solid {qcolor_name(Colors.BLACK)};
         image: url({CHECKBOX_CHECK_BLACK_ICON});
+    }}
+"""
+
+BUILD_OPTIONS_DIALOG_STYLE = f"""
+    QDialog {{
+        background-color: {qcolor_name(Colors.PANEL_BG)};
+    }}
+    QDialog QCheckBox {{
+        color: {qcolor_name(Colors.TEXT_LIGHT)};
+    }}
+    QDialog QCheckBox:disabled {{
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+    QDialog QCheckBox::indicator {{
+        width: 14px;
+        height: 14px;
+        background-color: {qcolor_name(Colors.WHITE)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 3px;
+    }}
+    QDialog QCheckBox::indicator:checked {{
+        background-color: {qcolor_name(Colors.WHITE)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        image: url({CHECKBOX_CHECK_BLACK_ICON});
+    }}
+    QDialogButtonBox QPushButton {{
+        background-color: {qcolor_name(Colors.TITLE_BG)};
+        color: {qcolor_name(Colors.TEXT_LIGHT)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 4px;
+        font-weight: bold;
+    }}
+    QDialogButtonBox QPushButton:hover {{
+        background-color: {qcolor_name(Colors.SURFACE_SELECTED_HOVER)};
     }}
 """
 

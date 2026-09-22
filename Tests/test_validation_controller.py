@@ -173,6 +173,7 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         script_path=script_path,
         python_interpreter_path=str(python),
         icon_path="",
+        build_options_btn=DummyButton(),
         tooltips_checkbox=DummyCheckbox(),
         open_app_data_btn=DummyButton(),
         open_output_dir_after_build=DummyCheckbox(),
@@ -269,6 +270,22 @@ def test_environment_sync_uses_disabled_build_styling(monkeypatch, tmp_path):
         assert disabled_text in label.stylesheet
 
 
+def test_python_ui_refresh_updates_build_mode_selectors(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    app.build_mode = "python"
+    refreshes = []
+    app._apply_build_mode_button_state = refreshes.append
+
+    controller = ValidationController(app)
+    app.building = True
+    controller.update_ui_state()
+    app.building = False
+    controller.update_ui_state()
+
+    assert refreshes == ["python", "python"]
+
+
 def test_environment_sync_restores_normal_styling_when_not_building(
     monkeypatch, tmp_path
 ):
@@ -312,6 +329,17 @@ def test_open_app_data_disabled_while_building(monkeypatch, tmp_path):
 
     assert app.open_app_data_btn.enabled is False
     assert app.open_app_data_btn.stylesheet == build_disabled_button()
+
+
+def test_build_options_button_is_disabled_while_building(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    app.building = True
+
+    ValidationController(app).update_ui_state()
+
+    assert app.build_options_btn.enabled is False
+    assert app.build_options_btn.stylesheet == build_disabled_button()
 
 
 def test_open_output_directory_disabled_for_desktop_output(monkeypatch, tmp_path):
