@@ -85,12 +85,20 @@ class DummyValidator:
 class DummyPathInput:
     def __init__(self):
         self.value = ""
+        self.deselected = False
+        self.cursor_position = None
 
     def set_display_path(self, value):
         self.value = value
 
     def clear(self):
         self.value = ""
+
+    def deselect(self):
+        self.deselected = True
+
+    def setCursorPosition(self, position):
+        self.cursor_position = position
 
 
 def test_mass_datetime_selection_saves_sentinel_and_keeps_restore_state():
@@ -229,10 +237,13 @@ def test_clear_icon_selects_no_icon_and_clears_runtime_state(monkeypatch):
     validator = DummyValidator()
     icon_dropdown = DummyIconDropdown()
     icon_input = DummyPathInput()
+    script_input = DummyPathInput()
+    script_input.set_display_path("main.py")
     icon_input.set_display_path("old.ico")
     app = SimpleNamespace(
-        icon_clear_btn=None,
+        icon_clear_btn=object(),
         icon_path_input=icon_input,
+        script_path_input=script_input,
         select_recent_icons=icon_dropdown,
         icon_path="old.ico",
         icon_user_cleared=False,
@@ -240,13 +251,21 @@ def test_clear_icon_selects_no_icon_and_clears_runtime_state(monkeypatch):
         validator=validator,
     )
 
-    monkeypatch.setattr(ui_handlers, "flash_delete_highlight", lambda *args, **kwargs: None)
+    highlighted = []
+    monkeypatch.setattr(
+        ui_handlers,
+        "flash_delete_highlight",
+        lambda *args, **kwargs: highlighted.append(args),
+    )
 
     UIHandlers(app).clear_icon()
 
     assert app.icon_path == ""
     assert app.icon_user_cleared is True
     assert icon_input.value == ""
+    assert highlighted == [(app.icon_clear_btn,)]
+    assert script_input.deselected is True
+    assert script_input.cursor_position == 0
     assert icon_dropdown.current_index == 1
     assert icon_dropdown.blocked is False
     assert state_ctrl.saved is True

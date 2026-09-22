@@ -110,7 +110,6 @@ class UIHandlers:
         app = self.app
         flash_delete_highlight(
             getattr(app, "icon_clear_btn", None),
-            getattr(app, "icon_path_input", None),
         )
 
         # -------------------------------
@@ -141,6 +140,13 @@ class UIHandlers:
         # -------------------------------
         app.validator.validation_status_message()
         app.validator.update_ui_state()
+
+        # Keep the read-only script path from retaining a text selection after
+        # the icon controls refresh.
+        script_path_input = getattr(app, "script_path_input", None)
+        if script_path_input is not None:
+            script_path_input.deselect()
+            script_path_input.setCursorPosition(0)
         
     def reset_output_to_desktop(self):
         app = self.app
