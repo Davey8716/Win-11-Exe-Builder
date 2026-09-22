@@ -374,8 +374,10 @@ def test_publish_completion_leaves_executable_untouched(tmp_path):
     controller.app.build_process = object()
     controller.app.last_build_seconds = 0
     controller.app.state_ctrl = SimpleNamespace(save_state=lambda: None)
+    presented_outputs = []
+    controller._publish_output_dir = str(tmp_path)
     controller.app.build_controller = SimpleNamespace(
-        _present_successful_build_outputs=lambda: None,
+        _present_successful_build_outputs=presented_outputs.append,
         _run_success_post_build_action=lambda: None,
     )
     controller._on_publish_finished(0, "")
@@ -383,6 +385,40 @@ def test_publish_completion_leaves_executable_untouched(tmp_path):
     assert executable.read_bytes() == b"apphost-with-single-file-bundle"
     assert (target / TRAY_ICON_NAME).read_bytes() == b"selected-icon"
     assert controller.app.dotnet_status_label.text == "Publish complete."
+    assert presented_outputs == [str(tmp_path)]
+
+
+def test_publish_completion_preserves_python_output_path(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    python_output = tmp_path / "python-dist"
+    python_output.mkdir()
+    desktop_output = tmp_path / "Desktop"
+    desktop_output.mkdir()
+    target = desktop_output / "Tool"
+    target.mkdir()
+
+    controller.app.output_path = str(python_output)
+    controller.app.dotnet_output_input.value = str(desktop_output)
+    controller.app.debug_log_path = str(desktop_output / "publish.log")
+    controller.app.build_start_time = 0
+    controller.app.building = True
+    controller.app.build_process = object()
+    controller.app.last_build_seconds = 0
+    controller.app.state_ctrl = SimpleNamespace(
+        save_csharp_state=lambda: None,
+        save_state=lambda: None,
+    )
+    presented_outputs = []
+    controller._publish_output_dir = str(desktop_output)
+    controller.app.build_controller = SimpleNamespace(
+        _present_successful_build_outputs=presented_outputs.append,
+        _run_success_post_build_action=lambda: None,
+    )
+
+    controller._on_publish_finished(0, "")
+
+    assert controller.app.output_path == str(python_output)
+    assert presented_outputs == [str(desktop_output)]
 
 
 @pytest.mark.parametrize("result,cancelled", [(1, False), (0, True)])

@@ -1076,8 +1076,10 @@ class BuildController(QObject):
         except Exception:
             return False
 
-    def _present_successful_build_outputs(self):
-        output_dir = os.path.normpath(getattr(self.app, "output_path", "") or "")
+    def _present_successful_build_outputs(self, output_dir=None):
+        output_dir = os.path.normpath(
+            output_dir if output_dir is not None else getattr(self.app, "output_path", "") or ""
+        )
         if not output_dir or not os.path.isdir(output_dir):
             return
 
@@ -1088,7 +1090,7 @@ class BuildController(QObject):
                 pass
             return
 
-        self._maybe_open_output_directory_on_success()
+        self._maybe_open_output_directory_on_success(output_dir)
 
     def _present_successful_mass_datetime_outputs(self):
         output_dir = os.path.normpath(getattr(self.app, "output_path", "") or "")
@@ -1111,13 +1113,15 @@ class BuildController(QObject):
         if getattr(app, "close_after_build_enabled", False):
             app.close_app()
 
-    def _maybe_open_output_directory_on_success(self):
+    def _maybe_open_output_directory_on_success(self, output_dir=None):
         app = self.app
 
         if not getattr(app, "open_output_dir_after_build_enabled", False):
             return
 
-        output_dir = os.path.normpath(getattr(app, "output_path", "") or "")
+        output_dir = os.path.normpath(
+            output_dir if output_dir is not None else getattr(app, "output_path", "") or ""
+        )
         if not output_dir or not os.path.isdir(output_dir):
             return
 

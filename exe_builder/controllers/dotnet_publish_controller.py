@@ -211,6 +211,7 @@ class DotnetPublishController(QObject):
         self._cancelled = False
         self._publish_icon_path = None
         self._publish_target = None
+        self._publish_output_dir = None
         self.publish_finished.connect(self._on_publish_finished)
 
     def values(self):
@@ -554,7 +555,7 @@ class DotnetPublishController(QObject):
         self._cancelled = False
         self._publish_icon_path = values["icon"]
         self._publish_target = target
-        self.app.output_path = values["output"]
+        self._publish_output_dir = values["output"]
         self.app.current_build_paths = []
         self.app.build_start_time = time.time()
         self.app.dotnet_status_label.setText("Publishing .NET project...")
@@ -609,7 +610,9 @@ class DotnetPublishController(QObject):
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.SUCCESS, border_width=1))
             self.app.dotnet_status_label.setText("Publish complete.")
             getattr(self.app.state_ctrl, "save_csharp_state", self.app.state_ctrl.save_state)()
-            self.app.build_controller._present_successful_build_outputs()
+            self.app.build_controller._present_successful_build_outputs(
+                self._publish_output_dir or self.values()["output"]
+            )
             self.app.build_controller._run_success_post_build_action()
         else:
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.ERROR, border_width=1))
