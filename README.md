@@ -1,6 +1,6 @@
 **Updated as of 2026-09-22 for the PySide6 QtWidgets Python and C#/.NET build workflows**
 
-# Win 11 → Python → EXE Builder
+# Win 11 → EXE Builder
 
 If this tool saved you time or simplified your workflow, consider giving the repo a ⭐.
 
