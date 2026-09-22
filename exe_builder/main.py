@@ -34,6 +34,10 @@ from exe_builder.controllers.state_controller import StateController
 from exe_builder.controllers.recent_controller import RecentController
 from exe_builder.controllers.ui_handlers import UIHandlers
 from exe_builder.controllers.json_import_controller import JsonImportController
+from exe_builder.controllers.output_folder_monitor import (
+    OUTPUT_FOLDER_MONITOR_INTERVAL_MS,
+    OutputFolderValidityMonitor,
+)
 from PySide6.QtGui import QFontMetrics
 from PySide6.QtGui import QTextCursor, QTextBlockFormat
 from exe_builder.ui.styles import (
@@ -1277,6 +1281,8 @@ class EXEBuilderApp(QWidget):
         self.validator.update_ui_state()
         self.validation_controller.update_build_button()
         self.dotnet_publish_controller.refresh_ui()
+        self.output_folder_monitor = OutputFolderValidityMonitor(self)
+        self._start_output_folder_monitor()
         self._sync_paired_section_geometry()
         self._sync_center_divider_height()
 
@@ -1550,6 +1556,21 @@ class EXEBuilderApp(QWidget):
         if not getattr(self, "_loading_state", False):
             self.state_ctrl.save_csharp_state()
 
+    def _start_output_folder_monitor(self):
+        self.output_folder_monitor_timer = QTimer(self)
+        self.output_folder_monitor_timer.setInterval(OUTPUT_FOLDER_MONITOR_INTERVAL_MS)
+        self.output_folder_monitor_timer.timeout.connect(self._refresh_output_folder_validity)
+        self.output_folder_monitor_timer.start()
+
+    def _refresh_output_folder_validity(self):
+        """Refresh output controls only when either output folder changes state."""
+        self.output_folder_monitor.refresh_if_changed()
+
+    def _stop_output_folder_monitor(self):
+        timer = getattr(self, "output_folder_monitor_timer", None)
+        if timer is not None:
+            timer.stop()
+
     def _select_dotnet_project(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select C# Project", "", "C# Project Files (*.csproj)")
         if path:
@@ -1812,6 +1833,7 @@ class EXEBuilderApp(QWidget):
             return
 
         self._is_closing = True
+        self._stop_output_folder_monitor()
         self.ui_handlers.shutdown()
         self.build_controller.shutdown()
         self.environment_sync_controller.shutdown()
