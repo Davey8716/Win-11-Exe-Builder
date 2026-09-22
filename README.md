@@ -1,6 +1,6 @@
-**Updated as of 2026-05-20 to use PySide6 QtWidgets**
+**Updated as of 2026-09-22 for the PySide6 QtWidgets Python and C#/.NET build workflows**
 
-# Win 11 → Python → EXE Builder
+# Win 11 → EXE Builder
 
 If this tool saved you time or simplified your workflow, consider giving the repo a ⭐.
 
@@ -10,27 +10,27 @@ There is also a sponsor option available if you would like to support continued 
 
 ## Overview
 
-Win 11 → Python → EXE Builder is a Windows GUI tool for converting Python scripts and projects into standalone executable folders using PyInstaller.
+Win 11 → Python → EXE Builder is a Windows GUI tool with two independent build modes:
 
-It handles interpreter selection, input validation, output naming, and build execution through a controlled PySide6 workflow. The builder runs PyInstaller through the Python interpreter you select, using `python -m PyInstaller`.
+* **Python EXE Builder** converts Python scripts and projects into standalone executable folders with PyInstaller.
+* **C# .NET Publish** publishes SDK-style C# projects with the installed .NET SDK.
+
+Both modes provide controlled PySide6 workflows for selection, validation, output naming, live build output, cancellation, and opening the published output. Python builds run PyInstaller through the interpreter you select, using `python -m PyInstaller`.
 
 ---
 
 ## Core Features
 
-* Select and validate Python interpreters
-* Keep recent interpreter, Python file, and icon selections
-* Select a single Python file or choose an entry script from a project folder
-* Choose an output folder and EXE name with reset helpers
-* Validate build readiness before enabling the build action
-* Build with PyInstaller through the selected interpreter
-* Cancel an active build and clean up known generated output
-* Optional `.ico` selection, recent icons, and a built-in `No Icon` choice
-* Direct links to Python.org and ICO conversion sites
-* Optional output-folder opening after successful builds
-* Optional minimize-after-build, close-after-build, suppress-exit-dialogue, and tooltip toggles
+* Switch between independent Python and C#/.NET build modes; each retains its own recent selections and build inputs
+* Select and validate Python interpreters, scripts or project entry scripts, `.ico` files, output folders, and executable names
+* Select SDK-style C# `.csproj` files, optional `.ico` files, output folders, executable names, target runtimes, and publish options
+* Validate readiness before enabling a build or publish action
+* Run PyInstaller through the selected Python interpreter or publish C# projects in Release configuration through `dotnet`
+* Stream build output to debug logs while a build is running
+* Cancel an active build or publish
+* Offer a built-in `No Icon` choice, recent file lists, reset helpers, and an explicit output-folder action
+* Provide global build options for opening the output directory, minimizing or closing after a build, exit confirmation, and tooltips
 * Environment Sync for scanning and matching package sets across local Python installs
-* C#/.NET Release publishing for SDK-style `.csproj` projects
 
 ---
 
@@ -38,8 +38,9 @@ It handles interpreter selection, input validation, output naming, and build exe
 
 Choose **C# .NET Publish** from the build-mode toggle to publish an SDK-style
 `.csproj` using the installed .NET SDK. The builder publishes `Release` output
-to `<output folder>\<executable name>` and supports `win-x64` and `win-arm64`,
-self-contained, single-file, and trim options.
+to `<output folder>\<executable name>`. It supports `win-x64` and `win-arm64`
+targets, with self-contained publishing enabled by default and optional
+single-file and trim publishing.
 
 The executable name and optional `.ico` are passed as publish-time MSBuild
 properties; the selected project file is never changed. With **No Icon**, the
@@ -144,11 +145,12 @@ If two builds produce the same final name in the same output folder, the later b
   * `PySide6`
   * `psutil`
   * `send2trash`
-* PyInstaller installed in the selected build interpreter
+* PyInstaller installed in each Python interpreter used for Python builds
+* An installed .NET SDK for C#/.NET Publish mode
 
-The selected build interpreter is the interpreter used for `python -m PyInstaller`. If PyInstaller is missing from that interpreter, the build will not start and the app will show an install prompt.
+The selected Python build interpreter is the interpreter used for `python -m PyInstaller`. If PyInstaller is missing from that interpreter, the build will not start and the app will show an install prompt. C#/.NET Publish requires an SDK-style `.csproj` and a `dotnet` SDK available on the system path.
 
-Test coverage is intended to be run from a compatible Python 3.11+ environment with PySide6 installed. On this machine, the default `python` currently resolves to Python 3.9, and `pytest -q` fails during PySide6/Shiboken import, so that default interpreter is not a valid local test environment for this app.
+Test coverage is intended to be run from a compatible Python 3.11+ environment with PySide6 installed.
 
 ### Project-specific PyInstaller dependencies
 
@@ -195,17 +197,28 @@ It assumes a working Python environment and focuses on providing a safer, more p
 ## Distribution
 
 * This repository contains source code only
-* Users must run locally or build their own executable. Users can build the  python builder from its own source code.
+* Users must run locally or build their own executable from the source code.
 
 ---
 
 ## Local State and Portability
 
-Settings and recent selections are stored locally on the user's machine at:
+Settings and recent selections are stored locally on the user's machine in:
 
 ```text
-%LOCALAPPDATA%\EXEBuilder\exe_builder_state.json
+%LOCALAPPDATA%\EXEBuilder\
 ```
+
+The app stores the two workflows and global preferences separately:
+
+```text
+python_exe_builder_state.json
+csharp_exe_builder_state.json
+exe_builder_preferences.json
+```
+
+On first run after upgrading, a legacy `exe_builder_state.json` file is split
+into these files when no newer state files already exist.
 
 No app state is embedded inside generated executables, and no data is uploaded or transmitted.
 
@@ -222,7 +235,7 @@ For PyInstaller onedir output, the generated EXE and its `_internal` folder must
    python -m pip install PySide6 psutil send2trash
    ```
 
-3. Install PyInstaller into any interpreter you want to use for building:
+3. Install PyInstaller into every Python interpreter you want to use for Python builds:
 
    ```text
    python -m pip install pyinstaller
@@ -239,11 +252,15 @@ For PyInstaller onedir output, the generated EXE and its `_internal` folder must
 7. Select the entry script, optional icon, output folder, and EXE name.
 8. Start the build.
 
+For C#/.NET publishing, install a .NET SDK, start the app, choose **C# .NET
+Publish**, then select an SDK-style `.csproj`, output folder, executable name,
+target runtime, and publish options before selecting **Publish**.
+
 ---
 
 ## Build Output
 
-PyInstaller creates output under the selected output folder:
+For Python mode, PyInstaller creates output under the selected output folder:
 
 * `build`
 * `spec`
@@ -251,25 +268,41 @@ PyInstaller creates output under the selected output folder:
 
 The final onedir app folder contains the generated executable and its supporting files.
 
+For C#/.NET Publish mode, the builder writes Release publish output to:
+
+```text
+<output folder>\<executable name>
+```
+
+This folder contains the published executable and any files required by the
+selected publish options. Use the mode's **Open Output Folder** button to open
+this published application folder.
+
 ---
 
 ## Debug Log Path
 
 The application writes debug logs directly into the selected output folder during builds.
 
-PyInstaller output is written live, so the log can be opened while a build is
-running to see its latest stage. Startup failures are also recorded. The compiled
-builder clears its bundled DLL search paths when launching the selected Python
-interpreter, then restores them for its own use.
+PyInstaller and `dotnet` output are written live, so the log can be opened
+while a build is running to see its latest stage. Startup failures are also
+recorded. The compiled builder clears its bundled DLL search paths when
+launching the selected Python interpreter, then restores them for its own use.
 
 For builds with a selected icon, the builder writes its embedded tray-icon runtime
 hook to a temporary Python file. This also works from the packaged builder without
 requiring loose Python source files in its `_internal` folder.
 
-Debug logs use timestamped names similar to:
+Python debug logs use timestamped names similar to:
 
 ```text
 EXE_BUILDER_DEBUG_<name>_<date_time>.log
+```
+
+C#/.NET publish logs use the selected output folder and a name similar to:
+
+```text
+DOTNET_PUBLISH_DEBUG_<name>.log
 ```
 
 The log is created alongside the generated build output as a sibling of:
