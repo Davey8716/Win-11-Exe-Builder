@@ -105,6 +105,20 @@ def test_sdk_style_project_detection(tmp_path):
     assert not is_sdk_style_project(legacy)
 
 
+def test_dotnet_ui_refresh_updates_build_mode_selectors(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    controller.app.build_mode = "dotnet"
+    refreshes = []
+    controller.app._apply_build_mode_button_state = refreshes.append
+
+    controller.app.building = True
+    controller.refresh_ui()
+    controller.app.building = False
+    controller.refresh_ui()
+
+    assert refreshes == ["dotnet", "dotnet"]
+
+
 def test_publish_command_contains_selected_options(tmp_path):
     command = build_dotnet_publish_command(
         str(tmp_path / "Tool.csproj"), str(tmp_path / "dist"), "MyTool",

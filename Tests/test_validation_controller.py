@@ -270,6 +270,22 @@ def test_environment_sync_uses_disabled_build_styling(monkeypatch, tmp_path):
         assert disabled_text in label.stylesheet
 
 
+def test_python_ui_refresh_updates_build_mode_selectors(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    app.build_mode = "python"
+    refreshes = []
+    app._apply_build_mode_button_state = refreshes.append
+
+    controller = ValidationController(app)
+    app.building = True
+    controller.update_ui_state()
+    app.building = False
+    controller.update_ui_state()
+
+    assert refreshes == ["python", "python"]
+
+
 def test_environment_sync_restores_normal_styling_when_not_building(
     monkeypatch, tmp_path
 ):

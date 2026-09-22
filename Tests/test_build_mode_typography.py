@@ -1,3 +1,4 @@
+import pytest
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from exe_builder.ui.styles import (
@@ -57,6 +58,23 @@ def test_active_build_mode_button_is_greyed_and_inactive_button_is_enabled():
     assert dotnet_button.isChecked()
     assert not dotnet_button.isEnabled()
     assert dotnet_button.styleSheet() == build_disabled_button()
+
+
+@pytest.mark.parametrize("mode", ("python", "dotnet"))
+def test_both_build_mode_buttons_are_greyed_while_building(mode):
+    QApplication.instance() or QApplication([])
+    python_button = QPushButton("Python EXE")
+    dotnet_button = QPushButton("C# .NET Publish")
+    python_button.setCheckable(True)
+    dotnet_button.setCheckable(True)
+
+    apply_build_mode_button_state(python_button, dotnet_button, mode, building=True)
+
+    assert python_button.isChecked() is (mode == "python")
+    assert dotnet_button.isChecked() is (mode == "dotnet")
+    for button in (python_button, dotnet_button):
+        assert not button.isEnabled()
+        assert button.styleSheet() == build_disabled_button()
 
 
 def test_title_frame_width_reserves_text_margins_and_balanced_controls():

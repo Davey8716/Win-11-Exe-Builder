@@ -53,13 +53,16 @@ def build_mode_button_font() -> QFont:
     return QFont("Rubik UI", 11, QFont.Bold)
 
 
-def apply_build_mode_button_state(python_button, dotnet_button, mode: str) -> None:
-    """Grey and lock the build mode currently displayed in the mode stack."""
+def apply_build_mode_button_state(
+    python_button, dotnet_button, mode: str, building: bool = False
+) -> None:
+    """Apply normal mode selection or lock both selectors during a build."""
     for button, button_mode in ((python_button, "python"), (dotnet_button, "dotnet")):
         is_active = button_mode == mode
         button.setChecked(is_active)
-        button.setEnabled(not is_active)
-        button.setStyleSheet(build_disabled_button() if is_active else button_base())
+        is_disabled = building or is_active
+        button.setEnabled(not is_disabled)
+        button.setStyleSheet(build_disabled_button() if is_disabled else button_base())
 
 
 def title_frame_minimum_width(

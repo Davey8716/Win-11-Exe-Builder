@@ -177,6 +177,9 @@ class ValidationController:
         app = self.app
         building = getattr(app, "building", False)
 
+        if hasattr(app, "_apply_build_mode_button_state"):
+            app._apply_build_mode_button_state(getattr(app, "build_mode", "python"))
+
         # -------------------------------
         # INPUT STATES
         # -------------------------------

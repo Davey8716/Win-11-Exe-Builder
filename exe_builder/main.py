@@ -1516,11 +1516,12 @@ class EXEBuilderApp(QWidget):
         root_layout.addWidget(self.build_mode_stack)
 
     def _apply_build_mode_button_state(self, mode):
-        """Grey and lock the mode currently displayed in the build-mode stack."""
+        """Refresh build-mode selectors for the displayed mode and build state."""
         apply_build_mode_button_state(
             self.python_mode_btn,
             self.dotnet_mode_btn,
             mode,
+            getattr(self, "building", False),
         )
 
     def set_build_mode(self, mode, save=True):
