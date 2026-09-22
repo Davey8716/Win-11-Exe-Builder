@@ -27,6 +27,9 @@ class DummyInput:
     def setStyleSheet(self, value):
         self.stylesheet = value
 
+    def setEnabled(self, value):
+        self.enabled = value
+
     def clear(self):
         self.value = ""
 
@@ -38,6 +41,12 @@ class DummyCheck:
     def isChecked(self):
         return self.checked
 
+    def setEnabled(self, value):
+        self.enabled = value
+
+    def setStyleSheet(self, value):
+        self.stylesheet = value
+
 
 class DummyRuntime:
     def __init__(self, value="win-x64"):
@@ -45,6 +54,9 @@ class DummyRuntime:
 
     def currentData(self):
         return self.value
+
+    def setEnabled(self, value):
+        self.enabled = value
 
 
 class DummyButton:
@@ -68,6 +80,11 @@ class DummyStatus:
     def setText(self, value):
         self.text = value
 
+    def setStyleSheet(self, value):
+        self.stylesheet = value
+
+
+class DummyFrame:
     def setStyleSheet(self, value):
         self.stylesheet = value
 
@@ -473,6 +490,75 @@ def test_refresh_styles_dotnet_utility_buttons_like_python_buttons(tmp_path):
     controller.refresh_ui()
 
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_project_delete_btn.stylesheet
+
+
+def test_publish_lock_greys_full_csharp_configuration_page(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    app = controller.app
+    for name in (
+        "dotnet_project_select_btn", "dotnet_output_select_btn",
+        "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
+        "dotnet_project_reset_btn", "dotnet_icon_delete_btn",
+        "dotnet_icon_delete_all_btn", "dotnet_output_reset_btn",
+        "dotnet_name_reset_btn", "dotnet_recent_projects", "dotnet_recent_icons",
+    ):
+        setattr(app, name, DummyButton())
+    app.dotnet_section_title_frames = [DummyFrame(), DummyFrame(), DummyFrame()]
+    app.dotnet_configuration_frames = [DummyFrame(), DummyFrame(), DummyFrame()]
+    app.dotnet_mode_title = DummyFrame()
+
+    app.building = True
+    controller.refresh_ui()
+
+    for control in (
+        app.dotnet_project_input, app.dotnet_output_input, app.dotnet_icon_input,
+        app.dotnet_name_input, app.dotnet_runtime_combo, app.dotnet_self_contained,
+        app.dotnet_single_file, app.dotnet_trim, app.dotnet_project_select_btn,
+        app.dotnet_icon_select_btn, app.dotnet_output_select_btn,
+        app.dotnet_recent_projects, app.dotnet_recent_icons,
+        app.dotnet_open_output_btn,
+    ):
+        assert control.enabled is False
+    for field in (
+        app.dotnet_project_input, app.dotnet_output_input, app.dotnet_icon_input,
+        app.dotnet_name_input,
+    ):
+        assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in field.stylesheet
+    for checkbox in (
+        app.dotnet_self_contained, app.dotnet_single_file, app.dotnet_trim,
+    ):
+        assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in checkbox.stylesheet
+    for button in (
+        app.dotnet_project_select_btn, app.dotnet_icon_select_btn,
+        app.dotnet_output_select_btn, app.dotnet_open_output_btn,
+    ):
+        assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
+    assert app.dotnet_publish_btn.enabled is True
+    assert app.dotnet_publish_btn.text == "Cancel Publish"
+    assert qcolor_name(Colors.CANCEL) in app.dotnet_publish_btn.stylesheet
+    for frame in app.dotnet_section_title_frames:
+        assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in frame.stylesheet
+    for frame in app.dotnet_configuration_frames:
+        assert qcolor_name(Colors.BUILD_DISABLED_BG) in frame.stylesheet
+    assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in app.dotnet_mode_title.stylesheet
+
+    app.building = False
+    controller.refresh_ui()
+
+    for control in (
+        app.dotnet_project_input, app.dotnet_output_input, app.dotnet_icon_input,
+        app.dotnet_name_input, app.dotnet_runtime_combo, app.dotnet_self_contained,
+        app.dotnet_single_file, app.dotnet_trim, app.dotnet_project_select_btn,
+        app.dotnet_icon_select_btn, app.dotnet_output_select_btn,
+        app.dotnet_recent_projects, app.dotnet_recent_icons,
+    ):
+        assert control.enabled is True
+    assert app.dotnet_publish_btn.text == "Publish"
+    assert qcolor_name(Colors.TITLE_BG) in app.dotnet_publish_btn.stylesheet
+    for frame in app.dotnet_section_title_frames:
+        assert qcolor_name(Colors.TEXT_LIGHT) in frame.stylesheet
+    for frame in app.dotnet_configuration_frames:
+        assert qcolor_name(Colors.PANEL_BG) in frame.stylesheet
 
 
 def test_output_refresh_matches_python_desktop_state(tmp_path, monkeypatch):

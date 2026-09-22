@@ -1308,6 +1308,8 @@ class EXEBuilderApp(QWidget):
         self.dotnet_mode_title.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
         )
+        self.dotnet_section_title_frames = []
+        self.dotnet_configuration_frames = []
         dotnet_layout.addWidget(self.dotnet_mode_title)
 
         columns = QHBoxLayout()
@@ -1323,6 +1325,7 @@ class EXEBuilderApp(QWidget):
         def section(title, column):
             heading = QFrame()
             heading.setStyleSheet(TITLE_FRAME_STYLE)
+            self.dotnet_section_title_frames.append(heading)
             heading_layout = QHBoxLayout(heading)
             heading_layout.setContentsMargins(3, 3, 3, 3)
             label = QLabel(title)
@@ -1334,6 +1337,7 @@ class EXEBuilderApp(QWidget):
             frame = QFrame()
             frame.setObjectName("configurationFrame")
             frame.setStyleSheet(MAIN_FRAME_STYLE)
+            self.dotnet_configuration_frames.append(frame)
             frame.setFixedWidth(PAIRED_FRAME_WIDTH)
             layout = QVBoxLayout(frame)
             layout.setContentsMargins(3, 3, 3, 3)
@@ -1427,6 +1431,7 @@ class EXEBuilderApp(QWidget):
         panel = QFrame()
         panel.setObjectName("configurationFrame")
         panel.setStyleSheet(MAIN_FRAME_STYLE)
+        self.dotnet_configuration_frames.append(panel)
         panel_layout = QVBoxLayout(panel)
         panel_layout.setContentsMargins(12, 12, 12, 12)
         panel_layout.setSpacing(7)
@@ -1455,6 +1460,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_status_frame = QFrame()
         self.dotnet_status_frame.setObjectName("configurationFrame")
         self.dotnet_status_frame.setStyleSheet(MAIN_FRAME_STYLE)
+        self.dotnet_configuration_frames.append(self.dotnet_status_frame)
         self.dotnet_status_frame.setFixedSize(530, 75)
         status_layout = QVBoxLayout(self.dotnet_status_frame)
         status_layout.setContentsMargins(3, 3, 3, 3)

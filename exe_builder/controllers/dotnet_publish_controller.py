@@ -14,13 +14,21 @@ from PySide6.QtCore import QObject, QSize, QThread, Signal
 from PySide6.QtGui import QIcon
 
 from ..ui.styles import (
+    BUILD_DISABLED_MAIN_FRAME_STYLE,
+    BUILD_DISABLED_TITLE_FRAME_STYLE,
     Colors,
+    MAIN_FRAME_STYLE,
     REFRESH_BUTTON_ICON,
     REFRESH_BUTTON_ICON_SIZE,
     REFRESH_BUTTON_TEXT,
+    TITLE_FRAME_STYLE,
+    build_disabled_checkbox,
     build_disabled_button,
     build_disabled_line_edit_style,
+    button_base,
+    filled_button,
     line_edit_style,
+    qcolor_name,
     status_text_style,
     utility_icon_button_disabled_style,
     utility_icon_button_style,
@@ -427,7 +435,23 @@ class DotnetPublishController(QObject):
         error = self.validation_error()
         self.app.dotnet_publish_btn.setEnabled(building or not error)
         self.app.dotnet_publish_btn.setText("Cancel Publish" if building else "Publish")
-        self.app.dotnet_open_output_btn.setEnabled(bool(self.output_path() and os.path.isdir(self.output_path()) and not building))
+        self.app.dotnet_publish_btn.setStyleSheet(
+            filled_button(Colors.CANCEL) if building else button_base()
+        )
+        self.app.dotnet_open_output_btn.setEnabled(
+            bool(self.output_path() and os.path.isdir(self.output_path()) and not building)
+        )
+        self.app.dotnet_open_output_btn.setStyleSheet(
+            build_disabled_button() if building else button_base()
+        )
+        for field in (
+            self.app.dotnet_project_input,
+            self.app.dotnet_output_input,
+            self.app.dotnet_icon_input,
+            self.app.dotnet_name_input,
+        ):
+            if hasattr(field, "setEnabled"):
+                field.setEnabled(not building)
         if hasattr(self.app, "dotnet_icon_select_btn"):
             self.app.dotnet_icon_select_btn.setEnabled(not building)
         if hasattr(self.app, "dotnet_icon_reset_btn"):
@@ -441,6 +465,27 @@ class DotnetPublishController(QObject):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setEnabled"):
                 widget.setEnabled(not building)
+        for name in (
+            "dotnet_project_select_btn", "dotnet_icon_select_btn",
+            "dotnet_output_select_btn",
+        ):
+            widget = getattr(self.app, name, None)
+            if widget is not None and hasattr(widget, "setStyleSheet"):
+                widget.setStyleSheet(
+                    build_disabled_button() if building else button_base()
+                )
+        runtime = getattr(self.app, "dotnet_runtime_combo", None)
+        if runtime is not None and hasattr(runtime, "setEnabled"):
+            runtime.setEnabled(not building)
+        for name in (
+            "dotnet_self_contained", "dotnet_single_file", "dotnet_trim",
+        ):
+            checkbox = getattr(self.app, name, None)
+            if checkbox is not None:
+                if hasattr(checkbox, "setEnabled"):
+                    checkbox.setEnabled(not building)
+                if hasattr(checkbox, "setStyleSheet"):
+                    checkbox.setStyleSheet(build_disabled_checkbox() if building else "")
         output_reset = getattr(self.app, "dotnet_output_reset_btn", None)
         if output_reset is not None:
             output_reset.setEnabled(not building and not output_is_desktop)
@@ -468,6 +513,19 @@ class DotnetPublishController(QObject):
         self.app.dotnet_status_label.setStyleSheet(
             status_text_style(Colors.SUCCESS if building or not error else Colors.ERROR)
         )
+        for frame in getattr(self.app, "dotnet_section_title_frames", []):
+            frame.setStyleSheet(
+                BUILD_DISABLED_TITLE_FRAME_STYLE if building else TITLE_FRAME_STYLE
+            )
+        for frame in getattr(self.app, "dotnet_configuration_frames", []):
+            frame.setStyleSheet(
+                BUILD_DISABLED_MAIN_FRAME_STYLE if building else MAIN_FRAME_STYLE
+            )
+        title = getattr(self.app, "dotnet_mode_title", None)
+        if title is not None and hasattr(title, "setStyleSheet"):
+            title.setStyleSheet(
+                f"QLabel {{ color: {qcolor_name(Colors.BUILD_DISABLED_TEXT if building else Colors.TEXT_LIGHT)}; }}"
+            )
         if not building:
             self.app.dotnet_status_label.setText("Ready to publish" if not error else error)
 
@@ -561,3 +619,6 @@ class DotnetPublishController(QObject):
         target = self.output_path()
         if target and os.path.isdir(target):
             os.startfile(target)
+    button_base,
+    filled_button,
+    qcolor_name,

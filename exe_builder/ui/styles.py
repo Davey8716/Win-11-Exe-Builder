@@ -591,6 +591,22 @@ MAIN_FRAME_STYLE = f"""
     }}
 """
 
+BUILD_DISABLED_MAIN_FRAME_STYLE = f"""
+    QFrame#configurationFrame,
+    QWidget#configurationFrame {{
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 6px;
+        background-color: {qcolor_name(Colors.BUILD_DISABLED_BG)};
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+    QLabel {{
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+    QCheckBox {{
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+"""
+
 BUILD_OPTIONS_FRAME_STYLE = f"""
     QFrame {{
         border: none;
