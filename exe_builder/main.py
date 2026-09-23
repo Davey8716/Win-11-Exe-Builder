@@ -959,13 +959,14 @@ class EXEBuilderApp(QWidget):
         build_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         build_layout = QVBoxLayout(build_frame)
-        build_layout.setContentsMargins(5,5,5,5)
+        build_layout.setContentsMargins(5,5,5,10)
         build_layout.setSpacing(4)
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
         self.status_label.setFixedSize(200,100)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.status_label.setAlignment(Qt.AlignCenter)
 
         # 🔑 center text
         cursor = self.status_label.textCursor()
@@ -984,7 +985,8 @@ class EXEBuilderApp(QWidget):
         self.build_btn.setFixedSize(150, 35)
         self.build_btn.clicked.connect(self.build_controller.build_exe)
 
-        build_layout.addWidget(self.status_label)
+        build_layout.addWidget(self.status_label, alignment=Qt.AlignHCenter)
+        build_layout.addStretch()
         build_layout.addWidget(self.build_btn, alignment=Qt.AlignCenter)
 
         output_frame_width = max(
@@ -993,6 +995,7 @@ class EXEBuilderApp(QWidget):
         )
         self.output_frame.setFixedSize(output_frame_width, 170)
         self.interpreter_frame.setFixedSize(output_frame_width, self.output_frame.height())
+        build_frame.setFixedSize(270, 170)
         self.env_sync_frame.setFixedWidth(output_frame_width)
 
         for frame in [
