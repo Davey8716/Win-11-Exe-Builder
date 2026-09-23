@@ -18,4 +18,4 @@ def test_python_build_frame_edges_match_the_action_button_gap():
     assert "build_actions.setSpacing(build_action_gap)" in MAIN_SOURCE
     assert "build_actions.minimumSize().width()" in MAIN_SOURCE
     assert "+ (2 * build_action_edge_padding)" in MAIN_SOURCE
-    assert "build_frame.setFixedSize(build_frame_width, 170)" in MAIN_SOURCE
+    assert "build_frame.setFixedSize(build_frame_width, BUILD_FRAME_HEIGHT)" in MAIN_SOURCE

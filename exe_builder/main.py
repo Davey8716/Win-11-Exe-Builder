@@ -83,6 +83,7 @@ CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
+BUILD_FRAME_HEIGHT = 170
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
     None,
@@ -1018,7 +1019,7 @@ class EXEBuilderApp(QWidget):
             + (2 * build_action_edge_padding)
             + (2 * build_frame.frameWidth())
         )
-        build_frame.setFixedSize(build_frame_width, 170)
+        build_frame.setFixedSize(build_frame_width, BUILD_FRAME_HEIGHT)
         self.env_sync_frame.setFixedWidth(output_frame_width)
 
         for frame in [
@@ -1336,8 +1337,11 @@ class EXEBuilderApp(QWidget):
 
         self.dotnet_mode_page = QWidget()
         dotnet_layout = QVBoxLayout(self.dotnet_mode_page)
-        dotnet_layout.setContentsMargins(0, 12, 0, 12)
-        dotnet_layout.setSpacing(8)
+        # The two build-mode pages share a single vertical rhythm.  The
+        # Python page has no outer inset or inter-row gap, so keep the C#
+        # title, divider, build heading, and build panel on those same lines.
+        dotnet_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_layout.setSpacing(0)
         self.dotnet_mode_title = QLabel("C# .NET → EXE Publish")
         self.dotnet_mode_title.setFont(QFont("Rubik UI", 18, QFont.Bold))
         self.dotnet_mode_title.setFixedHeight(34)
@@ -1609,6 +1613,7 @@ class EXEBuilderApp(QWidget):
             + panel_margins.right(),
         )
         panel.setFixedWidth(dotnet_publish_panel_width)
+        panel.setFixedHeight(BUILD_FRAME_HEIGHT)
 
         self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
         self.dotnet_status_label.setReadOnly(True)
@@ -1631,7 +1636,6 @@ class EXEBuilderApp(QWidget):
         )
         left_column.addStretch()
         right_column.addStretch()
-        dotnet_layout.addStretch()
         self._sync_dotnet_center_divider_height()
 
         self.build_mode_stack = QStackedWidget()
@@ -1933,10 +1937,20 @@ class EXEBuilderApp(QWidget):
         ):
             return
 
-        content_height = max(
+        dotnet_content_height = max(
             self.dotnet_left_content.sizeHint().height(),
             self.dotnet_right_content.sizeHint().height(),
         )
+        # Reserve the Python page's selection-grid height as well.  C# has
+        # fewer controls, but this keeps the bottom of its divider and the
+        # Build Section in the same vertical positions after switching modes.
+        python_content_height = 0
+        if all(hasattr(self, attr) for attr in ("left_content", "right_content")):
+            python_content_height = max(
+                self.left_content.sizeHint().height(),
+                self.right_content.sizeHint().height(),
+            )
+        content_height = max(dotnet_content_height, python_content_height)
         if content_height <= 0:
             return
 
