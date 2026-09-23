@@ -435,6 +435,9 @@ class ValidationController:
                 and bool(sync_plan and sync_plan.total_actions > 0),
             )
 
+        if hasattr(app, "env_sync_help_btn"):
+            app.env_sync_help_btn.setEnabled(not building)
+
         set_btn(app.open_python_site_btn, not building)
         set_btn(app.interpreter_btn, not building)
         set_btn(app.interpreter_refresh_btn, not building and python_ok)
@@ -586,6 +589,7 @@ class ValidationController:
         for btn in [
             getattr(app, "env_sync_scan_btn", None),
             getattr(app, "env_sync_match_btn", None),
+            getattr(app, "env_sync_help_btn", None),
         ]:
             if btn:
                 btn.setStyleSheet(

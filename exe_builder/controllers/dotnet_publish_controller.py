@@ -648,7 +648,7 @@ class DotnetPublishController(QObject):
                 f"QLabel {{ color: {qcolor_name(Colors.BUILD_DISABLED_TEXT if building else Colors.TEXT_LIGHT)}; }}"
             )
         if not building:
-            self.app.dotnet_status_label.setText("Ready to publish" if not error else error)
+            self.app.dotnet_status_label.setText("Ready to publish." if not error else error)
 
     def publish(self):
         if getattr(self.app, "building", False):

@@ -197,6 +197,7 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         close_after_build=DummyCheckbox(),
         env_sync_scan_btn=DummyButton(),
         env_sync_match_btn=DummyButton(),
+        env_sync_help_btn=DummyButton(),
         env_sync_log_input=DummyInput("Environment sync ready."),
         env_sync_status_labels=[DummyLabel(), DummyLabel(), DummyLabel()],
         env_sync_row_labels=[DummyLabel(), DummyLabel(), DummyLabel()],
@@ -381,8 +382,10 @@ def test_environment_sync_uses_disabled_build_styling(monkeypatch, tmp_path):
 
     assert app.env_sync_scan_btn.enabled is False
     assert app.env_sync_match_btn.enabled is False
+    assert app.env_sync_help_btn.enabled is False
     assert app.env_sync_scan_btn.stylesheet == build_disabled_button()
     assert app.env_sync_match_btn.stylesheet == build_disabled_button()
+    assert app.env_sync_help_btn.stylesheet == build_disabled_button()
     assert app.env_sync_log_input.stylesheet == env_sync_disabled_status_line_style()
 
     disabled_text = qcolor_name(Colors.BUILD_DISABLED_TEXT)
@@ -420,8 +423,10 @@ def test_environment_sync_restores_normal_styling_when_not_building(
 
     assert app.env_sync_scan_btn.enabled is True
     assert app.env_sync_match_btn.enabled is True
+    assert app.env_sync_help_btn.enabled is True
     assert app.env_sync_scan_btn.stylesheet == ENV_SYNC_BUTTON_STYLE
     assert app.env_sync_match_btn.stylesheet == ENV_SYNC_BUTTON_STYLE
+    assert app.env_sync_help_btn.stylesheet == ENV_SYNC_BUTTON_STYLE
     assert app.env_sync_log_input.stylesheet == ENV_SYNC_STATUS_LINE_STYLE
 
     normal_text = qcolor_name(Colors.TEXT_LIGHT)

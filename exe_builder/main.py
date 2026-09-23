@@ -386,24 +386,24 @@ class EXEBuilderApp(QWidget):
 
         self.env_sync_scan_btn = QPushButton("Scan Profiles")
         self.env_sync_match_btn = QPushButton("Sync Dependencies")
+        self.env_sync_help_btn = QPushButton("?")
         self.env_sync_scan_btn.setFixedSize(145,35)
         self.env_sync_match_btn.setFixedSize(175,35)
+        self.env_sync_help_btn.setFixedSize(35,35)
         self.env_sync_match_btn.setEnabled(False)
         self.env_sync_scan_btn.setStyleSheet(ENV_SYNC_BUTTON_STYLE)
         self.env_sync_match_btn.setStyleSheet(ENV_SYNC_BUTTON_STYLE)
+        self.env_sync_help_btn.setStyleSheet(ENV_SYNC_BUTTON_STYLE)
 
         env_sync_action_layout.addWidget(self.env_sync_scan_btn)
         env_sync_action_layout.addWidget(self.env_sync_match_btn)
+        env_sync_action_layout.addWidget(self.env_sync_help_btn)
         env_sync_action_layout.addStretch()
 
         self.env_sync_warning_label = QLabel(
-            "Warning: builds can fail when the selected Python environment is "
-            "missing dependencies. Scan profiles and sync missing or mismatched "
-            "packages when needed. Some environments still may not sync if required "
-            "packages are not compatible with that Python version or build."
+            "Warning: sync may fail if packages are incompatible."
         )
         self.env_sync_warning_label.setFixedWidth(485)
-        self.env_sync_warning_label.setWordWrap(True)
         self.env_sync_warning_label.setFont(QFont("Rubik UI", 10, QFont.Bold))
         self.env_sync_warning_label.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.WARNING)}; }}"
@@ -1266,6 +1266,7 @@ class EXEBuilderApp(QWidget):
         self.json_import_controller.attach()
         self.env_sync_scan_btn.clicked.connect(self.ui_handlers.on_env_sync_scan)
         self.env_sync_match_btn.clicked.connect(self.ui_handlers.on_env_sync_match)
+        self.env_sync_help_btn.clicked.connect(self._show_environment_sync_help)
         self.interpreter_btn.clicked.connect(self.file_pickers.select_python_interpreter)
         self.python_delete_interpreter.clicked.connect(self.recent_controller.interpreter_delete)
         self.select_interpreter.currentIndexChanged.connect(self.recent_controller.on_recent_interpreter_selected)
@@ -1977,6 +1978,36 @@ class EXEBuilderApp(QWidget):
     def close_app(self):
         self._is_closing = True
         self.close()
+
+    def _show_environment_sync_help(self):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Environment Sync Help")
+        dialog.setText(
+            "Environment Sync aligns detected Python profiles by installing missing "
+            "or mismatched packages.\n\n"
+            "It does not guarantee package compatibility or a successful EXE build. "
+            "Some packages may not work with every Python version or build."
+        )
+        dialog.setIcon(QMessageBox.NoIcon)
+        close_button = dialog.addButton("Close", QMessageBox.AcceptRole)
+        dialog.setDefaultButton(close_button)
+        dialog.setEscapeButton(close_button)
+        dialog.setStyleSheet(CONFIRMATION_MESSAGE_BOX_STYLE)
+        dialog.setWindowFlags(
+            (dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+            | Qt.MSWindowsFixedSizeDialogHint
+        )
+
+        button_box = dialog.findChild(QDialogButtonBox)
+        if button_box is not None:
+            button_box.setCenterButtons(True)
+
+        apply_native_title_bar_style(
+            dialog,
+            caption=Colors.PANEL_BG,
+            border=Colors.PANEL_BG,
+        )
+        dialog.exec()
 
     def _confirm_manual_close(self):
         dialog = QMessageBox(self)

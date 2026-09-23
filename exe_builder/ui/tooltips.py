@@ -272,13 +272,14 @@ def attach_tooltips(app):
         blocked_hover_widgets=[
             app.env_sync_scan_btn,
             app.env_sync_match_btn,
+            app.env_sync_help_btn,
             app.env_sync_warning_label,
             app.env_sync_log_input,
         ],
     )
 
     QtTooltip(
-        app.env_sync_warning_label,
+        app.env_sync_help_btn,
         env_sync_summary,
     )
 
