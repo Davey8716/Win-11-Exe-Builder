@@ -959,9 +959,14 @@ class EXEBuilderApp(QWidget):
         build_frame.setFrameShadow(QFrame.Raised)
         build_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
+        build_action_gap = 4
+        build_action_edge_padding = 12
         build_layout = QVBoxLayout(build_frame)
-        build_layout.setContentsMargins(5,5,5,10)
-        build_layout.setSpacing(4)
+        build_layout.setContentsMargins(
+            build_action_edge_padding, 5,
+            build_action_edge_padding, build_action_edge_padding,
+        )
+        build_layout.setSpacing(build_action_gap)
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
@@ -997,7 +1002,7 @@ class EXEBuilderApp(QWidget):
         build_layout.addStretch()
         build_actions = QHBoxLayout()
         build_actions.setContentsMargins(0, 0, 0, 0)
-        build_actions.setSpacing(4)
+        build_actions.setSpacing(build_action_gap)
         build_actions.addWidget(self.build_btn)
         build_actions.addWidget(self.python_open_output_btn)
         build_layout.addLayout(build_actions)
@@ -1008,7 +1013,12 @@ class EXEBuilderApp(QWidget):
         )
         self.output_frame.setFixedSize(output_frame_width, 170)
         self.interpreter_frame.setFixedSize(output_frame_width, self.output_frame.height())
-        build_frame.setFixedSize(375, 170)
+        build_frame_width = (
+            build_actions.minimumSize().width()
+            + (2 * build_action_edge_padding)
+            + (2 * build_frame.frameWidth())
+        )
+        build_frame.setFixedSize(build_frame_width, 170)
         self.env_sync_frame.setFixedWidth(output_frame_width)
 
         for frame in [
