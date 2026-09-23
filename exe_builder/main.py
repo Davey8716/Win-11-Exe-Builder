@@ -1290,6 +1290,7 @@ class EXEBuilderApp(QWidget):
         self._start_output_folder_monitor()
         self._sync_paired_section_geometry()
         self._sync_center_divider_height()
+        self._sync_dotnet_center_divider_height()
 
     def _show_build_options(self):
         """Open the compact dialog that contains the build option controls."""
@@ -1311,7 +1312,7 @@ class EXEBuilderApp(QWidget):
 
         self.dotnet_mode_page = QWidget()
         dotnet_layout = QVBoxLayout(self.dotnet_mode_page)
-        dotnet_layout.setContentsMargins(20, 12, 20, 12)
+        dotnet_layout.setContentsMargins(0, 12, 0, 12)
         dotnet_layout.setSpacing(8)
         self.dotnet_mode_title = QLabel("C# .NET → EXE Publish")
         self.dotnet_mode_title.setFont(QFont("Rubik UI", 18, QFont.Bold))
@@ -1353,15 +1354,26 @@ class EXEBuilderApp(QWidget):
         self.dotnet_configuration_frames = []
         dotnet_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter)
 
-        columns = QHBoxLayout()
-        columns.setSpacing(4)
-        dotnet_layout.addLayout(columns)
-        left_column = QVBoxLayout()
-        right_column = QVBoxLayout()
-        left_column.setSpacing(4)
-        right_column.setSpacing(4)
-        columns.addLayout(left_column)
-        columns.addLayout(right_column)
+        # Keep the C# workflow on the same fixed two-column grid as the
+        # Python workflow.  This makes both pages share the exact divider,
+        # column width, and section rhythm rather than merely looking similar.
+        self.dotnet_content_row = QWidget()
+        self.dotnet_content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        dotnet_content_row_layout = QHBoxLayout(self.dotnet_content_row)
+        dotnet_content_row_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_content_row_layout.setSpacing(0)
+        self.dotnet_left_content, left_column = self._create_content_column()
+        self.dotnet_right_content, right_column = self._create_content_column()
+        self.dotnet_center_divider = QFrame()
+        self.dotnet_center_divider.setObjectName("centerDivider")
+        self.dotnet_center_divider.setFrameShape(QFrame.NoFrame)
+        self.dotnet_center_divider.setFixedWidth(2)
+        self.dotnet_center_divider.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.dotnet_center_divider.setStyleSheet(CENTER_DIVIDER_STYLE)
+        dotnet_content_row_layout.addWidget(self.dotnet_left_content, alignment=Qt.AlignTop)
+        dotnet_content_row_layout.addWidget(self.dotnet_center_divider, alignment=Qt.AlignBottom)
+        dotnet_content_row_layout.addWidget(self.dotnet_right_content, alignment=Qt.AlignTop)
+        dotnet_layout.addWidget(self.dotnet_content_row)
 
         def section(title, column):
             heading = QFrame()
@@ -1372,6 +1384,8 @@ class EXEBuilderApp(QWidget):
             label = QLabel(title)
             label.setFixedHeight(30)
             label.setFont(QFont("Rubik UI", 14, QFont.Bold))
+            if not hasattr(self, "dotnet_divider_anchor_label"):
+                self.dotnet_divider_anchor_label = label
             heading_layout.addStretch()
             heading_layout.addWidget(label)
             heading_layout.addStretch()
@@ -1472,6 +1486,7 @@ class EXEBuilderApp(QWidget):
         panel = QFrame()
         panel.setObjectName("configurationFrame")
         panel.setStyleSheet(MAIN_FRAME_STYLE)
+        panel.setFixedWidth(PAIRED_FRAME_WIDTH)
         self.dotnet_configuration_frames.append(panel)
         panel_layout = QVBoxLayout(panel)
         panel_layout.setContentsMargins(12, 12, 12, 12)
@@ -1530,6 +1545,7 @@ class EXEBuilderApp(QWidget):
         left_column.addStretch()
         right_column.addStretch()
         dotnet_layout.addStretch()
+        self._sync_dotnet_center_divider_height()
 
         self.build_mode_stack = QStackedWidget()
         self.build_mode_stack.addWidget(self.python_mode_page)
@@ -1594,6 +1610,8 @@ class EXEBuilderApp(QWidget):
             self.validation_controller.update_build_button()
             self.validation_controller.update_ui_state()
         else:
+            self._sync_dotnet_center_divider_height()
+            QTimer.singleShot(0, self._sync_dotnet_center_divider_height)
             self.dotnet_publish_controller.refresh_ui()
         if save and not getattr(self, "_loading_state", False):
             self.state_ctrl.save_preferences()
@@ -1813,6 +1831,38 @@ class EXEBuilderApp(QWidget):
         divider_top_offset = self._center_divider_top_offset()
         self.content_row.setFixedHeight(content_height)
         self.center_divider.setFixedHeight(max(1, content_height - divider_top_offset))
+
+    def _sync_dotnet_center_divider_height(self):
+        """Size the C# divider with the same visual inset as the Python page."""
+        if not all(
+            hasattr(self, attr)
+            for attr in (
+                "dotnet_left_content",
+                "dotnet_right_content",
+                "dotnet_content_row",
+                "dotnet_center_divider",
+                "dotnet_divider_anchor_label",
+            )
+        ):
+            return
+
+        content_height = max(
+            self.dotnet_left_content.sizeHint().height(),
+            self.dotnet_right_content.sizeHint().height(),
+        )
+        if content_height <= 0:
+            return
+
+        anchor = self.dotnet_divider_anchor_label
+        text_bounds = QFontMetrics(anchor.font()).boundingRect(anchor.text())
+        label_height = anchor.height() or anchor.sizeHint().height()
+        text_top_offset = max(0, (label_height - text_bounds.height()) // 2)
+        title_position = anchor.mapTo(self.dotnet_content_row, QPoint(0, 0))
+        divider_top_offset = max(0, title_position.y() + text_top_offset)
+        self.dotnet_content_row.setFixedHeight(content_height)
+        self.dotnet_center_divider.setFixedHeight(
+            max(1, content_height - divider_top_offset)
+        )
 
     def _center_divider_top_offset(self):
         if not hasattr(self, "icons_title"):
