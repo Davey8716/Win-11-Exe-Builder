@@ -32,6 +32,12 @@ def test_environment_sync_help_button_has_the_full_compatibility_tooltip():
     assert "it does not guarantee\\n\"\n        \"package compatibility" in TOOLTIPS_SOURCE
 
 
+def test_environment_sync_table_uses_uniform_six_pixel_padding():
+    assert "ENV_SYNC_TABLE_PADDING = 6" in MAIN_SOURCE
+    assert MAIN_SOURCE.count("ENV_SYNC_TABLE_PADDING,") >= 8
+    assert "+ (2 * ENV_SYNC_TABLE_PADDING)" in MAIN_SOURCE
+
+
 def test_environment_sync_help_button_opens_styled_information_dialog():
     assert "def _show_environment_sync_help(self):" in MAIN_SOURCE
     assert 'dialog.setWindowTitle("Environment Sync Help")' in MAIN_SOURCE

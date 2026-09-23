@@ -83,6 +83,7 @@ CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
+ENV_SYNC_TABLE_PADDING = 6
 BUILD_FRAME_HEIGHT = 170
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
@@ -412,7 +413,12 @@ class EXEBuilderApp(QWidget):
 
         self.env_sync_status_header = QWidget()
         env_sync_status_header_layout = QHBoxLayout(self.env_sync_status_header)
-        env_sync_status_header_layout.setContentsMargins(0,0,0,0)
+        env_sync_status_header_layout.setContentsMargins(
+            ENV_SYNC_TABLE_PADDING,
+            ENV_SYNC_TABLE_PADDING,
+            ENV_SYNC_TABLE_PADDING,
+            ENV_SYNC_TABLE_PADDING,
+        )
         env_sync_status_header_layout.setSpacing(4)
 
         self.env_sync_status_labels = []
@@ -433,7 +439,12 @@ class EXEBuilderApp(QWidget):
 
         self.env_sync_rows_container = QWidget()
         self.env_sync_rows_layout = QVBoxLayout(self.env_sync_rows_container)
-        self.env_sync_rows_layout.setContentsMargins(0,0,0,0)
+        self.env_sync_rows_layout.setContentsMargins(
+            ENV_SYNC_TABLE_PADDING,
+            ENV_SYNC_TABLE_PADDING,
+            ENV_SYNC_TABLE_PADDING,
+            ENV_SYNC_TABLE_PADDING,
+        )
         self.env_sync_rows_layout.setSpacing(2)
 
         env_sync_visible_rows = 5
@@ -442,6 +453,7 @@ class EXEBuilderApp(QWidget):
         env_sync_scroll_height = (
             env_sync_visible_rows * env_sync_row_height
             + (env_sync_visible_rows - 1) * env_sync_row_spacing
+            + (2 * ENV_SYNC_TABLE_PADDING)
         )
         self._env_sync_rows_scroll_base_height = env_sync_scroll_height
 
@@ -1829,7 +1841,10 @@ class EXEBuilderApp(QWidget):
         row_layout.addStretch()
         row.setMinimumWidth(row_width)
         self.env_sync_rows_container.setMinimumWidth(
-            max(self.env_sync_rows_container.minimumWidth(), row_width)
+            max(
+                self.env_sync_rows_container.minimumWidth(),
+                row_width + (2 * ENV_SYNC_TABLE_PADDING),
+            )
         )
         self.env_sync_rows_layout.addWidget(row)
         self._sync_center_divider_height()
