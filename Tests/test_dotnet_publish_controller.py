@@ -107,6 +107,7 @@ def make_controller(tmp_path, project_text='<Project Sdk="Microsoft.NET.Sdk"></P
         building=False,
         dotnet_publish_btn=DummyButton(),
         dotnet_open_output_btn=DummyButton(),
+        dotnet_project_select_btn=DummyButton(),
         dotnet_icon_select_btn=DummyButton(),
         dotnet_icon_reset_btn=DummyButton(),
         dotnet_status_label=DummyStatus(),
@@ -367,6 +368,24 @@ def test_publish_button_uses_readiness_colours(tmp_path):
 
     assert controller.app.dotnet_publish_btn.enabled is False
     assert qcolor_name(Colors.ERROR) in controller.app.dotnet_publish_btn.stylesheet
+
+
+def test_project_file_button_uses_project_validity_colours(tmp_path):
+    controller, project = make_controller(tmp_path)
+
+    controller.refresh_ui()
+    button = controller.app.dotnet_project_select_btn
+    assert button.enabled is True
+    assert qcolor_name(Colors.SUCCESS) in button.stylesheet
+
+    project.write_text('<Project ToolsVersion="15.0"></Project>', encoding="utf-8")
+    controller.refresh_ui()
+    assert qcolor_name(Colors.ERROR) in button.stylesheet
+
+    controller.app.building = True
+    controller.refresh_ui()
+    assert button.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
 
 
 def test_open_output_button_requires_current_published_executable(tmp_path):

@@ -492,9 +492,15 @@ class DotnetPublishController(QObject):
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setStyleSheet"):
-                widget.setStyleSheet(
-                    build_disabled_button() if building else button_base()
-                )
+                if building:
+                    style = build_disabled_button()
+                elif name == "dotnet_project_select_btn":
+                    style = filled_button(
+                        Colors.SUCCESS if project_ok else Colors.ERROR
+                    )
+                else:
+                    style = button_base()
+                widget.setStyleSheet(style)
         runtime = getattr(self.app, "dotnet_runtime_combo", None)
         if runtime is not None and hasattr(runtime, "setEnabled"):
             runtime.setEnabled(not building)
