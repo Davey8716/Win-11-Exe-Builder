@@ -1375,6 +1375,48 @@ class EXEBuilderApp(QWidget):
         dotnet_content_row_layout.addWidget(self.dotnet_right_content, alignment=Qt.AlignTop)
         dotnet_layout.addWidget(self.dotnet_content_row)
 
+        # Match the Python workflow: the build controls live in their own
+        # centered section below the two-column selection grid.
+        self.dotnet_build_title_row = QWidget()
+        self.dotnet_build_title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        dotnet_build_title_row_layout = QHBoxLayout(self.dotnet_build_title_row)
+        dotnet_build_title_row_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_build_title_row_layout.setSpacing(0)
+
+        self.dotnet_build_frame_row = QWidget()
+        self.dotnet_build_frame_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        dotnet_build_frame_row_layout = QHBoxLayout(self.dotnet_build_frame_row)
+        dotnet_build_frame_row_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_build_frame_row_layout.setSpacing(0)
+
+        self.dotnet_build_title_frame = QFrame()
+        self.dotnet_build_title_frame.setFrameShape(QFrame.StyledPanel)
+        self.dotnet_build_title_frame.setFrameShadow(QFrame.Raised)
+        self.dotnet_build_title_frame.setStyleSheet(TITLE_FRAME_STYLE)
+        self.dotnet_section_title_frames.append(self.dotnet_build_title_frame)
+        dotnet_build_title_layout = QHBoxLayout(self.dotnet_build_title_frame)
+        dotnet_build_title_layout.setContentsMargins(3, 3, 3, 3)
+        dotnet_build_title_layout.setSpacing(3)
+        self.dotnet_build_title = QLabel("Build Section")
+        self.dotnet_build_title.setFixedHeight(30)
+        self.dotnet_build_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        self.dotnet_build_title.setAlignment(Qt.AlignVCenter)
+        dotnet_build_title_layout.addStretch()
+        dotnet_build_title_layout.addWidget(self.dotnet_build_title)
+        dotnet_build_title_layout.addStretch()
+        self.dotnet_build_title_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.dotnet_build_title_frame.setMaximumHeight(40)
+        self.dotnet_build_title_frame.setFixedWidth(
+            QFontMetrics(self.dotnet_build_title.font()).horizontalAdvance(
+                self.dotnet_build_title.text()
+            ) + 25
+        )
+        dotnet_build_title_row_layout.addWidget(
+            self.dotnet_build_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop
+        )
+        dotnet_layout.addWidget(self.dotnet_build_title_row)
+        dotnet_layout.addWidget(self.dotnet_build_frame_row)
+
         def section(title, column):
             heading = QFrame()
             heading.setStyleSheet(TITLE_FRAME_STYLE)
@@ -1541,7 +1583,9 @@ class EXEBuilderApp(QWidget):
             actions.addWidget(button)
         actions.addStretch()
         panel_layout.addLayout(actions)
-        left_column.addWidget(panel, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        dotnet_build_frame_row_layout.addWidget(
+            panel, alignment=Qt.AlignHCenter | Qt.AlignTop
+        )
         left_column.addStretch()
         right_column.addStretch()
         dotnet_layout.addStretch()
