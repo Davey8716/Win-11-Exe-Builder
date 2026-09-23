@@ -1433,8 +1433,8 @@ class EXEBuilderApp(QWidget):
             delete_all.clicked.connect(lambda _checked=False, k=kind: self.dotnet_publish_controller.delete_recent(k, True))
             reset.clicked.connect(self.dotnet_publish_controller.clear_project if kind == "project" else self.dotnet_publish_controller.clear_icon)
 
-        path_section("project", "File Select", left_column, "C# Project File", "No C# project selected.")
-        path_section("icon", "Icons Select", right_column, "Select ICO optional", "No icon selected.")
+        path_section("icon", "Icons Select", left_column, "Select ICO optional", "No icon selected.")
+        path_section("project", "File Select", right_column, "C# Project File", "No C# project selected.")
 
         output_layout = section("Output Select", right_column)
         output_select_row = QHBoxLayout()
