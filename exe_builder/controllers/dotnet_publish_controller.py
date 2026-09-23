@@ -467,6 +467,19 @@ class DotnetPublishController(QObject):
         self.app.dotnet_open_output_btn.setStyleSheet(
             button_base() if publish_output_available and not building else build_disabled_button()
         )
+        # Build options are shared application preferences.  The Python flow
+        # refreshes them through ValidationController; the isolated .NET
+        # publish flow owns its own refresh, so lock both cogs here as well.
+        for name in ("build_options_btn", "dotnet_build_options_btn"):
+            button = getattr(self.app, name, None)
+            if button is None:
+                continue
+            if hasattr(button, "setEnabled"):
+                button.setEnabled(not building)
+            if hasattr(button, "setStyleSheet"):
+                button.setStyleSheet(
+                    build_disabled_button() if building else utility_icon_button_style()
+                )
         for field in (
             self.app.dotnet_project_input,
             self.app.dotnet_output_input,

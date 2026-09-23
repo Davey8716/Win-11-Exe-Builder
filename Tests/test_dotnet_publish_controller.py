@@ -14,7 +14,7 @@ from exe_builder.controllers.dotnet_publish_controller import (
     sync_published_tray_icon,
     validate_executable_name,
 )
-from exe_builder.ui.styles import Colors, qcolor_name
+from exe_builder.ui.styles import Colors, build_disabled_button, qcolor_name
 
 
 class DummyInput:
@@ -803,6 +803,8 @@ def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
     app.dotnet_section_title_frames = [DummyFrame(), DummyFrame(), DummyFrame()]
     app.dotnet_configuration_frames = [DummyFrame(), DummyFrame(), DummyFrame()]
     app.dotnet_mode_title = DummyFrame()
+    app.build_options_btn = DummyButton()
+    app.dotnet_build_options_btn = DummyButton()
 
     app.building = True
     controller.refresh_ui()
@@ -833,6 +835,9 @@ def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
     assert app.dotnet_publish_btn.enabled is True
     assert app.dotnet_publish_btn.text == "Cancel Publish"
     assert qcolor_name(Colors.CANCEL) in app.dotnet_publish_btn.stylesheet
+    for cog in (app.build_options_btn, app.dotnet_build_options_btn):
+        assert cog.enabled is False
+        assert cog.stylesheet == build_disabled_button()
     for frame in app.dotnet_section_title_frames:
         assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in frame.stylesheet
     for frame in app.dotnet_configuration_frames:
@@ -852,6 +857,9 @@ def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
         assert control.enabled is True
     assert app.dotnet_publish_btn.text == "Publish"
     assert qcolor_name(Colors.SUCCESS) in app.dotnet_publish_btn.stylesheet
+    for cog in (app.build_options_btn, app.dotnet_build_options_btn):
+        assert cog.enabled is True
+        assert cog.stylesheet != build_disabled_button()
     for frame in app.dotnet_section_title_frames:
         assert qcolor_name(Colors.TEXT_LIGHT) in frame.stylesheet
     for frame in app.dotnet_configuration_frames:
