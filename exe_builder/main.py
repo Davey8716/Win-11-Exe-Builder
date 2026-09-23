@@ -1305,7 +1305,7 @@ class EXEBuilderApp(QWidget):
         # title, divider, build heading, and build panel on those same lines.
         dotnet_layout.setContentsMargins(0, 0, 0, 0)
         dotnet_layout.setSpacing(0)
-        self.dotnet_mode_title = QLabel("C# .NET → EXE Publish")
+        self.dotnet_mode_title = QLabel("Win 11 →  C# .NET → EXE Publish")
         self.dotnet_mode_title.setFont(QFont("Rubik UI", 18, QFont.Bold))
         self.dotnet_mode_title.setFixedHeight(34)
         self.dotnet_mode_title.setAlignment(Qt.AlignCenter)
