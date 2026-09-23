@@ -520,7 +520,7 @@ COMBO_BOX_LINE_EDIT_STYLE = f"""
 
 ENV_SYNC_STATUS_LINE_STYLE = f"""
     QLineEdit {{
-        background-color: {qcolor_name(Colors.TITLE_BG)};
+        background-color: {qcolor_name(Colors.PANEL_BG)};
         color: {qcolor_name(Colors.TEXT_LIGHT)};
         border: 2px solid {qcolor_name(Colors.BLACK)};
         border-radius: 4px;
@@ -530,7 +530,7 @@ ENV_SYNC_STATUS_LINE_STYLE = f"""
 
     QLineEdit:read-only,
     QLineEdit:disabled {{
-        background-color: {qcolor_name(Colors.TITLE_BG)};
+        background-color: {qcolor_name(Colors.PANEL_BG)};
         color: {qcolor_name(Colors.TEXT_LIGHT)};
         border: 2px solid {qcolor_name(Colors.BLACK)};
         border-radius: 4px;

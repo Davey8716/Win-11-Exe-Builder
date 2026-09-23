@@ -82,6 +82,7 @@ APP_FIXED_SIZE = (1200, 915)
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
+ENV_SYNC_CONTENT_WIDTH = 560
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
     None,
@@ -372,7 +373,7 @@ class EXEBuilderApp(QWidget):
         self.env_sync_log_input = QLineEdit()
         self.env_sync_log_input.setReadOnly(True)
         self.env_sync_log_input.setFocusPolicy(Qt.NoFocus)
-        self.env_sync_log_input.setFixedWidth(485)
+        self.env_sync_log_input.setFixedWidth(ENV_SYNC_CONTENT_WIDTH)
         self.env_sync_log_input.setPlaceholderText("Environment sync ready.")
         self.env_sync_log_input.setText("Environment sync ready.")
         self.env_sync_log_input.setFont(QFont("Rubik UI", 11, QFont.Bold))

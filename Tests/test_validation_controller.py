@@ -53,6 +53,12 @@ def test_path_line_edit_styles_have_rounded_borders():
     assert "border-radius: 4px;" in build_disabled_line_edit_style()
 
 
+def test_environment_sync_status_line_uses_panel_background_when_read_only():
+    panel_bg = qcolor_name(Colors.PANEL_BG)
+
+    assert ENV_SYNC_STATUS_LINE_STYLE.count(f"background-color: {panel_bg};") == 2
+
+
 class DummyCheckbox:
     def __init__(self, checked=False):
         self._checked = checked
