@@ -354,6 +354,21 @@ def test_validation_accepts_complete_sdk_project(tmp_path):
     assert controller.output_path().endswith("Tool")
 
 
+def test_publish_button_uses_readiness_colours(tmp_path):
+    controller, _ = make_controller(tmp_path)
+
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_publish_btn.enabled is True
+    assert qcolor_name(Colors.SUCCESS) in controller.app.dotnet_publish_btn.stylesheet
+
+    controller.app.dotnet_project_input.value = str(tmp_path / "missing.csproj")
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_publish_btn.enabled is False
+    assert qcolor_name(Colors.ERROR) in controller.app.dotnet_publish_btn.stylesheet
+
+
 def test_open_output_button_requires_current_published_executable(tmp_path):
     controller, _ = make_controller(tmp_path)
     target = tmp_path / "Tool"
@@ -736,7 +751,7 @@ def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
     ):
         assert control.enabled is True
     assert app.dotnet_publish_btn.text == "Publish"
-    assert qcolor_name(Colors.TITLE_BG) in app.dotnet_publish_btn.stylesheet
+    assert qcolor_name(Colors.SUCCESS) in app.dotnet_publish_btn.stylesheet
     for frame in app.dotnet_section_title_frames:
         assert qcolor_name(Colors.TEXT_LIGHT) in frame.stylesheet
     for frame in app.dotnet_configuration_frames:

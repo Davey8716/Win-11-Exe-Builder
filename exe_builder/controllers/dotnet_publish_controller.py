@@ -458,7 +458,7 @@ class DotnetPublishController(QObject):
         self.app.dotnet_publish_btn.setEnabled(building or not error)
         self.app.dotnet_publish_btn.setText("Cancel Publish" if building else "Publish")
         self.app.dotnet_publish_btn.setStyleSheet(
-            filled_button(Colors.CANCEL) if building else button_base()
+            filled_button(Colors.CANCEL if building else Colors.SUCCESS if not error else Colors.ERROR)
         )
         publish_output_available = self.has_publish_output()
         self.app.dotnet_open_output_btn.setEnabled(publish_output_available and not building)
