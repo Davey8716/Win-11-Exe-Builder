@@ -16,11 +16,18 @@ from PySide6.QtGui import QIcon
 from ..ui.styles import (
     BUILD_DISABLED_TITLE_FRAME_STYLE,
     Colors,
+    DELETE_ALL_BUTTON_ICON,
+    DELETE_ALL_BUTTON_ICON_SIZE,
+    DELETE_ALL_BUTTON_TEXT,
+    DELETE_BUTTON_ICON,
+    DELETE_BUTTON_ICON_SIZE,
+    DELETE_BUTTON_TEXT,
     MAIN_FRAME_STYLE,
     REFRESH_BUTTON_ICON,
     REFRESH_BUTTON_ICON_SIZE,
     REFRESH_BUTTON_TEXT,
     TITLE_FRAME_STYLE,
+    UTILITY_ICON_BUTTON_SIZE,
     build_disabled_checkbox,
     build_disabled_button,
     build_disabled_line_edit_style,
@@ -488,6 +495,8 @@ class DotnetPublishController(QObject):
                     checkbox.setStyleSheet(build_disabled_checkbox() if building else "")
         output_reset = getattr(self.app, "dotnet_output_reset_btn", None)
         if output_reset is not None:
+            if hasattr(output_reset, "setFixedSize"):
+                output_reset.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
             output_reset.setEnabled(not building and not output_is_desktop)
             if building or output_is_desktop:
                 output_reset.setStyleSheet(build_disabled_button())
@@ -510,6 +519,48 @@ class DotnetPublishController(QObject):
                     utility_icon_button_disabled_style(True)
                     if building else utility_icon_button_style()
                 )
+
+        utility_button_icons = {
+            "dotnet_project_delete_btn": (
+                DELETE_BUTTON_ICON, DELETE_BUTTON_ICON_SIZE, DELETE_BUTTON_TEXT,
+            ),
+            "dotnet_project_delete_all_btn": (
+                DELETE_ALL_BUTTON_ICON, DELETE_ALL_BUTTON_ICON_SIZE, DELETE_ALL_BUTTON_TEXT,
+            ),
+            "dotnet_project_reset_btn": (
+                REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT,
+            ),
+            "dotnet_icon_delete_btn": (
+                DELETE_BUTTON_ICON, DELETE_BUTTON_ICON_SIZE, DELETE_BUTTON_TEXT,
+            ),
+            "dotnet_icon_delete_all_btn": (
+                DELETE_ALL_BUTTON_ICON, DELETE_ALL_BUTTON_ICON_SIZE, DELETE_ALL_BUTTON_TEXT,
+            ),
+            "dotnet_icon_reset_btn": (
+                REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT,
+            ),
+            "dotnet_name_reset_btn": (
+                REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT,
+            ),
+        }
+        for name, (icon_path, icon_size, text) in utility_button_icons.items():
+            widget = getattr(self.app, name, None)
+            if widget is None:
+                continue
+            if hasattr(widget, "setFixedSize"):
+                widget.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
+            if building:
+                if hasattr(widget, "setIcon"):
+                    widget.setIcon(QIcon())
+                if hasattr(widget, "setText"):
+                    widget.setText("")
+            else:
+                if hasattr(widget, "setIcon"):
+                    widget.setIcon(QIcon(str(icon_path)))
+                if hasattr(widget, "setIconSize"):
+                    widget.setIconSize(QSize(*icon_size))
+                if hasattr(widget, "setText"):
+                    widget.setText(text)
         self.app.dotnet_status_label.setStyleSheet(
             status_text_style(Colors.SUCCESS if building or not error else Colors.ERROR)
         )

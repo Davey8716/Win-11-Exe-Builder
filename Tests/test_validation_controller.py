@@ -91,6 +91,15 @@ class DummyButton:
     def setStyleSheet(self, value):
         self.stylesheet = value
 
+    def setIcon(self, value):
+        self.icon = value
+
+    def setIconSize(self, value):
+        self.icon_size = value
+
+    def setFixedSize(self, width, height):
+        self.size = (width, height)
+
 
 class DummyInput:
     def __init__(self, value=""):
@@ -246,6 +255,43 @@ def test_exe_refresh_disabled_when_name_matches_script_default(monkeypatch, tmp_
     assert app.refresh_btn.enabled is False
     assert app.refresh_btn.text == ""
     assert app.refresh_btn.stylesheet == build_disabled_button()
+
+
+def test_python_utility_icons_restore_after_build_lock(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="custom-name")
+    app.icon_path = str(tmp_path / "app.ico")
+    app.state_data.update(
+        recent_scripts=[app.script_path],
+        recent_icons=[app.icon_path],
+        recent_interpreters=[app.python_interpreter_path],
+    )
+    controller = ValidationController(app)
+    buttons = (
+        app.delete_recent_icons,
+        app.delete_recent_folder,
+        app.delete_all_icons,
+        app.delete_all_folders,
+        app.python_delete_interpreter,
+        app.python_delete_all_interpreter,
+        app.interpreter_refresh_btn,
+        app.icon_clear_btn,
+        app.script_clear_btn,
+        app.output_refresh_btn,
+        app.refresh_btn,
+    )
+
+    controller.update_ui_state()
+    assert all(not button.icon.isNull() for button in buttons)
+    assert {button.size for button in buttons} == {(35, 35)}
+
+    app.building = True
+    controller.update_ui_state()
+    assert all(button.icon.isNull() for button in buttons)
+
+    app.building = False
+    controller.update_ui_state()
+    assert all(not button.icon.isNull() for button in buttons)
 
 
 def test_environment_sync_uses_disabled_build_styling(monkeypatch, tmp_path):

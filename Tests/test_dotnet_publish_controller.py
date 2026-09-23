@@ -75,6 +75,9 @@ class DummyButton:
     def setIconSize(self, value):
         self.icon_size = value
 
+    def setFixedSize(self, width, height):
+        self.size = (width, height)
+
 
 class DummyStatus:
     def setText(self, value):
@@ -526,6 +529,67 @@ def test_refresh_styles_dotnet_utility_buttons_like_python_buttons(tmp_path):
     controller.refresh_ui()
 
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_project_delete_btn.stylesheet
+
+
+def test_dotnet_output_reset_icon_restores_after_build_lock(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    output_reset = DummyButton()
+    controller.app.dotnet_output_reset_btn = output_reset
+
+    controller.refresh_ui()
+    assert not output_reset.icon.isNull()
+    assert output_reset.size == (35, 35)
+
+    controller.app.building = True
+    controller.refresh_ui()
+    assert output_reset.icon.isNull()
+
+    controller.app.building = False
+    controller.refresh_ui()
+    assert not output_reset.icon.isNull()
+
+
+def test_dotnet_utility_icons_clear_and_restore_during_build(tmp_path, monkeypatch):
+    class IconSpy:
+        def __init__(self, path=None):
+            self.path = str(path or "")
+
+        def isNull(self):
+            return not self.path
+
+    monkeypatch.setattr(
+        "exe_builder.controllers.dotnet_publish_controller.QIcon", IconSpy,
+    )
+    controller, _ = make_controller(tmp_path)
+    button_icons = {
+        "dotnet_project_delete_btn": "utility_delete.svg",
+        "dotnet_project_delete_all_btn": "utility_delete_all.svg",
+        "dotnet_project_reset_btn": "utility_refresh.svg",
+        "dotnet_icon_delete_btn": "utility_delete.svg",
+        "dotnet_icon_delete_all_btn": "utility_delete_all.svg",
+        "dotnet_icon_reset_btn": "utility_refresh.svg",
+        "dotnet_name_reset_btn": "utility_refresh.svg",
+    }
+    for name in button_icons:
+        setattr(controller.app, name, DummyButton())
+
+    controller.refresh_ui()
+    for name, expected_icon in button_icons.items():
+        button = getattr(controller.app, name)
+        assert not button.icon.isNull()
+        assert button.icon.path.endswith(expected_icon)
+        assert button.size == (35, 35)
+
+    controller.app.building = True
+    controller.refresh_ui()
+    assert all(getattr(controller.app, name).icon.isNull() for name in button_icons)
+
+    controller.app.building = False
+    controller.refresh_ui()
+    for name, expected_icon in button_icons.items():
+        button = getattr(controller.app, name)
+        assert not button.icon.isNull()
+        assert button.icon.path.endswith(expected_icon)
 
 
 def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):

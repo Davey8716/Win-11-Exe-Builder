@@ -31,6 +31,7 @@ from ..ui.styles import (
     qcolor_name,
     status_text_style,
     TITLE_FRAME_STYLE,
+    UTILITY_ICON_BUTTON_SIZE,
     utility_icon_button_disabled_style,
     utility_icon_button_style,
 )
@@ -249,6 +250,8 @@ class ValidationController:
             )
 
         def set_button_icon(btn, visible, icon_path, icon_size, text):
+            if hasattr(btn, "setFixedSize"):
+                btn.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
             if visible:
                 if hasattr(btn, "setIcon"):
                     btn.setIcon(QIcon(str(icon_path)))
