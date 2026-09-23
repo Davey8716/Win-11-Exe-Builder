@@ -240,6 +240,13 @@ class DotnetPublishController(QObject):
         values = self.values()
         return os.path.join(values["output"], values["name"]) if values["output"] and values["name"] else ""
 
+    def has_publish_output(self):
+        """Return whether the current target contains its published Windows EXE."""
+        values = self.values()
+        target = self.output_path()
+        executable = f"{values['name']}.exe"
+        return bool(target and values["name"] and os.path.isfile(os.path.join(target, executable)))
+
     def clear_icon(self):
         """Clear the optional .NET application icon selection."""
         if getattr(self.app, "building", False):
@@ -453,11 +460,10 @@ class DotnetPublishController(QObject):
         self.app.dotnet_publish_btn.setStyleSheet(
             filled_button(Colors.CANCEL) if building else button_base()
         )
-        self.app.dotnet_open_output_btn.setEnabled(
-            bool(self.output_path() and os.path.isdir(self.output_path()) and not building)
-        )
+        publish_output_available = self.has_publish_output()
+        self.app.dotnet_open_output_btn.setEnabled(publish_output_available and not building)
         self.app.dotnet_open_output_btn.setStyleSheet(
-            build_disabled_button() if building else button_base()
+            button_base() if publish_output_available and not building else build_disabled_button()
         )
         for field in (
             self.app.dotnet_project_input,
@@ -693,7 +699,7 @@ class DotnetPublishController(QObject):
 
     def open_output_folder(self):
         target = self.output_path()
-        if target and os.path.isdir(target):
+        if self.has_publish_output():
             os.startfile(target)
     button_base,
     filled_button,

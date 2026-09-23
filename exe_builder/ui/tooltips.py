@@ -453,7 +453,10 @@ def attach_dotnet_tooltips(app):
         ),
         "dotnet_status_label": "Shows C# publish readiness, progress, success, and failure messages.",
         "dotnet_publish_btn": "Clean and publish the selected C# project in Release configuration.",
-        "dotnet_open_output_btn": "Open the current C# publish output folder in File Explorer.",
+        "dotnet_open_output_btn": (
+            "Open the current C# publish output folder in File Explorer. Available only when "
+            "the current published EXE exists."
+        ),
         "dotnet_mode_btn": "Switch to the C# .NET Publish workflow.",
     }
 

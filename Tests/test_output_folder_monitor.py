@@ -25,9 +25,13 @@ class RecordingValidator:
 class RecordingDotnetController:
     def __init__(self):
         self.refreshes = 0
+        self.publish_output_available = False
 
     def refresh_ui(self):
         self.refreshes += 1
+
+    def has_publish_output(self):
+        return self.publish_output_available
 
 
 def make_app(python_output, dotnet_output):
@@ -86,6 +90,27 @@ def test_output_folder_monitor_defers_changes_while_building(tmp_path):
     app.building = False
     monitor.refresh_if_changed()
     assert app.validator.refreshes == 1
+
+
+def test_output_folder_monitor_refreshes_when_dotnet_publish_executable_changes(tmp_path):
+    python_output = tmp_path / "python-output"
+    dotnet_output = tmp_path / "dotnet-output"
+    python_output.mkdir()
+    dotnet_output.mkdir()
+    app = make_app(python_output, dotnet_output)
+    monitor = OutputFolderValidityMonitor(app)
+
+    app.dotnet_publish_controller.publish_output_available = True
+    monitor.refresh_if_changed()
+
+    assert app.dotnet_publish_controller.refreshes == 1
+    assert monitor.snapshot["dotnet"][2] is True
+
+    app.dotnet_publish_controller.publish_output_available = False
+    monitor.refresh_if_changed()
+
+    assert app.dotnet_publish_controller.refreshes == 2
+    assert monitor.snapshot["dotnet"][2] is False
 
 
 def test_output_folder_monitor_uses_a_two_second_interval():

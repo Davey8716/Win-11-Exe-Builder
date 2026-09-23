@@ -354,6 +354,60 @@ def test_validation_accepts_complete_sdk_project(tmp_path):
     assert controller.output_path().endswith("Tool")
 
 
+def test_open_output_button_requires_current_published_executable(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    target = tmp_path / "Tool"
+    target.mkdir()
+
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_open_output_btn.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_open_output_btn.stylesheet
+
+    (target / "Tool.exe").write_bytes(b"published")
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_open_output_btn.enabled is True
+    assert qcolor_name(Colors.TITLE_BG) in controller.app.dotnet_open_output_btn.stylesheet
+
+    controller.app.building = True
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_open_output_btn.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_open_output_btn.stylesheet
+
+
+def test_open_output_button_tracks_current_executable_name(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    target = tmp_path / "Tool"
+    target.mkdir()
+    (target / "Tool.exe").write_bytes(b"published")
+
+    controller.refresh_ui()
+    assert controller.app.dotnet_open_output_btn.enabled is True
+
+    controller.app.dotnet_name_input.value = "RenamedTool"
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_open_output_btn.enabled is False
+
+
+def test_open_output_folder_does_not_open_incomplete_target(tmp_path, monkeypatch):
+    controller, _ = make_controller(tmp_path)
+    target = tmp_path / "Tool"
+    target.mkdir()
+    opened = []
+    monkeypatch.setattr(
+        "exe_builder.controllers.dotnet_publish_controller.os.startfile",
+        opened.append,
+        raising=False,
+    )
+
+    controller.open_output_folder()
+
+    assert opened == []
+
+
 def test_windows_executable_name_rules():
     assert validate_executable_name("")
     assert validate_executable_name("CON")
