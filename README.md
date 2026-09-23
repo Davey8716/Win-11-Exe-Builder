@@ -267,6 +267,8 @@ For Python mode, PyInstaller creates output under the selected output folder:
 * the final onedir app folder
 
 The final onedir app folder contains the generated executable and its supporting files.
+Use Python mode's **Open Output Folder** button to open the latest complete app
+folder that matches the current EXE and script naming base.
 
 For C#/.NET Publish mode, the builder writes Release publish output to:
 

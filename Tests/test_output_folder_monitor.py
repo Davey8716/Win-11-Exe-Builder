@@ -34,12 +34,21 @@ class RecordingDotnetController:
         return self.publish_output_available
 
 
+class RecordingBuildController:
+    def __init__(self):
+        self.python_output_available = False
+
+    def has_python_output(self):
+        return self.python_output_available
+
+
 def make_app(python_output, dotnet_output):
     app = SimpleNamespace(
         building=False,
         output_path_input=DummyInput(python_output),
         dotnet_output_input=DummyInput(dotnet_output),
         validator=RecordingValidator(),
+        build_controller=RecordingBuildController(),
         dotnet_publish_controller=RecordingDotnetController(),
     )
     return app
@@ -63,6 +72,7 @@ def test_output_folder_monitor_refreshes_both_modes_after_delete_and_recreate(tm
     assert app.validator.refreshes == 1
     assert app.dotnet_publish_controller.refreshes == 1
     assert monitor.snapshot["python"][1] is False
+    assert monitor.snapshot["python"][2] is False
     assert monitor.snapshot["dotnet"][1] is False
 
     python_output.mkdir()
@@ -71,6 +81,7 @@ def test_output_folder_monitor_refreshes_both_modes_after_delete_and_recreate(tm
     assert app.validator.refreshes == 2
     assert app.dotnet_publish_controller.refreshes == 2
     assert monitor.snapshot["python"][1] is True
+    assert monitor.snapshot["python"][2] is False
     assert monitor.snapshot["dotnet"][1] is True
 
 
@@ -111,6 +122,25 @@ def test_output_folder_monitor_refreshes_when_dotnet_publish_executable_changes(
 
     assert app.dotnet_publish_controller.refreshes == 2
     assert monitor.snapshot["dotnet"][2] is False
+
+
+def test_output_folder_monitor_refreshes_when_python_output_is_deleted(tmp_path):
+    python_output = tmp_path / "python-output"
+    dotnet_output = tmp_path / "dotnet-output"
+    python_output.mkdir()
+    dotnet_output.mkdir()
+    app = make_app(python_output, dotnet_output)
+    monitor = OutputFolderValidityMonitor(app)
+
+    app.build_controller.python_output_available = True
+    monitor.refresh_if_changed()
+    assert app.validator.refreshes == 1
+    assert monitor.snapshot["python"][2] is True
+
+    app.build_controller.python_output_available = False
+    monitor.refresh_if_changed()
+    assert app.validator.refreshes == 2
+    assert monitor.snapshot["python"][2] is False
 
 
 def test_output_folder_monitor_uses_a_two_second_interval():

@@ -98,6 +98,8 @@ class BuildController(QObject):
         self._pending_self_update = None
         self._active_self_update_plan = None
         self._self_update_launched = False
+        self._python_output_identity = None
+        self._python_output_target = ""
         self.build_thread = None
         self.worker = None
 
@@ -462,6 +464,94 @@ class BuildController(QObject):
                 parts.append(parent_name)
 
         return parts
+
+    def _python_output_identity_for_current_settings(self):
+        """Return the current output selection and its stable generated-name base."""
+        output_input = getattr(self.app, "output_path_input", None)
+        script_input = getattr(self.app, "script_path_input", None)
+        outdir = output_input.text().strip() if output_input is not None else ""
+        script = script_input.text().strip() if script_input is not None else ""
+        exe_name = self.app.exe_name_input.text().strip()
+
+        if not outdir or not script or not exe_name:
+            return None
+
+        name_base = "_".join(self._build_name_parts(script))
+        if not name_base:
+            return None
+
+        return (
+            os.path.normpath(outdir),
+            os.path.normcase(os.path.normpath(script)),
+            name_base.casefold(),
+        )
+
+    @staticmethod
+    def _is_complete_python_output(target):
+        target = os.path.normpath(target) if target else ""
+        name = os.path.basename(target)
+        return bool(target and name and os.path.isfile(os.path.join(target, f"{name}.exe")))
+
+    def _find_latest_python_output(self, identity):
+        """Find the newest complete app folder for a newly selected identity."""
+        if identity is None:
+            return ""
+
+        outdir, _script, name_base = identity
+        if not os.path.isdir(outdir):
+            return ""
+
+        prefix = name_base + "_"
+        candidates = []
+        try:
+            with os.scandir(outdir) as entries:
+                for entry in entries:
+                    if not entry.is_dir():
+                        continue
+                    candidate_name = entry.name
+                    normalized_name = candidate_name.casefold()
+                    if normalized_name != name_base and not normalized_name.startswith(prefix):
+                        continue
+                    if self._is_complete_python_output(entry.path):
+                        executable = os.path.join(entry.path, f"{candidate_name}.exe")
+                        candidates.append((os.path.getmtime(executable), entry.path))
+        except OSError:
+            return ""
+
+        return max(candidates, default=(0, ""))[1]
+
+    def _set_current_python_output(self, target):
+        """Record the exact Python app folder created by the current build."""
+        identity = self._python_output_identity_for_current_settings()
+        if identity is None:
+            return
+        self._python_output_identity = identity
+        self._python_output_target = os.path.normpath(target) if target else ""
+
+    def latest_python_output_path(self):
+        """Return the cached current app folder only while its EXE still exists."""
+        identity = self._python_output_identity_for_current_settings()
+        if identity != self._python_output_identity:
+            self._python_output_identity = identity
+            self._python_output_target = self._find_latest_python_output(identity)
+        elif not self._python_output_target:
+            self._python_output_target = self._find_latest_python_output(identity)
+
+        target = self._python_output_target
+        return target if self._is_complete_python_output(target) else ""
+
+    def has_python_output(self):
+        """Return whether the current Python build naming base has a complete output."""
+        return bool(self.latest_python_output_path())
+
+    def open_python_output_folder(self):
+        """Open the latest complete Python app folder, if one is available."""
+        target = self.latest_python_output_path()
+        if target:
+            try:
+                os.startfile(target)
+            except OSError:
+                pass
 
     def _build_debug_log_name(self, script):
         parts = ["EXE_BUILDER_DEBUG"]
@@ -1621,6 +1711,15 @@ class BuildController(QObject):
         mass_completed_successfully = False
 
         if ret == 0:
+            completed_output = next(
+                (
+                    path for path in getattr(app, "current_build_paths", [])
+                    if self._is_complete_python_output(path)
+                ),
+                "",
+            )
+            if completed_output:
+                self._set_current_python_output(completed_output)
             app.last_build_seconds = int(time.time() - app.build_start_time)
             if mass_active:
                 self._remember_mass_datetime_output_group()

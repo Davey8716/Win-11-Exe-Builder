@@ -42,6 +42,108 @@ def make_app(**overrides):
     return app
 
 
+def test_latest_python_output_requires_a_complete_matching_app_folder(tmp_path):
+    script = tmp_path / "launcher.py"
+    script.write_text("print('hello')\n", encoding="utf-8")
+    app = make_app(
+        script_path_input=DummyInput(str(script)),
+        output_path_input=DummyInput(str(tmp_path)),
+    )
+    controller = BuildController(app)
+
+    incomplete = tmp_path / "Builder_2026-05-19"
+    incomplete.mkdir()
+    (incomplete / "wrong-name.exe").write_bytes(b"incomplete")
+    unrelated = tmp_path / "BuilderExtra"
+    unrelated.mkdir()
+    (unrelated / "BuilderExtra.exe").write_bytes(b"unrelated")
+
+    assert controller.latest_python_output_path() == ""
+    assert controller.has_python_output() is False
+
+    complete = tmp_path / "Builder_2026-05-19_py3.14"
+    complete.mkdir()
+    (complete / "Builder_2026-05-19_py3.14.exe").write_bytes(b"complete")
+
+    assert controller.latest_python_output_path() == str(complete)
+    assert controller.has_python_output() is True
+
+
+def test_latest_python_output_uses_newest_matching_suffix_and_script_base(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    script = project / "main.py"
+    script.write_text("print('hello')\n", encoding="utf-8")
+    app = make_app(
+        script_path_input=DummyInput(str(script)),
+        output_path_input=DummyInput(str(tmp_path)),
+    )
+    controller = BuildController(app)
+
+    first = tmp_path / "Builder_project_2026-05-19"
+    second = tmp_path / "Builder_project_2026-05-19_py3.14"
+    for folder in (first, second):
+        folder.mkdir()
+        (folder / f"{folder.name}.exe").write_bytes(b"complete")
+    os.utime(first / f"{first.name}.exe", (10, 10))
+    os.utime(second / f"{second.name}.exe", (20, 20))
+
+    assert controller.latest_python_output_path() == str(second)
+
+
+def test_deleted_current_python_output_does_not_fall_back_to_an_older_build(tmp_path):
+    script = tmp_path / "launcher.py"
+    script.write_text("print('hello')\n", encoding="utf-8")
+    app = make_app(
+        script_path_input=DummyInput(str(script)),
+        output_path_input=DummyInput(str(tmp_path)),
+    )
+    controller = BuildController(app)
+
+    older = tmp_path / "Builder_old"
+    current = tmp_path / "Builder_current"
+    for folder in (older, current):
+        folder.mkdir()
+        (folder / f"{folder.name}.exe").write_bytes(b"complete")
+    os.utime(older / "Builder_old.exe", (10, 10))
+    os.utime(current / "Builder_current.exe", (20, 20))
+
+    assert controller.latest_python_output_path() == str(current)
+    (current / "Builder_current.exe").unlink()
+    current.rmdir()
+
+    assert controller.latest_python_output_path() == ""
+    assert controller.has_python_output() is False
+
+    app.exe_name_input.setText("Other")
+    other = tmp_path / "Other"
+    other.mkdir()
+    (other / "Other.exe").write_bytes(b"complete")
+    assert controller.latest_python_output_path() == str(other)
+
+
+def test_open_python_output_folder_opens_only_a_complete_matching_build(tmp_path, monkeypatch):
+    script = tmp_path / "launcher.py"
+    script.write_text("print('hello')\n", encoding="utf-8")
+    app = make_app(
+        script_path_input=DummyInput(str(script)),
+        output_path_input=DummyInput(str(tmp_path)),
+    )
+    controller = BuildController(app)
+    opened = []
+    monkeypatch.setattr(build_controller.os, "startfile", opened.append, raising=False)
+
+    controller.open_python_output_folder()
+    assert opened == []
+
+    target = tmp_path / "Builder"
+    target.mkdir()
+    (target / "Builder.exe").write_bytes(b"complete")
+    controller.open_python_output_folder()
+
+    assert opened == [str(target)]
+
+
 def test_initialize_debug_log_uses_selected_output_folder(tmp_path):
     script = tmp_path / "project" / "main.py"
     script.parent.mkdir()

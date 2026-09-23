@@ -208,6 +208,7 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         script_clear_btn=DummyButton(),
         appened_py_version=DummyButton(),
         output_btn=DummyButton(),
+        python_open_output_btn=DummyButton(),
         output_refresh_btn=DummyButton(),
         refresh_btn=DummyButton(),
         delete_recent_icons=DummyButton(),
@@ -232,7 +233,26 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         icons_title_frame=DummyFrame(),
         python_title_frame=DummyFrame(),
         output_title_frame=DummyFrame(),
+        build_controller=SimpleNamespace(has_python_output=lambda: False),
     )
+
+
+def test_python_open_output_button_matches_dotnet_availability_styling(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path)
+    app.build_controller = SimpleNamespace(has_python_output=lambda: True)
+
+    controller = ValidationController(app)
+    controller.update_ui_state()
+
+    assert app.python_open_output_btn.enabled is True
+    assert qcolor_name(Colors.TITLE_BG) in app.python_open_output_btn.stylesheet
+
+    app.building = True
+    controller.update_ui_state()
+
+    assert app.python_open_output_btn.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in app.python_open_output_btn.stylesheet
 
 
 def test_exe_refresh_enabled_when_name_empty(monkeypatch, tmp_path):

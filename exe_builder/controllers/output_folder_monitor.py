@@ -18,13 +18,18 @@ class OutputFolderValidityMonitor:
         return normalized, bool(normalized and os.path.isdir(normalized))
 
     def current_state(self):
+        build_controller = getattr(self.app, "build_controller", None)
+        python_output_available = bool(
+            build_controller
+            and getattr(build_controller, "has_python_output", lambda: False)()
+        )
         dotnet_controller = getattr(self.app, "dotnet_publish_controller", None)
         published_output_available = bool(
             dotnet_controller
             and getattr(dotnet_controller, "has_publish_output", lambda: False)()
         )
         return {
-            "python": self._path_state(self.app.output_path_input),
+            "python": (*self._path_state(self.app.output_path_input), python_output_available),
             "dotnet": (*self._path_state(self.app.dotnet_output_input), published_output_available),
         }
 

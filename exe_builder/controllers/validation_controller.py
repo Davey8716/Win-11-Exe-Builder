@@ -462,6 +462,18 @@ class ValidationController:
         set_btn(app.output_btn, not building)
         app.date_time_dropdown.setEnabled(not building)
 
+        python_open_output_btn = getattr(app, "python_open_output_btn", None)
+        if python_open_output_btn is not None:
+            output_available = (
+                not building
+                and getattr(app, "build_controller", None) is not None
+                and app.build_controller.has_python_output()
+            )
+            python_open_output_btn.setEnabled(output_available)
+            python_open_output_btn.setStyleSheet(
+                button_base() if output_available else build_disabled_button()
+            )
+
         set_btn(app.output_refresh_btn, not building and not is_desktop)
 
         # -------------------------------

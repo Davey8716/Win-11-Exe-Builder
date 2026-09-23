@@ -417,6 +417,12 @@ def attach_tooltips(app):
         "Builds your Python project into a standalone Windows EXE using PyInstaller."
     )
 
+    QtTooltip(
+        app.python_open_output_btn,
+        "Open the latest complete Python build folder for the current EXE name. "
+        "Available only when that folder contains its generated EXE."
+    )
+
     attach_dotnet_tooltips(app)
 
 

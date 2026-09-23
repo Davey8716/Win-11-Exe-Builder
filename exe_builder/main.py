@@ -982,12 +982,24 @@ class EXEBuilderApp(QWidget):
 
         self.build_btn = QPushButton("Build EXE")
         self.build_btn.setFont(QFont("Rubik UI", 13, QFont.Bold))
-        self.build_btn.setFixedSize(150, 35)
+        self.build_btn.setFixedSize(180, 35)
         self.build_btn.clicked.connect(self.build_controller.build_exe)
+
+        self.python_open_output_btn = QPushButton("Open Output Folder")
+        self.python_open_output_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.python_open_output_btn.setFixedSize(180, 35)
+        self.python_open_output_btn.clicked.connect(
+            self.build_controller.open_python_output_folder
+        )
 
         build_layout.addWidget(self.status_label, alignment=Qt.AlignHCenter)
         build_layout.addStretch()
-        build_layout.addWidget(self.build_btn, alignment=Qt.AlignCenter)
+        build_actions = QHBoxLayout()
+        build_actions.setContentsMargins(0, 0, 0, 0)
+        build_actions.setSpacing(4)
+        build_actions.addWidget(self.build_btn)
+        build_actions.addWidget(self.python_open_output_btn)
+        build_layout.addLayout(build_actions)
 
         output_frame_width = max(
             PAIRED_FRAME_WIDTH,
@@ -995,7 +1007,7 @@ class EXEBuilderApp(QWidget):
         )
         self.output_frame.setFixedSize(output_frame_width, 170)
         self.interpreter_frame.setFixedSize(output_frame_width, self.output_frame.height())
-        build_frame.setFixedSize(270, 170)
+        build_frame.setFixedSize(375, 170)
         self.env_sync_frame.setFixedWidth(output_frame_width)
 
         for frame in [
