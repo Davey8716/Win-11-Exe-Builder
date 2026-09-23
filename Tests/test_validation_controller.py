@@ -456,6 +456,27 @@ def test_output_refresh_disabled_for_desktop_output_uses_build_style(
     assert app.output_refresh_btn.stylesheet == build_disabled_button()
 
 
+def test_output_refresh_disables_for_case_insensitive_desktop_path(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    monkeypatch.setattr(
+        validation_controller.os.path,
+        "expanduser",
+        lambda _path: str(tmp_path),
+    )
+    app = make_app(tmp_path, exe_name="main")
+    desktop = tmp_path / "Desktop"
+    app.output_path_input.setText(str(desktop).upper())
+
+    controller = ValidationController(app)
+    controller.update_ui_state()
+
+    assert app.output_refresh_btn.enabled is False
+    assert app.output_refresh_btn.stylesheet == build_disabled_button()
+    assert app.output_refresh_btn.icon.isNull()
+
+
 def test_output_refresh_enabled_for_non_desktop_output(monkeypatch, tmp_path):
     monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
     app = make_app(tmp_path, exe_name="main")

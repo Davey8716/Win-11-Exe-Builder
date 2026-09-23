@@ -402,6 +402,14 @@ class DotnetPublishController(QObject):
             and os.path.isfile(values["project"])
             and is_sdk_style_project(values["project"])
         )
+        derived_project_name = (
+            os.path.splitext(os.path.basename(values["project"]))[0].strip()
+            if project_ok else ""
+        )
+        name_reset_available = bool(
+            derived_project_name
+            and values["name"].casefold() != derived_project_name.casefold()
+        )
         output_ok = bool(values["output"] and os.path.isdir(values["output"]))
         desktop = os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop"))
         output_is_desktop = bool(
@@ -467,7 +475,7 @@ class DotnetPublishController(QObject):
             "dotnet_project_select_btn", "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
             "dotnet_project_reset_btn", "dotnet_recent_projects", "dotnet_icon_delete_btn",
             "dotnet_icon_delete_all_btn", "dotnet_recent_icons", "dotnet_output_select_btn",
-            "dotnet_name_reset_btn", "dotnet_name_input",
+            "dotnet_name_input",
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setEnabled"):
@@ -507,11 +515,29 @@ class DotnetPublishController(QObject):
                 output_reset.setIcon(QIcon(str(REFRESH_BUTTON_ICON)))
                 output_reset.setIconSize(QSize(*REFRESH_BUTTON_ICON_SIZE))
                 output_reset.setText(REFRESH_BUTTON_TEXT)
+        name_reset = getattr(self.app, "dotnet_name_reset_btn", None)
+        if name_reset is not None:
+            if hasattr(name_reset, "setFixedSize"):
+                name_reset.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
+            name_reset.setEnabled(not building and name_reset_available)
+            if building or not name_reset_available:
+                name_reset.setStyleSheet(build_disabled_button())
+                if hasattr(name_reset, "setIcon"):
+                    name_reset.setIcon(QIcon())
+                if hasattr(name_reset, "setText"):
+                    name_reset.setText("")
+            else:
+                name_reset.setStyleSheet(utility_icon_button_style())
+                if hasattr(name_reset, "setIcon"):
+                    name_reset.setIcon(QIcon(str(REFRESH_BUTTON_ICON)))
+                if hasattr(name_reset, "setIconSize"):
+                    name_reset.setIconSize(QSize(*REFRESH_BUTTON_ICON_SIZE))
+                if hasattr(name_reset, "setText"):
+                    name_reset.setText(REFRESH_BUTTON_TEXT)
         for name in (
             "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
             "dotnet_project_reset_btn", "dotnet_icon_delete_btn",
             "dotnet_icon_delete_all_btn", "dotnet_icon_reset_btn",
-            "dotnet_name_reset_btn",
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setStyleSheet"):
@@ -537,9 +563,6 @@ class DotnetPublishController(QObject):
                 DELETE_ALL_BUTTON_ICON, DELETE_ALL_BUTTON_ICON_SIZE, DELETE_ALL_BUTTON_TEXT,
             ),
             "dotnet_icon_reset_btn": (
-                REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT,
-            ),
-            "dotnet_name_reset_btn": (
                 REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT,
             ),
         }

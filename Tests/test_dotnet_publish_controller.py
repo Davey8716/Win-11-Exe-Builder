@@ -512,6 +512,7 @@ def test_refresh_styles_dotnet_paths_like_python_validation(tmp_path):
 
 def test_refresh_styles_dotnet_utility_buttons_like_python_buttons(tmp_path):
     controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_name_input.value = "CustomTool"
     for name in (
         "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
         "dotnet_project_reset_btn", "dotnet_icon_delete_btn",
@@ -561,6 +562,7 @@ def test_dotnet_utility_icons_clear_and_restore_during_build(tmp_path, monkeypat
         "exe_builder.controllers.dotnet_publish_controller.QIcon", IconSpy,
     )
     controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_name_input.value = "CustomTool"
     button_icons = {
         "dotnet_project_delete_btn": "utility_delete.svg",
         "dotnet_project_delete_all_btn": "utility_delete_all.svg",
@@ -590,6 +592,32 @@ def test_dotnet_utility_icons_clear_and_restore_during_build(tmp_path, monkeypat
         button = getattr(controller.app, name)
         assert not button.icon.isNull()
         assert button.icon.path.endswith(expected_icon)
+
+
+def test_dotnet_name_reset_disables_when_name_matches_project(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_name_reset_btn = DummyButton()
+
+    controller.refresh_ui()
+
+    button = controller.app.dotnet_name_reset_btn
+    assert button.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
+    assert button.icon.isNull()
+
+    controller.app.dotnet_name_input.value = "CustomTool"
+    controller.refresh_ui()
+
+    assert button.enabled is True
+    assert qcolor_name(Colors.TITLE_BG) in button.stylesheet
+    assert not button.icon.isNull()
+
+    controller.app.dotnet_project_input.value = ""
+    controller.refresh_ui()
+
+    assert button.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
+    assert button.icon.isNull()
 
 
 def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):

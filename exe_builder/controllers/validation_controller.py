@@ -190,8 +190,11 @@ class ValidationController:
         outdir = app.output_path_input.text().strip()
         outdir = os.path.normpath(outdir) if outdir else ""
 
-        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        is_desktop = outdir and os.path.normpath(outdir) == os.path.normpath(desktop)
+        desktop = os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop"))
+        is_desktop = bool(
+            outdir
+            and os.path.normcase(outdir) == os.path.normcase(desktop)
+        )
 
         python_path = getattr(app, "python_interpreter_path", "").strip()
         python_ok = bool(python_path and os.path.isfile(python_path))
