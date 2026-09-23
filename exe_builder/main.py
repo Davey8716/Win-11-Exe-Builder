@@ -1587,6 +1587,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
         panel_layout.addWidget(self.dotnet_status_label, alignment=Qt.AlignHCenter)
         actions = QHBoxLayout()
+        actions.addStretch()
         self.dotnet_publish_btn = QPushButton("Publish")
         self.dotnet_open_output_btn = QPushButton("Open Output Folder")
         for button in (self.dotnet_publish_btn, self.dotnet_open_output_btn):
