@@ -1589,7 +1589,7 @@ class EXEBuilderApp(QWidget):
         self.build_mode = mode
         self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
         self._apply_build_mode_button_state(mode)
-        self.setFixedSize(*(APP_FIXED_SIZE if mode == "python" else (1200, 650)))
+        self.setFixedSize(*APP_FIXED_SIZE)
         if mode == "python":
             self.validation_controller.update_build_button()
             self.validation_controller.update_ui_state()
