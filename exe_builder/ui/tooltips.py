@@ -424,6 +424,7 @@ def attach_dotnet_tooltips(app):
     """Register help for controls shown by the C# .NET Publish mode."""
 
     tooltip_text = {
+        "dotnet_build_options_btn": "Open build options and application preferences.",
         "dotnet_project_select_btn": "Select the SDK-style C# project file (.csproj) to publish.",
         "dotnet_recent_projects": "Choose a recently used C# project file.",
         "dotnet_project_delete_btn": "Remove the selected project from the recent-project list.",

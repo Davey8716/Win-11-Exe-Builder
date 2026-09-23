@@ -1312,13 +1312,43 @@ class EXEBuilderApp(QWidget):
         dotnet_layout.setSpacing(8)
         self.dotnet_mode_title = QLabel("C# .NET → EXE Publish")
         self.dotnet_mode_title.setFont(QFont("Rubik UI", 18, QFont.Bold))
+        self.dotnet_mode_title.setFixedHeight(34)
         self.dotnet_mode_title.setAlignment(Qt.AlignCenter)
         self.dotnet_mode_title.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
         )
+        self.dotnet_build_options_btn = QPushButton("⚙")
+        self.dotnet_build_options_btn.setObjectName("dotnetBuildOptionsButton")
+        self.dotnet_build_options_btn.setAccessibleName("Build options")
+        self.dotnet_build_options_btn.setAccessibleDescription(
+            "Open build options and application preferences."
+        )
+        self.dotnet_build_options_btn.setFixedSize(34, 34)
+        self.dotnet_build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
+        self.dotnet_build_options_btn.setStyleSheet(utility_icon_button_style())
+        dotnet_title_spacer = QWidget()
+        dotnet_title_spacer.setFixedSize(34, 34)
+        self.dotnet_title_container = QWidget()
+        self.dotnet_title_container.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.dotnet_title_container.setFixedHeight(44)
+        self.dotnet_title_container.setFixedWidth(title_frame_minimum_width(
+            QFontMetrics(self.dotnet_mode_title.font()).horizontalAdvance(
+                self.dotnet_mode_title.text()
+            ),
+            self.dotnet_build_options_btn.width(),
+            10,
+        ))
+        dotnet_title_row = QHBoxLayout(self.dotnet_title_container)
+        dotnet_title_row.setContentsMargins(5, 5, 5, 5)
+        dotnet_title_row.setSpacing(0)
+        dotnet_title_row.addWidget(dotnet_title_spacer)
+        dotnet_title_row.addStretch()
+        dotnet_title_row.addWidget(self.dotnet_mode_title)
+        dotnet_title_row.addStretch()
+        dotnet_title_row.addWidget(self.dotnet_build_options_btn)
         self.dotnet_section_title_frames = []
         self.dotnet_configuration_frames = []
-        dotnet_layout.addWidget(self.dotnet_mode_title)
+        dotnet_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter)
 
         columns = QHBoxLayout()
         columns.setSpacing(4)
@@ -1526,6 +1556,7 @@ class EXEBuilderApp(QWidget):
         self._apply_build_mode_button_state("python")
         self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
         self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
+        self.dotnet_build_options_btn.clicked.connect(self._show_build_options)
         for widget in (
             self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
             self.dotnet_name_input,

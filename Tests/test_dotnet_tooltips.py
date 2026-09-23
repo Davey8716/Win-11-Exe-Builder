@@ -19,7 +19,7 @@ def test_dotnet_tooltips_cover_all_publish_controls_and_paths(monkeypatch):
     monkeypatch.setattr(tooltips, "PathHover", FakePathHover)
 
     tooltip_names = (
-        "dotnet_project_select_btn", "dotnet_recent_projects", "dotnet_project_delete_btn",
+        "dotnet_build_options_btn", "dotnet_project_select_btn", "dotnet_recent_projects", "dotnet_project_delete_btn",
         "dotnet_project_delete_all_btn", "dotnet_project_reset_btn", "dotnet_icon_select_btn",
         "dotnet_recent_icons", "dotnet_icon_delete_btn", "dotnet_icon_delete_all_btn",
         "dotnet_icon_reset_btn", "dotnet_output_select_btn", "dotnet_output_reset_btn",

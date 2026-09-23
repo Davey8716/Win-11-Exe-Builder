@@ -389,8 +389,9 @@ class ValidationController:
         )
                         
         # Tooltips
-        if hasattr(app, "build_options_btn"):
-            set_btn(app.build_options_btn, not building)
+        for name in ("build_options_btn", "dotnet_build_options_btn"):
+            if hasattr(app, name):
+                set_btn(getattr(app, name), not building)
         set_btn(app.tooltips_checkbox, not building)
         if hasattr(app, "suppress_exit_dialogue"):
             set_btn(app.suppress_exit_dialogue, not building)
