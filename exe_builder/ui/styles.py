@@ -395,6 +395,15 @@ def build_disabled_checkbox() -> str:
     """
 
 
+def required_selection_checkbox() -> str:
+    """Style an enabled checkbox whose required selection is missing."""
+    return f"""
+        QCheckBox {{
+            color: {qcolor_name(Colors.ERROR)};
+        }}
+    """
+
+
 def build_disabled_checkbox_without_checkmark() -> str:
     return f"""
         QCheckBox {{

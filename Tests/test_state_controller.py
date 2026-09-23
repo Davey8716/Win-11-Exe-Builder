@@ -205,7 +205,7 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         "executable_name": "Tool",
         "runtime": "win-arm64",
         "self_contained": True,
-        "single_file": True,
+        "single_file": False,
         "trim": False,
         "recent_projects": [],
         "recent_icons": [],
@@ -213,6 +213,33 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         "last_build_seconds": 45,
     }
     assert not controller.python_state_file_path() == controller.csharp_state_file_path()
+
+
+def test_save_csharp_state_preserves_an_intentionally_cleared_publish_option(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    runtime = DummyDropdown([{"text": "Windows x64", "data": "win-x64"}])
+    runtime.setCurrentIndex(0)
+    options = [DummyCheckbox() for _ in range(3)]
+    for option in options:
+        option.checked = False
+        option.isChecked = lambda option=option: option.checked
+    app = make_app(
+        dotnet_project_input=DummyInput("Tool.csproj"),
+        dotnet_output_input=DummyInput("publish"),
+        dotnet_icon_input=DummyInput(),
+        dotnet_name_input=DummyInput("Tool"),
+        dotnet_runtime_combo=runtime,
+        dotnet_self_contained=options[0],
+        dotnet_single_file=options[1],
+        dotnet_trim=options[2],
+    )
+
+    controller = StateController(app)
+    controller.save_csharp_state()
+
+    assert app.csharp_state_data["self_contained"] is False
+    assert app.csharp_state_data["single_file"] is False
+    assert app.csharp_state_data["trim"] is False
 
 
 def test_legacy_state_is_partitioned_and_removed(monkeypatch, tmp_path):

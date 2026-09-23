@@ -68,9 +68,11 @@ from exe_builder.ui.styles import (
     MAIN_FRAME_STYLE,
     TITLE_FRAME_STYLE,
     apply_build_mode_button_state,
+    build_disabled_checkbox,
     build_mode_button_font,
     button_base,
     qcolor_name,
+    required_selection_checkbox,
     title_frame_minimum_width,
     Colors,
     utility_icon_button_style,
@@ -1443,7 +1445,9 @@ class EXEBuilderApp(QWidget):
         panel_layout.setSpacing(7)
 
         option_row = QHBoxLayout()
-        option_row.addWidget(QLabel("Target runtime"))
+        self.dotnet_runtime_label = QLabel("Target runtime")
+        self.dotnet_runtime_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        option_row.addWidget(self.dotnet_runtime_label)
         self.dotnet_runtime_combo = QComboBox()
         self.dotnet_runtime_combo.addItem("Windows x64", "win-x64")
         self.dotnet_runtime_combo.addItem("Windows ARM64", "win-arm64")
@@ -1452,6 +1456,12 @@ class EXEBuilderApp(QWidget):
         self.dotnet_self_contained = QCheckBox("Self-contained")
         self.dotnet_single_file = QCheckBox("Single file")
         self.dotnet_trim = QCheckBox("Trim")
+        for checkbox in (
+            self.dotnet_self_contained,
+            self.dotnet_single_file,
+            self.dotnet_trim,
+        ):
+            checkbox.setFont(QFont("Rubik UI", 11, QFont.Bold))
         self.dotnet_self_contained.setChecked(True)
         option_row.addWidget(self.dotnet_self_contained)
         option_row.addWidget(self.dotnet_single_file)
@@ -1523,7 +1533,10 @@ class EXEBuilderApp(QWidget):
             widget.textChanged.connect(self._on_dotnet_settings_changed)
         self.dotnet_runtime_combo.currentIndexChanged.connect(self._on_dotnet_settings_changed)
         for widget in (self.dotnet_self_contained, self.dotnet_single_file, self.dotnet_trim):
-            widget.toggled.connect(self._on_dotnet_settings_changed)
+            widget.toggled.connect(
+                lambda checked, selected=widget: self._on_dotnet_publish_option_toggled(selected, checked)
+            )
+        self._sync_dotnet_publish_options()
         root_layout.addWidget(mode_row)
         root_layout.addWidget(self.build_mode_stack)
 
@@ -1555,6 +1568,38 @@ class EXEBuilderApp(QWidget):
         self.dotnet_publish_controller.refresh_ui()
         if not getattr(self, "_loading_state", False):
             self.state_ctrl.save_csharp_state()
+
+    def _on_dotnet_publish_option_toggled(self, selected, checked):
+        """Apply the selected .NET publish option, or its required empty state."""
+        self._sync_dotnet_publish_options(selected if checked else None)
+        self._on_dotnet_settings_changed()
+
+    def _sync_dotnet_publish_options(self, selected=None):
+        """Synchronize one selected publish option or the required empty state."""
+        options = (
+            self.dotnet_self_contained,
+            self.dotnet_single_file,
+            self.dotnet_trim,
+        )
+        if selected not in options:
+            selected = next((option for option in options if option.isChecked()), None)
+
+        for option in options:
+            signals_were_blocked = option.blockSignals(True)
+            option.setChecked(option is selected)
+            option.blockSignals(signals_were_blocked)
+
+        building = getattr(self, "building", False)
+        for option in options:
+            enabled = not building and (selected is None or option is selected)
+            option.setEnabled(enabled)
+            if building or not enabled:
+                style = build_disabled_checkbox()
+            elif selected is None:
+                style = required_selection_checkbox()
+            else:
+                style = ""
+            option.setStyleSheet(style)
 
     def _start_output_folder_monitor(self):
         self.output_folder_monitor_timer = QTimer(self)

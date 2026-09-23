@@ -384,6 +384,8 @@ class DotnetPublishController(QObject):
             return "No Icon cannot remove a project Win32Resource; remove that resource in the C# project."
         if values["runtime"] not in {"win-x64", "win-arm64"}:
             return "Select a Windows target runtime."
+        if not any(values[name] for name in ("self_contained", "single_file", "trim")):
+            return "Select one .NET publish option."
         if check_sdk:
             try:
                 result = subprocess.run(["dotnet", "--version"], capture_output=True, text=True,
@@ -524,6 +526,9 @@ class DotnetPublishController(QObject):
                     checkbox.setEnabled(not building)
                 if hasattr(checkbox, "setStyleSheet"):
                     checkbox.setStyleSheet(build_disabled_checkbox() if building else "")
+        sync_publish_options = getattr(self.app, "_sync_dotnet_publish_options", None)
+        if sync_publish_options is not None:
+            sync_publish_options()
         output_reset = getattr(self.app, "dotnet_output_reset_btn", None)
         if output_reset is not None:
             if hasattr(output_reset, "setFixedSize"):

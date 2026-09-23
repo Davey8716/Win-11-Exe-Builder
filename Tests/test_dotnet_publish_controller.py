@@ -355,6 +355,15 @@ def test_validation_accepts_complete_sdk_project(tmp_path):
     assert controller.output_path().endswith("Tool")
 
 
+def test_validation_requires_one_dotnet_publish_option(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_self_contained.checked = False
+    controller.app.dotnet_single_file.checked = False
+    controller.app.dotnet_trim.checked = False
+
+    assert controller.validation_error() == "Select one .NET publish option."
+
+
 def test_publish_button_uses_readiness_colours(tmp_path):
     controller, _ = make_controller(tmp_path)
 
