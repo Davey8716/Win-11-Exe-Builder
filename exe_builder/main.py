@@ -1569,20 +1569,24 @@ class EXEBuilderApp(QWidget):
         panel_layout.setContentsMargins(12, 12, 12, 12)
         panel_layout.setSpacing(7)
 
-        option_row = QHBoxLayout()
+        runtime_row = QHBoxLayout()
         self.dotnet_runtime_label = QLabel("Target runtime")
         self.dotnet_runtime_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
         self.dotnet_runtime_label.setMinimumWidth(
             self.dotnet_runtime_label.sizeHint().width()
         )
-        option_row.addWidget(self.dotnet_runtime_label)
+        runtime_row.addStretch()
+        runtime_row.addWidget(self.dotnet_runtime_label)
         self.dotnet_runtime_combo = QComboBox()
         self.dotnet_runtime_combo.addItem("Windows x64", "win-x64")
         self.dotnet_runtime_combo.addItem("Windows ARM64", "win-arm64")
         self.dotnet_runtime_combo.setStyleSheet(COMBO_BOX_STYLE)
         self.dotnet_runtime_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.dotnet_runtime_combo.setMinimumWidth(190)
-        option_row.addWidget(self.dotnet_runtime_combo)
+        runtime_row.addWidget(self.dotnet_runtime_combo)
+        runtime_row.addStretch()
+
+        publish_options_row = QHBoxLayout()
         self.dotnet_self_contained = QCheckBox("Self-contained")
         self.dotnet_single_file = QCheckBox("Single file")
         self.dotnet_trim = QCheckBox("Trim")
@@ -1594,19 +1598,23 @@ class EXEBuilderApp(QWidget):
             checkbox.setFont(QFont("Rubik UI", 11, QFont.Bold))
             checkbox.setMinimumWidth(checkbox.sizeHint().width())
         self.dotnet_self_contained.setChecked(True)
-        option_row.addWidget(self.dotnet_self_contained)
-        option_row.addWidget(self.dotnet_single_file)
-        option_row.addWidget(self.dotnet_trim)
-        option_row.addStretch()
-        panel_layout.addLayout(option_row)
+        publish_options_row.addStretch()
+        publish_options_row.addWidget(self.dotnet_self_contained)
+        publish_options_row.addWidget(self.dotnet_single_file)
+        publish_options_row.addWidget(self.dotnet_trim)
+        publish_options_row.addStretch()
+        panel_layout.addLayout(runtime_row)
+        panel_layout.addLayout(publish_options_row)
 
-        # Unlike the paired selection frames, this panel holds every publish
-        # setting on one row.  Size it from those controls so runtime names
-        # and option labels cannot be squeezed or elided.
+        # Size the fixed-height panel from its widest control row so runtime
+        # names and publish-option labels cannot be squeezed or elided.
         panel_margins = panel_layout.contentsMargins()
         dotnet_publish_panel_width = max(
             PAIRED_FRAME_WIDTH,
-            option_row.minimumSize().width()
+            max(
+                runtime_row.minimumSize().width(),
+                publish_options_row.minimumSize().width(),
+            )
             + panel_margins.left()
             + panel_margins.right(),
         )
@@ -1615,7 +1623,7 @@ class EXEBuilderApp(QWidget):
 
         self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
         self.dotnet_status_label.setReadOnly(True)
-        self.dotnet_status_label.setFixedSize(520, 65)
+        self.dotnet_status_label.setFixedSize(520, 40)
         self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
         self.dotnet_status_label.setAlignment(Qt.AlignCenter)
 

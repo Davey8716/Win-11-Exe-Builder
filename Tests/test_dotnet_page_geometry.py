@@ -52,9 +52,32 @@ def test_dotnet_publish_panel_width_fits_the_runtime_and_option_controls():
     assert "self.dotnet_runtime_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)" in MAIN_SOURCE
     assert "self.dotnet_runtime_combo.setMinimumWidth(190)" in MAIN_SOURCE
     assert "checkbox.setMinimumWidth(checkbox.sizeHint().width())" in MAIN_SOURCE
-    assert "option_row.minimumSize().width()" in MAIN_SOURCE
+    assert "runtime_row.minimumSize().width()" in MAIN_SOURCE
+    assert "publish_options_row.minimumSize().width()" in MAIN_SOURCE
     assert "panel.setFixedWidth(dotnet_publish_panel_width)" in MAIN_SOURCE
     assert "panel.setFixedWidth(PAIRED_FRAME_WIDTH)" not in MAIN_SOURCE
+
+
+def test_dotnet_build_controls_are_ordered_from_runtime_to_actions():
+    runtime_row = "runtime_row = QHBoxLayout()"
+    options_row = "publish_options_row = QHBoxLayout()"
+    status = "self.dotnet_status_label = QTextEdit"
+    actions = "actions = QHBoxLayout()"
+
+    assert MAIN_SOURCE.index(runtime_row) < MAIN_SOURCE.index(options_row)
+    assert MAIN_SOURCE.index(options_row) < MAIN_SOURCE.index(status)
+    assert MAIN_SOURCE.index(status) < MAIN_SOURCE.index(actions, MAIN_SOURCE.index(status))
+    assert "self.dotnet_status_label.setFixedSize(520, 40)" in MAIN_SOURCE
+
+
+def test_dotnet_runtime_and_publish_options_rows_are_centered():
+    runtime_start = MAIN_SOURCE.index("runtime_row = QHBoxLayout()")
+    options_start = MAIN_SOURCE.index("publish_options_row = QHBoxLayout()")
+    runtime_row = MAIN_SOURCE[runtime_start:options_start]
+    options_row = MAIN_SOURCE[options_start:MAIN_SOURCE.index("panel_layout.addLayout(runtime_row)")]
+
+    assert runtime_row.count("runtime_row.addStretch()") == 2
+    assert options_row.count("publish_options_row.addStretch()") == 2
 
 
 def test_dotnet_selection_sections_are_ordered_in_the_right_column():
