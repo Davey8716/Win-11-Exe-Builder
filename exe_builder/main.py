@@ -191,7 +191,7 @@ class EXEBuilderApp(QWidget):
         title_layout.setContentsMargins(5,5,5,5)
         title_layout.setSpacing(0)
 
-        self.title_label = QLabel(" Win 11 → Python → EXE Builder")
+        self.title_label = QLabel("Win 11 → Python → EXE Builder")
         self.title_label.setObjectName("appTitleLabel")
         self.title_label.setFont(QFont("Rubik UI", 18, QFont.Bold))
         self.title_label.setFixedHeight(34)
@@ -1310,7 +1310,7 @@ class EXEBuilderApp(QWidget):
         dotnet_layout = QVBoxLayout(self.dotnet_mode_page)
         dotnet_layout.setContentsMargins(20, 12, 20, 12)
         dotnet_layout.setSpacing(8)
-        self.dotnet_mode_title = QLabel("C# .NET Publish")
+        self.dotnet_mode_title = QLabel("C# .NET → EXE Publish")
         self.dotnet_mode_title.setFont(QFont("Rubik UI", 18, QFont.Bold))
         self.dotnet_mode_title.setAlignment(Qt.AlignCenter)
         self.dotnet_mode_title.setStyleSheet(
