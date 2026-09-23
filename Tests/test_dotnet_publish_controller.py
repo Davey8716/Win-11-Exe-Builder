@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from datetime import datetime
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QComboBox, QPushButton, QTextEdit
@@ -11,9 +12,21 @@ from exe_builder.controllers.dotnet_publish_controller import (
     TRAY_ICON_NAME,
     build_dotnet_clean_command,
     build_dotnet_publish_command,
+    dotnet_output_name,
     is_sdk_style_project,
     sync_published_tray_icon,
     validate_executable_name,
+)
+from exe_builder.build.datetime_build_options import (
+    DATETIME_FORMAT_OPTIONS,
+    ISO_MASS_DATETIME_BUILD_SENTINEL,
+    ISO_MASS_DATETIME_BUILD_SEQUENCE,
+    MASS_DATETIME_BUILD_SENTINEL,
+    MASS_DATETIME_BUILD_SEQUENCE,
+    UK_MASS_DATETIME_BUILD_SENTINEL,
+    UK_MASS_DATETIME_BUILD_SEQUENCE,
+    USA_MASS_DATETIME_BUILD_SENTINEL,
+    USA_MASS_DATETIME_BUILD_SEQUENCE,
 )
 from exe_builder.ui.styles import Colors, build_disabled_button, qcolor_name
 
@@ -58,6 +71,10 @@ class DummyRuntime:
 
     def setEnabled(self, value):
         self.enabled = value
+
+
+class DummyDateSelection(DummyRuntime):
+    pass
 
 
 class DummyButton:
@@ -157,6 +174,175 @@ def test_publish_command_contains_selected_options(tmp_path):
     assert "-p:PublishTrimmed=true" in command
     assert f"-p:ApplicationIcon={tmp_path / 'app.ico'}" in command
     assert command[command.index("-o") + 1].endswith("dist\\MyTool") or command[command.index("-o") + 1].endswith("dist/MyTool")
+
+
+@pytest.mark.parametrize("format_string,expected", [
+    (None, "Tool"),
+    ("%Y-%m-%d", "Tool_ISO_2026-05-19"),
+    ("%Y-%m-%d_%H-%M", "Tool_ISO_2026-05-19_12-34"),
+    ("%d-%m-%Y", "Tool_UK_19-05-2026"),
+    ("%d-%m-%Y_%H-%M", "Tool_UK_19-05-2026_12-34"),
+    ("%m-%d-%Y", "Tool_USA_05-19-2026"),
+    ("%m-%d-%Y_%H-%M", "Tool_USA_05-19-2026_12-34"),
+])
+def test_dotnet_output_names_match_python_date_variants(format_string, expected):
+    assert dotnet_output_name("Tool", format_string, datetime(2026, 5, 19, 12, 34)) == expected
+
+
+def test_dotnet_format_options_match_python_options():
+    assert [format_string for _, format_string in DATETIME_FORMAT_OPTIONS] == [
+        "%Y-%m-%d", "%Y-%m-%d_%H-%M", "%d-%m-%Y",
+        "%d-%m-%Y_%H-%M", "%m-%d-%Y", "%m-%d-%Y_%H-%M",
+    ]
+
+
+class FakeSignal:
+    def __init__(self):
+        self.callbacks = []
+
+    def connect(self, _callback):
+        self.callbacks.append(_callback)
+
+    def emit(self, *_args):
+        for callback in list(self.callbacks):
+            callback(*_args)
+
+
+class FakeThread:
+    def __init__(self):
+        self.started = FakeSignal()
+        self.finished = FakeSignal()
+
+    def start(self):
+        pass
+
+    def quit(self):
+        pass
+
+    def deleteLater(self):
+        pass
+
+
+class FakeWorker:
+    commands = []
+
+    def __init__(self, _app, clean, publish, log_path):
+        self.finished = FakeSignal()
+        self.cancel_requested = SimpleNamespace(set=lambda: None)
+        self.commands.append((clean, publish, log_path))
+
+    def moveToThread(self, _thread):
+        pass
+
+    def deleteLater(self):
+        pass
+
+    def run(self):
+        pass
+
+
+@pytest.mark.parametrize("selection,sequence", [
+    (MASS_DATETIME_BUILD_SENTINEL, MASS_DATETIME_BUILD_SEQUENCE),
+    (ISO_MASS_DATETIME_BUILD_SENTINEL, ISO_MASS_DATETIME_BUILD_SEQUENCE),
+    (UK_MASS_DATETIME_BUILD_SENTINEL, UK_MASS_DATETIME_BUILD_SEQUENCE),
+    (USA_MASS_DATETIME_BUILD_SENTINEL, USA_MASS_DATETIME_BUILD_SEQUENCE),
+])
+def test_dotnet_build_all_publishes_each_variant_in_order(
+    tmp_path, monkeypatch, selection, sequence,
+):
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_date_time_dropdown = DummyDateSelection(selection)
+    controller.app.state_ctrl = SimpleNamespace(save_csharp_state=lambda: None, save_state=lambda: None)
+    presented = []
+    post_actions = []
+    controller.app.build_controller = SimpleNamespace(
+        _present_successful_build_outputs=presented.append,
+        _run_success_post_build_action=lambda: post_actions.append(True),
+    )
+    controller.validation_error = lambda check_sdk=False: ""
+    controller.refresh_ui = lambda: None
+    FakeWorker.commands = []
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.QThread", FakeThread)
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.DotnetPublishWorker", FakeWorker)
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.datetime", SimpleNamespace(
+        now=lambda: datetime(2026, 5, 19, 12, 34)
+    ))
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.sync_published_tray_icon", lambda *_: None)
+
+    controller.publish()
+    for index, (_, date_format) in enumerate(sequence):
+        clean, publish, log_path = FakeWorker.commands[index]
+        name = controller._publish_name
+        assert name == dotnet_output_name("Tool", date_format, datetime(2026, 5, 19, 12, 34))
+        assert clean[-1] == f"-p:AssemblyName={name}"
+        assert f"-p:AssemblyName={name}" in publish
+        assert publish[publish.index("-o") + 1] == str(tmp_path / name)
+        assert log_path == str(tmp_path / f"DOTNET_PUBLISH_DEBUG_{name}.log")
+        (tmp_path / name / f"{name}.exe").write_bytes(b"published")
+        controller._on_publish_finished(0, "")
+        if index < len(sequence) - 1:
+            assert controller.app.building is True
+
+    assert len(FakeWorker.commands) == len(sequence)
+    assert len(controller._completed_outputs) == len(sequence)
+    assert len({path for path in controller._completed_outputs}) == len(sequence)
+    assert controller.app.building is False
+    assert presented == [str(tmp_path)]
+    assert post_actions == [True]
+    assert controller.has_publish_output()
+    assert controller.output_path() == controller._completed_outputs[-1]
+    opened = []
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.os.startfile", opened.append, raising=False)
+    controller.open_output_folder()
+    assert opened == [controller._completed_outputs[-1]]
+
+
+@pytest.mark.parametrize("cancelled", [False, True])
+def test_dotnet_build_all_stops_after_failed_or_cancelled_output(tmp_path, monkeypatch, cancelled):
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_date_time_dropdown = DummyDateSelection(ISO_MASS_DATETIME_BUILD_SENTINEL)
+    controller.app.state_ctrl = SimpleNamespace(save_csharp_state=lambda: None)
+    controller.app.build_controller = SimpleNamespace(
+        _present_successful_build_outputs=lambda *_: None,
+        _run_success_post_build_action=lambda: None,
+    )
+    controller.validation_error = lambda check_sdk=False: ""
+    controller.refresh_ui = lambda: None
+    FakeWorker.commands = []
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.QThread", FakeThread)
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.DotnetPublishWorker", FakeWorker)
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.sync_published_tray_icon", lambda *_: None)
+
+    controller.publish()
+    first = controller._publish_target
+    controller._on_publish_finished(0, "")
+    assert len(FakeWorker.commands) == 2
+    if cancelled:
+        controller.cancel()
+    controller._on_publish_finished(1, "failed")
+
+    assert controller.app.building is False
+    assert controller._pending_outputs == []
+    assert controller._completed_outputs == [first]
+    assert controller.output_path() == first
+    assert controller.app.dotnet_date_time_dropdown.currentData() == ISO_MASS_DATETIME_BUILD_SENTINEL
+    assert "1 complete" in controller.app.dotnet_status_label.text
+
+
+def test_next_dotnet_variant_waits_for_previous_thread_to_finish(tmp_path, monkeypatch):
+    controller, _ = make_controller(tmp_path)
+    controller.app.building = True
+    controller._pending_outputs = [("next", "%Y-%m-%d")]
+    controller._publish_target = str(tmp_path / "Tool")
+    controller.thread = SimpleNamespace(isRunning=lambda: True, finished=FakeSignal())
+    started = []
+    controller._publish_next = lambda: started.append(True)
+    monkeypatch.setattr("exe_builder.controllers.dotnet_publish_controller.sync_published_tray_icon", lambda *_: None)
+
+    controller._on_publish_finished(0, "")
+    assert started == []
+    controller.thread.finished.emit()
+    assert started == [True]
 
 
 def test_clean_command_uses_same_project_configuration(tmp_path):

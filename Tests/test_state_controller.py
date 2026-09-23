@@ -99,6 +99,9 @@ class DummyDropdown:
     def count(self):
         return len(self.options)
 
+    def blockSignals(self, _value):
+        pass
+
     def itemText(self, index):
         return self.options[index]["text"]
 
@@ -174,6 +177,11 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         {"text": "Windows ARM64", "data": "win-arm64"},
     ])
     runtime.setCurrentIndex(1)
+    date_selection = DummyDropdown([
+        {"text": "No Date Time Appended", "data": None},
+        {"text": "UK | DD-MM-YYYY", "data": "%d-%m-%Y"},
+    ])
+    date_selection.setCurrentIndex(1)
     self_contained = DummyCheckbox()
     self_contained.checked = True
     single_file = DummyCheckbox()
@@ -189,6 +197,7 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         dotnet_icon_input=DummyInput(str(tmp_path / "tool.ico")),
         dotnet_name_input=DummyInput("Tool"),
         dotnet_runtime_combo=runtime,
+        dotnet_date_time_dropdown=date_selection,
         dotnet_self_contained=self_contained,
         dotnet_single_file=single_file,
         dotnet_trim=trim,
@@ -204,6 +213,7 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         "icon_path": os.path.normpath(str(tmp_path / "tool.ico")),
         "executable_name": "Tool",
         "runtime": "win-arm64",
+        "datetime_format": "%d-%m-%Y",
         "self_contained": True,
         "single_file": False,
         "trim": False,
@@ -576,3 +586,38 @@ def test_load_state_restores_saved_mass_datetime_sentinel_selection(monkeypatch,
         assert app.append_datetime is False
         assert app.datetime_format == sentinel
         assert app.date_time_dropdown.currentText() == label
+
+
+def test_csharp_datetime_selection_restores_independently_and_defaults_to_no_date(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    options = [
+        {"text": "Append Date/Time", "data": None, "enabled": False},
+        {"text": "No Date Time Appended", "data": None},
+        {"text": "Build All USA Date/Time Outputs", "data": USA_MASS_DATETIME_BUILD_SENTINEL},
+    ]
+    app = make_app(
+        validator=DummyValidator(),
+        dotnet_project_input=DummyInput(),
+        dotnet_output_input=DummyInput(),
+        dotnet_icon_input=DummyInput(),
+        dotnet_name_input=DummyInput(),
+        dotnet_runtime_combo=DummyDropdown([{"text": "Windows x64", "data": "win-x64"}]),
+        dotnet_date_time_dropdown=DummyDropdown(options),
+        dotnet_self_contained=DummyCheckbox(),
+        dotnet_single_file=DummyCheckbox(),
+        dotnet_trim=DummyCheckbox(),
+    )
+    controller = StateController(app)
+    with open(controller.python_state_file_path(), "w", encoding="utf-8") as handle:
+        json.dump({"datetime_format": "%Y-%m-%d"}, handle)
+    with open(controller.csharp_state_file_path(), "w", encoding="utf-8") as handle:
+        json.dump({"datetime_format": USA_MASS_DATETIME_BUILD_SENTINEL}, handle)
+
+    controller.load_state()
+    assert app.datetime_format == "%Y-%m-%d"
+    assert app.dotnet_date_time_dropdown.currentData() == USA_MASS_DATETIME_BUILD_SENTINEL
+
+    with open(controller.csharp_state_file_path(), "w", encoding="utf-8") as handle:
+        json.dump({}, handle)
+    controller.load_state()
+    assert app.dotnet_date_time_dropdown.currentText() == "No Date Time Appended"

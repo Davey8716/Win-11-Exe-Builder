@@ -97,7 +97,7 @@ class StateController:
         app.state_data = python_data
         app.csharp_state_data = csharp_data
         blocked = []
-        names = ("tooltips_checkbox", "suppress_exit_dialogue", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
+        names = ("tooltips_checkbox", "suppress_exit_dialogue", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
         for name in names:
             widget = getattr(app, name, None)
             if widget is not None:
@@ -123,6 +123,14 @@ class StateController:
             if hasattr(app, "dotnet_project_input"):
                 app.dotnet_project_input.set_display_path(norm(csharp_data.get("project_path", ""))); app.dotnet_output_input.set_display_path(norm(csharp_data.get("output_folder", ""))); app.dotnet_icon_input.set_display_path(norm(csharp_data.get("icon_path", ""))); app.dotnet_name_input.setText(csharp_data.get("executable_name", ""))
                 index = app.dotnet_runtime_combo.findData(csharp_data.get("runtime", "win-x64")); app.dotnet_runtime_combo.setCurrentIndex(index if index >= 0 else 0)
+                dropdown = getattr(app, "dotnet_date_time_dropdown", None)
+                if dropdown is not None:
+                    selected = csharp_data.get("datetime_format")
+                    index = dropdown.findData(selected) if selected is not None else -1
+                    if index < 0 or selected is None:
+                        index = self._find_enabled_dropdown_text(dropdown, self.NO_DATETIME_LABEL)
+                    if index >= 0:
+                        dropdown.setCurrentIndex(index)
                 option_keys = ("self_contained", "single_file", "trim")
                 first_use = not any(key in csharp_data for key in option_keys)
                 app.dotnet_self_contained.setChecked(csharp_data.get("self_contained", first_use)); app.dotnet_single_file.setChecked(csharp_data.get("single_file", False)); app.dotnet_trim.setChecked(csharp_data.get("trim", False))
@@ -162,7 +170,8 @@ class StateController:
     def save_csharp_state(self):
         app = self.app; norm = lambda path: os.path.normpath(path) if path else ""; existing = getattr(app, "csharp_state_data", self._read(self.csharp_state_file_path()))
         selected = next((name for name in ("self_contained", "single_file", "trim") if getattr(app, f"dotnet_{name}").isChecked()), None)
-        data = {"recent_projects": existing.get("recent_projects", []), "recent_icons": existing.get("recent_icons", []), "last_non_desktop_output_folder": existing.get("last_non_desktop_output_folder", ""), "project_path": norm(app.dotnet_project_input.text()), "output_folder": norm(app.dotnet_output_input.text()), "icon_path": norm(app.dotnet_icon_input.text()), "executable_name": app.dotnet_name_input.text(), "runtime": app.dotnet_runtime_combo.currentData(), "self_contained": selected == "self_contained", "single_file": selected == "single_file", "trim": selected == "trim", "last_build_seconds": getattr(app, "last_build_seconds", 45)}
+        dropdown = getattr(app, "dotnet_date_time_dropdown", None)
+        data = {"recent_projects": existing.get("recent_projects", []), "recent_icons": existing.get("recent_icons", []), "last_non_desktop_output_folder": existing.get("last_non_desktop_output_folder", ""), "project_path": norm(app.dotnet_project_input.text()), "output_folder": norm(app.dotnet_output_input.text()), "icon_path": norm(app.dotnet_icon_input.text()), "executable_name": app.dotnet_name_input.text(), "runtime": app.dotnet_runtime_combo.currentData(), "datetime_format": dropdown.currentData() if dropdown is not None else existing.get("datetime_format"), "self_contained": selected == "self_contained", "single_file": selected == "single_file", "trim": selected == "trim", "last_build_seconds": getattr(app, "last_build_seconds", 45)}
         app.csharp_state_data = data; self._write(self.csharp_state_file_path(), data)
 
     def save_state(self):

@@ -17,6 +17,11 @@ DATETIME_FORMAT_OPTIONS = [
     ("USA | MM-DD-YYYY_HH-MM", "%m-%d-%Y_%H-%M"),
 ]
 
+DATETIME_FORMAT_REGIONS = {
+    format_string: label.split(" | ", 1)[0]
+    for label, format_string in DATETIME_FORMAT_OPTIONS
+}
+
 MASS_DATETIME_BUILD_SEQUENCE = [
     (NO_DATETIME_LABEL, None),
     *DATETIME_FORMAT_OPTIONS,

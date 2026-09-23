@@ -3,6 +3,7 @@ from PySide6.QtGui import QFont
 from ..build.bundle_validation import validate_bundle_inputs
 from ..build.external_python import external_python_environment
 from ..build.datetime_build_options import (
+    DATETIME_FORMAT_REGIONS,
     ISO_MASS_DATETIME_BUILD_SENTINEL,
     ISO_MASS_DATETIME_BUILD_SEQUENCE,
     MASS_DATETIME_BUILD_SENTINEL,
@@ -38,15 +39,6 @@ from ..ui.styles import Colors, status_text_style
 
 CREATE_NO_WINDOW = 0x08000000
 WINDOWS_RESOURCE_PATH_LIMIT = 260
-
-DATETIME_FORMAT_REGIONS = {
-    "%Y-%m-%d": "ISO",
-    "%Y-%m-%d_%H-%M": "ISO",
-    "%d-%m-%Y": "UK",
-    "%d-%m-%Y_%H-%M": "UK",
-    "%m-%d-%Y": "USA",
-    "%m-%d-%Y_%H-%M": "USA",
-}
 
 MASS_DATETIME_BUILD_SENTINELS = {
     MASS_DATETIME_BUILD_SENTINEL,

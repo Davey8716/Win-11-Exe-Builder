@@ -8,6 +8,7 @@ import tempfile
 import threading
 import time
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 import psutil
 from PySide6.QtCore import QObject, QSize, Qt, QThread, Signal
@@ -40,6 +41,17 @@ from ..ui.styles import (
     utility_icon_button_style,
 )
 from ..controllers.recent_controller import MAX_RECENTS, _recent_display_label
+from ..build.datetime_build_options import (
+    DATETIME_FORMAT_REGIONS,
+    ISO_MASS_DATETIME_BUILD_SENTINEL,
+    ISO_MASS_DATETIME_BUILD_SEQUENCE,
+    MASS_DATETIME_BUILD_SENTINEL,
+    MASS_DATETIME_BUILD_SEQUENCE,
+    UK_MASS_DATETIME_BUILD_SENTINEL,
+    UK_MASS_DATETIME_BUILD_SEQUENCE,
+    USA_MASS_DATETIME_BUILD_SENTINEL,
+    USA_MASS_DATETIME_BUILD_SEQUENCE,
+)
 from ..ui.ui_highlights import flash_add_highlight, flash_delete_highlight
 
 
@@ -52,6 +64,24 @@ _RESERVED_WINDOWS_NAMES = {
     "CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
 }
+
+DOTNET_BUILD_ALL_SEQUENCES = {
+    MASS_DATETIME_BUILD_SENTINEL: MASS_DATETIME_BUILD_SEQUENCE,
+    ISO_MASS_DATETIME_BUILD_SENTINEL: ISO_MASS_DATETIME_BUILD_SEQUENCE,
+    UK_MASS_DATETIME_BUILD_SENTINEL: UK_MASS_DATETIME_BUILD_SEQUENCE,
+    USA_MASS_DATETIME_BUILD_SENTINEL: USA_MASS_DATETIME_BUILD_SEQUENCE,
+}
+
+
+def dotnet_output_name(base_name, date_format, timestamp):
+    """Use the Python builder's region and date suffix for a .NET output."""
+    if not date_format:
+        return base_name
+    return "_".join((
+        base_name,
+        DATETIME_FORMAT_REGIONS[date_format],
+        timestamp.strftime(date_format),
+    ))
 
 
 def is_sdk_style_project(project_path):
@@ -218,6 +248,15 @@ class DotnetPublishController(QObject):
         self._publish_icon_path = None
         self._publish_target = None
         self._publish_output_dir = None
+        self._publish_name = None
+        self._run_values = None
+        self._run_selection = None
+        self._run_timestamp = None
+        self._pending_outputs = []
+        self._batch_total = 0
+        self._batch_index = 0
+        self._completed_outputs = []
+        self._last_successful_output = None
         self.publish_finished.connect(self._on_publish_finished)
 
     def values(self):
@@ -236,9 +275,24 @@ class DotnetPublishController(QObject):
             "trim": app.dotnet_trim.isChecked(),
         }
 
+    def selected_datetime_format(self):
+        dropdown = getattr(self.app, "dotnet_date_time_dropdown", None)
+        return dropdown.currentData() if dropdown is not None else None
+
     def output_path(self):
         values = self.values()
-        return os.path.join(values["output"], values["name"]) if values["output"] and values["name"] else ""
+        if not values["output"] or not values["name"]:
+            return ""
+        selection = self.selected_datetime_format()
+        previous = self._last_successful_output
+        if previous and previous[:3] == (values["output"], values["name"], selection):
+            return previous[3]
+        if selection in DOTNET_BUILD_ALL_SEQUENCES:
+            return ""
+        if selection and selection not in DATETIME_FORMAT_REGIONS:
+            return ""
+        name = dotnet_output_name(values["name"], selection, datetime.now())
+        return os.path.join(values["output"], name)
 
     def _set_status(self, text):
         """Show a .NET publish status message with centered paragraph text."""
@@ -258,7 +312,7 @@ class DotnetPublishController(QObject):
         """Return whether the current target contains its published Windows EXE."""
         values = self.values()
         target = self.output_path()
-        executable = f"{values['name']}.exe"
+        executable = f"{os.path.basename(target)}.exe"
         return bool(target and values["name"] and os.path.isfile(os.path.join(target, executable)))
 
     def clear_icon(self):
@@ -548,6 +602,9 @@ class DotnetPublishController(QObject):
         runtime = getattr(self.app, "dotnet_runtime_combo", None)
         if runtime is not None and hasattr(runtime, "setEnabled"):
             runtime.setEnabled(not building)
+        dropdown = getattr(self.app, "dotnet_date_time_dropdown", None)
+        if dropdown is not None:
+            dropdown.setEnabled(not building)
         for name in (
             "dotnet_self_contained", "dotnet_single_file", "dotnet_trim",
         ):
@@ -674,7 +731,47 @@ class DotnetPublishController(QObject):
             self.refresh_ui()
             return
         values = self.values()
-        target = self.output_path()
+        selection = self.selected_datetime_format()
+        if selection in DOTNET_BUILD_ALL_SEQUENCES:
+            sequence = list(DOTNET_BUILD_ALL_SEQUENCES[selection])
+        elif selection is None or selection in DATETIME_FORMAT_REGIONS:
+            sequence = [("", selection)]
+        else:
+            self._set_status("Select a date/time output option.")
+            return
+
+        self._run_values = values
+        self._run_selection = selection
+        self._run_timestamp = datetime.now()
+        self._pending_outputs = sequence
+        self._batch_total = len(sequence)
+        self._batch_index = 0
+        self._completed_outputs = []
+        self._publish_output_dir = values["output"]
+        self._publish_icon_path = values["icon"]
+        self._cancelled = False
+        self.app.building = True
+        self.app.current_build_paths = []
+        self.app.build_start_time = time.time()
+        self._publish_next()
+
+    def _publish_next(self):
+        if getattr(self.app, "_is_closing", False):
+            return
+        if self._cancelled or not self._pending_outputs:
+            self.app.building = False
+            self.refresh_ui()
+            if self._cancelled:
+                self._set_status(
+                    f"Publish cancelled ({len(self._completed_outputs)} complete)."
+                    if self._batch_total > 1 else "Publish cancelled."
+                )
+            return
+        label, date_format = self._pending_outputs.pop(0)
+        self._batch_index += 1
+        values = self._run_values
+        name = dotnet_output_name(values["name"], date_format, self._run_timestamp)
+        target = os.path.join(values["output"], name)
         try:
             os.makedirs(target, exist_ok=True)
             test_path = os.path.join(target, ".exe_builder_write_test.tmp")
@@ -682,26 +779,27 @@ class DotnetPublishController(QObject):
                 handle.write("ok")
             os.remove(test_path)
         except OSError:
+            self.app.building = False
+            self._pending_outputs = []
+            self.refresh_ui()
             self._set_status("Cannot write to the selected publish output folder.")
             return
 
-        self.app.building = True
-        self._cancelled = False
-        self._publish_icon_path = values["icon"]
         self._publish_target = target
-        self._publish_output_dir = values["output"]
-        self.app.current_build_paths = []
-        self.app.build_start_time = time.time()
-        self._set_status("Publishing .NET project...")
-        log_name = f"DOTNET_PUBLISH_DEBUG_{values['name']}.log"
+        self._publish_name = name
+        self._set_status(
+            f"Publishing {self._batch_index}/{self._batch_total}: {label}"
+            if self._batch_total > 1 else "Publishing .NET project..."
+        )
+        log_name = f"DOTNET_PUBLISH_DEBUG_{name}.log"
         log_path = os.path.join(values["output"], log_name)
         self.app.debug_log_path = log_path
         command = build_dotnet_publish_command(
-            values["project"], values["output"], values["name"], values["runtime"],
+            values["project"], values["output"], name, values["runtime"],
             values["self_contained"], values["single_file"], values["trim"], values["icon"],
         )
         self.thread = QThread()
-        clean_command = build_dotnet_clean_command(values["project"], values["name"], values["runtime"])
+        clean_command = build_dotnet_clean_command(values["project"], name, values["runtime"])
         self.worker = DotnetPublishWorker(self.app, clean_command, command, log_path)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
@@ -714,6 +812,7 @@ class DotnetPublishController(QObject):
 
     def cancel(self):
         self._cancelled = True
+        self._pending_outputs = []
         if self.worker is not None:
             self.worker.cancel_requested.set()
         proc = getattr(self.app, "build_process", None)
@@ -725,11 +824,14 @@ class DotnetPublishController(QObject):
     def _on_publish_finished(self, result, error):
         if getattr(self.app, "_is_closing", False):
             return
-        self.app.building = False
         self.app.build_process = None
-        self.refresh_ui()
         if self._cancelled:
-            self._set_status("Publish cancelled.")
+            self.app.building = False
+            self.refresh_ui()
+            self._set_status(
+                f"Publish cancelled ({len(self._completed_outputs)} complete)."
+                if self._batch_total > 1 else "Publish cancelled."
+            )
         elif result == 0:
             try:
                 sync_published_tray_icon(
@@ -737,20 +839,53 @@ class DotnetPublishController(QObject):
                     self._publish_icon_path if self._publish_icon_path is not None else self.values()["icon"],
                 )
             except OSError as exc:
+                self.app.building = False
+                self._pending_outputs = []
+                self.refresh_ui()
                 self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.ERROR, border_width=1))
                 self._set_status(f"Publish succeeded, but tray icon setup failed: {exc}")
                 return
+            target = self._publish_target or self.output_path()
+            if target:
+                self._completed_outputs.append(target)
+                self.app.current_build_paths = list(self._completed_outputs)
+                values = self._run_values or self.values()
+                selection = self._run_selection if self._run_values else self.selected_datetime_format()
+                self._last_successful_output = (
+                    values["output"], values["name"], selection, target
+                )
+            if self._pending_outputs:
+                # The previous worker has finished, but its QThread may still
+                # be shutting down. Keep its wrapper alive until then.
+                if self.thread is not None and getattr(self.thread, "isRunning", lambda: False)():
+                    self.thread.finished.connect(self._publish_next)
+                else:
+                    self._publish_next()
+                return
+            self.app.building = False
+            self.refresh_ui()
             self.app.last_build_seconds = int(time.time() - self.app.build_start_time)
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.SUCCESS, border_width=1))
-            self._set_status("Publish complete.")
+            self._set_status(
+                f"Publish complete: {len(self._completed_outputs)} outputs."
+                if self._batch_total > 1 else "Publish complete."
+            )
             getattr(self.app.state_ctrl, "save_csharp_state", self.app.state_ctrl.save_state)()
             self.app.build_controller._present_successful_build_outputs(
                 self._publish_output_dir or self.values()["output"]
             )
             self.app.build_controller._run_success_post_build_action()
         else:
+            self.app.building = False
+            self._pending_outputs = []
+            self.refresh_ui()
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.ERROR, border_width=1))
-            self._set_status(error or "Publish failed. See debug log.")
+            failure = error or "Publish failed. See debug log."
+            self._set_status(
+                f"Output {self._batch_index}/{self._batch_total} failed "
+                f"({len(self._completed_outputs)} complete): {failure}"
+                if self._batch_total > 1 else failure
+            )
 
     def open_output_folder(self):
         target = self.output_path()

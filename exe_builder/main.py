@@ -835,7 +835,6 @@ class EXEBuilderApp(QWidget):
         self.date_time_dropdown = QComboBox()
         self.date_time_dropdown.setFixedSize(245, 35)
         self.date_time_dropdown.setFont(QFont("Rubik UI", 12))
-        self.date_time_dropdown.addItem("Date Time Append")
 
         self.appened_py_version = QPushButton("Append Py Version")
         self.appened_py_version.setFixedSize(125,35)
@@ -843,56 +842,8 @@ class EXEBuilderApp(QWidget):
 
         self.appened_py_version.setStyleSheet(APPEND_PY_VERSION_INITIAL_STYLE)
                 
-        self.date_time_dropdown.clear()
+        self._populate_datetime_dropdown(self.date_time_dropdown)
 
-        def _add(label, data=None, enabled=True):
-            self.date_time_dropdown.addItem(label, data)
-            item = self.date_time_dropdown.model().item(self.date_time_dropdown.count() - 1)
-            if not enabled:
-                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
-
-        # Header
-        _add("Append Date/Time", None, enabled=False)
-
-        _add("──────────", enabled=False)
-        # Top option
-        _add(NO_DATETIME_LABEL, None)
-
-        _add("──────────", enabled=False)
-        _add(MASS_DATETIME_BUILD_LABEL, MASS_DATETIME_BUILD_SENTINEL)
-
-        for (
-            region_label,
-            build_all_label,
-            build_all_data,
-            format_options,
-        ) in REGIONAL_DATETIME_DROPDOWN_GROUPS:
-            _add("──────────", enabled=False)
-            _add(region_label, enabled=False)
-            for label, data in format_options:
-                _add(label, data)
-            _add(build_all_label, build_all_data)
-
-        date_dropdown_metrics = QFontMetrics(self.date_time_dropdown.font())
-        longest_date_label = max(
-            MASS_DATETIME_BUILD_LABEL,
-            ISO_MASS_DATETIME_BUILD_LABEL,
-            UK_MASS_DATETIME_BUILD_LABEL,
-            USA_MASS_DATETIME_BUILD_LABEL,
-            key=len,
-        )
-        date_dropdown_width = max(300, date_dropdown_metrics.horizontalAdvance(longest_date_label) + 64)
-        self.date_time_dropdown.setFixedSize(date_dropdown_width, 35)
-
-        model = self.date_time_dropdown.model()
-        item = model.item(0)
-        item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
-        
-        self.date_time_dropdown.setEditable(True)
-        self.date_time_dropdown.lineEdit().setReadOnly(True)
-        self.date_time_dropdown.setCurrentIndex(0)
-        self.date_time_dropdown.setEnabled(True)
-            
         row1 = QHBoxLayout()
         row1.setContentsMargins(1,1,1,1)
         row1.setSpacing(4)
@@ -1551,6 +1502,13 @@ class EXEBuilderApp(QWidget):
         self.dotnet_output_select_btn.setStyleSheet(button_base())
         self.dotnet_output_select_btn.clicked.connect(self._select_dotnet_output)
         output_select_row.addWidget(self.dotnet_output_select_btn)
+        self.dotnet_date_time_dropdown = QComboBox()
+        self.dotnet_date_time_dropdown.setFont(QFont("Rubik UI", 12))
+        self._populate_datetime_dropdown(self.dotnet_date_time_dropdown)
+        self.dotnet_date_time_dropdown.setCurrentIndex(
+            self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
+        )
+        output_select_row.addWidget(self.dotnet_date_time_dropdown)
         output_select_row.addStretch()
         output_layout.addLayout(output_select_row)
         output_entry = QHBoxLayout()
@@ -1701,6 +1659,7 @@ class EXEBuilderApp(QWidget):
         ):
             widget.textChanged.connect(self._on_dotnet_settings_changed)
         self.dotnet_runtime_combo.currentIndexChanged.connect(self._on_dotnet_settings_changed)
+        self.dotnet_date_time_dropdown.currentIndexChanged.connect(self._on_dotnet_settings_changed)
         for widget in (self.dotnet_self_contained, self.dotnet_single_file, self.dotnet_trim):
             widget.toggled.connect(
                 lambda checked, selected=widget: self._on_dotnet_publish_option_toggled(selected, checked)
@@ -1708,6 +1667,45 @@ class EXEBuilderApp(QWidget):
         self._sync_dotnet_publish_options()
         root_layout.addWidget(mode_row)
         root_layout.addWidget(self.build_mode_stack)
+
+    @staticmethod
+    def _populate_datetime_dropdown(dropdown):
+        dropdown.clear()
+
+        def add(label, data=None, enabled=True):
+            dropdown.addItem(label, data)
+            if not enabled:
+                item = dropdown.model().item(dropdown.count() - 1)
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+
+        add("Append Date/Time", enabled=False)
+        add("──────────", enabled=False)
+        add(NO_DATETIME_LABEL)
+        add("──────────", enabled=False)
+        add(MASS_DATETIME_BUILD_LABEL, MASS_DATETIME_BUILD_SENTINEL)
+        for region_label, build_all_label, build_all_data, format_options in REGIONAL_DATETIME_DROPDOWN_GROUPS:
+            add("──────────", enabled=False)
+            add(region_label, enabled=False)
+            for label, data in format_options:
+                add(label, data)
+            add(build_all_label, build_all_data)
+
+        metrics = QFontMetrics(dropdown.font())
+        longest_label = max(
+            MASS_DATETIME_BUILD_LABEL,
+            ISO_MASS_DATETIME_BUILD_LABEL,
+            UK_MASS_DATETIME_BUILD_LABEL,
+            USA_MASS_DATETIME_BUILD_LABEL,
+            key=len,
+        )
+        dropdown.setFixedSize(max(300, metrics.horizontalAdvance(longest_label) + 64), 35)
+        dropdown.setEditable(True)
+        line_edit = dropdown.lineEdit()
+        line_edit.setReadOnly(True)
+        dropdown.setStyleSheet(COMBO_BOX_STYLE)
+        line_edit.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        line_edit.setStyleSheet(COMBO_BOX_LINE_EDIT_STYLE)
+        dropdown.setCurrentIndex(0)
 
     def _apply_build_mode_button_state(self, mode):
         """Refresh build-mode selectors for the displayed mode and build state."""

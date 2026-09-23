@@ -276,9 +276,14 @@ For C#/.NET Publish mode, the builder writes Release publish output to:
 <output folder>\<executable name>
 ```
 
-This folder contains the published executable and any files required by the
-selected publish options. Use the mode's **Open Output Folder** button to open
-this published application folder.
+The C# Output Select menu also offers the same ISO, UK, and USA date-only and
+date-plus-time naming choices as Python mode. A selected format appends the
+region and date/time to both the folder and executable name. Build All publishes
+the no-date output plus all six dated outputs, or the two formats for one region.
+Each output has its own publish log in the selected output folder. Each
+published folder contains its executable and any files required by the selected
+publish options. **Open Output Folder** opens the latest completed output for
+the current selection.
 
 ---
 
@@ -304,7 +309,7 @@ EXE_BUILDER_DEBUG_<name>_<date_time>.log
 C#/.NET publish logs use the selected output folder and a name similar to:
 
 ```text
-DOTNET_PUBLISH_DEBUG_<name>.log
+DOTNET_PUBLISH_DEBUG_<generated name>.log
 ```
 
 The log is created alongside the generated build output as a sibling of:
