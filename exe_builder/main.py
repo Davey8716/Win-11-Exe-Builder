@@ -1453,6 +1453,16 @@ class EXEBuilderApp(QWidget):
 
         def path_section(kind, title, column, select_text, placeholder):
             layout = section(title, column)
+            if kind == "icon":
+                converter_row = QHBoxLayout()
+                self.dotnet_ico_convert_btn = QPushButton("Open ICO Convert")
+                self.dotnet_ico_convert_btn.setFixedSize(160, 35)
+                self.dotnet_ico_convert_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+                self.dotnet_ico_convert_btn.setStyleSheet(button_base())
+                self.dotnet_ico_convert_btn.clicked.connect(self.ui_handlers.open_icon_sites)
+                converter_row.addWidget(self.dotnet_ico_convert_btn)
+                converter_row.addStretch()
+                layout.addLayout(converter_row)
             row = QHBoxLayout()
             row.setSpacing(5)
             select = QPushButton(select_text)

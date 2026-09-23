@@ -496,7 +496,7 @@ class DotnetPublishController(QObject):
             "dotnet_project_select_btn", "dotnet_project_delete_btn", "dotnet_project_delete_all_btn",
             "dotnet_project_reset_btn", "dotnet_recent_projects", "dotnet_icon_delete_btn",
             "dotnet_icon_delete_all_btn", "dotnet_recent_icons", "dotnet_output_select_btn",
-            "dotnet_name_input",
+            "dotnet_name_input", "dotnet_ico_convert_btn",
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setEnabled"):
@@ -514,7 +514,7 @@ class DotnetPublishController(QObject):
                 widget.setEnabled(enabled)
         for name in (
             "dotnet_project_select_btn", "dotnet_icon_select_btn",
-            "dotnet_output_select_btn",
+            "dotnet_output_select_btn", "dotnet_ico_convert_btn",
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setStyleSheet"):

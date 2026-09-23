@@ -41,3 +41,8 @@ def test_dotnet_selection_sections_are_ordered_in_the_right_column():
     assert icon_section in MAIN_SOURCE
     assert file_section in MAIN_SOURCE
     assert MAIN_SOURCE.index(icon_section) < MAIN_SOURCE.index(file_section)
+
+
+def test_dotnet_icon_section_includes_the_ico_converter():
+    assert 'self.dotnet_ico_convert_btn = QPushButton("Open ICO Convert")' in MAIN_SOURCE
+    assert "self.dotnet_ico_convert_btn.clicked.connect(self.ui_handlers.open_icon_sites)" in MAIN_SOURCE

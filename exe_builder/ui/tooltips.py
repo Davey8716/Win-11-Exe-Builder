@@ -431,6 +431,7 @@ def attach_dotnet_tooltips(app):
         "dotnet_project_delete_all_btn": "Remove all saved C# projects from the recent-project list.",
         "dotnet_project_reset_btn": "Clear the selected C# project.",
         "dotnet_icon_select_btn": "Choose an optional .ico file for the published application.",
+        "dotnet_ico_convert_btn": "Open online tools for converting an image to an .ico file.",
         "dotnet_recent_icons": "Choose a recently used application icon, or select No Icon.",
         "dotnet_icon_delete_btn": "Remove the selected icon from the recent-icon list.",
         "dotnet_icon_delete_all_btn": "Remove all saved icons from the recent-icon list.",
