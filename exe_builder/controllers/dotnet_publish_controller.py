@@ -511,6 +511,10 @@ class DotnetPublishController(QObject):
                     style = filled_button(
                         Colors.SUCCESS if project_ok else Colors.ERROR
                     )
+                elif name == "dotnet_output_select_btn":
+                    style = filled_button(
+                        Colors.SUCCESS if output_ok else Colors.ERROR
+                    )
                 else:
                     style = button_base()
                 widget.setStyleSheet(style)

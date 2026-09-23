@@ -397,6 +397,29 @@ def test_project_file_button_uses_project_validity_colours(tmp_path):
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
 
 
+def test_output_folder_button_uses_output_validity_colours(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_output_select_btn = DummyButton()
+
+    controller.refresh_ui()
+
+    button = controller.app.dotnet_output_select_btn
+    assert button.enabled is True
+    assert qcolor_name(Colors.SUCCESS) in button.stylesheet
+
+    controller.app.dotnet_output_input.value = str(tmp_path / "missing-output")
+    controller.refresh_ui()
+
+    assert button.enabled is True
+    assert qcolor_name(Colors.ERROR) in button.stylesheet
+
+    controller.app.building = True
+    controller.refresh_ui()
+
+    assert button.enabled is False
+    assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
+
+
 def test_open_output_button_requires_current_published_executable(tmp_path):
     controller, _ = make_controller(tmp_path)
     target = tmp_path / "Tool"
