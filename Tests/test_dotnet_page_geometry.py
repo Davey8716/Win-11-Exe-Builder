@@ -34,6 +34,16 @@ def test_dotnet_build_section_is_centered_below_the_selection_grid():
     assert "left_column.addWidget(panel" not in MAIN_SOURCE
 
 
+def test_dotnet_publish_panel_width_fits_the_runtime_and_option_controls():
+    assert "self.dotnet_runtime_label.setMinimumWidth(" in MAIN_SOURCE
+    assert "self.dotnet_runtime_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)" in MAIN_SOURCE
+    assert "self.dotnet_runtime_combo.setMinimumWidth(190)" in MAIN_SOURCE
+    assert "checkbox.setMinimumWidth(checkbox.sizeHint().width())" in MAIN_SOURCE
+    assert "option_row.minimumSize().width()" in MAIN_SOURCE
+    assert "panel.setFixedWidth(dotnet_publish_panel_width)" in MAIN_SOURCE
+    assert "panel.setFixedWidth(PAIRED_FRAME_WIDTH)" not in MAIN_SOURCE
+
+
 def test_dotnet_selection_sections_are_ordered_in_the_right_column():
     icon_section = 'path_section("icon", "Icons Select", right_column'
     file_section = 'path_section("project", "File Select", right_column'
