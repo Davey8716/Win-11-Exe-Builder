@@ -64,11 +64,29 @@ def test_build_mode_pages_share_vertical_landmarks(monkeypatch, tmp_path):
             f"Python row heights: {[window.python_mode_page.layout().itemAt(i).widget().height() for i in range(4)]}; "
             f"C# row heights: {[window.dotnet_mode_page.layout().itemAt(i).widget().height() for i in range(4)]}"
         )
+        assert (
+            top(window.center_divider),
+            bottom(window.center_divider),
+            window.center_divider.height(),
+        ) == (
+            top(window.dotnet_center_divider),
+            bottom(window.dotnet_center_divider),
+            window.dotnet_center_divider.height(),
+        )
 
         window.set_build_mode("python", save=False)
         app.processEvents()
         assert top(window.title_frame) == python_positions[0]
         assert top(window.build_btn.parentWidget()) == python_positions[-1]
+        assert (
+            top(window.center_divider),
+            bottom(window.center_divider),
+            window.center_divider.height(),
+        ) == (
+            dotnet_positions[3],
+            dotnet_positions[4],
+            window.dotnet_center_divider.height(),
+        )
     finally:
         window._is_closing = True
         window.close()

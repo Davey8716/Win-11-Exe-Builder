@@ -1454,8 +1454,6 @@ class EXEBuilderApp(QWidget):
             label = QLabel(title)
             label.setFixedHeight(30)
             label.setFont(QFont("Rubik UI", 14, QFont.Bold))
-            if not hasattr(self, "dotnet_divider_anchor_label"):
-                self.dotnet_divider_anchor_label = label
             heading_layout.addStretch()
             heading_layout.addWidget(label)
             heading_layout.addStretch()
@@ -1916,64 +1914,46 @@ class EXEBuilderApp(QWidget):
                 layout.activate()
 
     def _sync_center_divider_height(self):
-        if not all(
-            hasattr(self, attr)
-            for attr in ("left_content", "right_content", "content_row", "center_divider")
-        ):
+        """Synchronize both mode dividers from the Python layout geometry."""
+        python_attrs = (
+            "left_content",
+            "right_content",
+            "content_row",
+            "center_divider",
+        )
+        if not all(hasattr(self, attr) for attr in python_attrs):
             return
 
         content_height = max(
             self.left_content.sizeHint().height(),
             self.right_content.sizeHint().height(),
         )
+        dotnet_attrs = (
+            "dotnet_left_content",
+            "dotnet_right_content",
+            "dotnet_content_row",
+            "dotnet_center_divider",
+        )
+        has_dotnet_divider = all(hasattr(self, attr) for attr in dotnet_attrs)
+        if has_dotnet_divider:
+            content_height = max(
+                content_height,
+                self.dotnet_left_content.sizeHint().height(),
+                self.dotnet_right_content.sizeHint().height(),
+            )
         if content_height <= 0:
             return
 
-        divider_top_offset = self._center_divider_top_offset()
+        divider_height = max(1, content_height - self._center_divider_top_offset())
         self.content_row.setFixedHeight(content_height)
-        self.center_divider.setFixedHeight(max(1, content_height - divider_top_offset))
+        self.center_divider.setFixedHeight(divider_height)
+        if has_dotnet_divider:
+            self.dotnet_content_row.setFixedHeight(content_height)
+            self.dotnet_center_divider.setFixedHeight(divider_height)
 
     def _sync_dotnet_center_divider_height(self):
-        """Size the C# divider with the same visual inset as the Python page."""
-        if not all(
-            hasattr(self, attr)
-            for attr in (
-                "dotnet_left_content",
-                "dotnet_right_content",
-                "dotnet_content_row",
-                "dotnet_center_divider",
-                "dotnet_divider_anchor_label",
-            )
-        ):
-            return
-
-        dotnet_content_height = max(
-            self.dotnet_left_content.sizeHint().height(),
-            self.dotnet_right_content.sizeHint().height(),
-        )
-        # Reserve the Python page's selection-grid height as well.  C# has
-        # fewer controls, but this keeps the bottom of its divider and the
-        # Build Section in the same vertical positions after switching modes.
-        python_content_height = 0
-        if all(hasattr(self, attr) for attr in ("left_content", "right_content")):
-            python_content_height = max(
-                self.left_content.sizeHint().height(),
-                self.right_content.sizeHint().height(),
-            )
-        content_height = max(dotnet_content_height, python_content_height)
-        if content_height <= 0:
-            return
-
-        anchor = self.dotnet_divider_anchor_label
-        text_bounds = QFontMetrics(anchor.font()).boundingRect(anchor.text())
-        label_height = anchor.height() or anchor.sizeHint().height()
-        text_top_offset = max(0, (label_height - text_bounds.height()) // 2)
-        title_position = anchor.mapTo(self.dotnet_content_row, QPoint(0, 0))
-        divider_top_offset = max(0, title_position.y() + text_top_offset)
-        self.dotnet_content_row.setFixedHeight(content_height)
-        self.dotnet_center_divider.setFixedHeight(
-            max(1, content_height - divider_top_offset)
-        )
+        """Compatibility entry point for C# layout refreshes."""
+        self._sync_center_divider_height()
 
     def _center_divider_top_offset(self):
         if not hasattr(self, "icons_title"):

@@ -20,15 +20,15 @@ def test_dotnet_page_uses_the_python_two_column_grid():
 def test_dotnet_page_uses_the_python_vertical_rhythm():
     assert "dotnet_layout.setContentsMargins(0, 0, 0, 0)" in MAIN_SOURCE
     assert "dotnet_layout.setSpacing(0)" in MAIN_SOURCE
-    assert "python_content_height = max(" in MAIN_SOURCE
-    assert "content_height = max(dotnet_content_height, python_content_height)" in MAIN_SOURCE
-
-
-def test_dotnet_divider_is_synchronized_from_its_section_heading():
-    assert "def _sync_dotnet_center_divider_height(self):" in MAIN_SOURCE
-    assert "anchor.mapTo(self.dotnet_content_row, QPoint(0, 0))" in MAIN_SOURCE
+    assert "Synchronize both mode dividers from the Python layout geometry." in MAIN_SOURCE
     assert "self.dotnet_content_row.setFixedHeight(content_height)" in MAIN_SOURCE
-    assert "self.dotnet_center_divider.setFixedHeight(" in MAIN_SOURCE
+
+
+def test_dotnet_divider_uses_the_python_canonical_geometry():
+    assert "def _sync_dotnet_center_divider_height(self):" in MAIN_SOURCE
+    assert "self._sync_center_divider_height()" in MAIN_SOURCE
+    assert "divider_height = max(1, content_height - self._center_divider_top_offset())" in MAIN_SOURCE
+    assert "self.dotnet_center_divider.setFixedHeight(divider_height)" in MAIN_SOURCE
 
 
 def test_dotnet_build_section_is_centered_below_the_selection_grid():
