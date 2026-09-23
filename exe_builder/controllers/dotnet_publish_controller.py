@@ -486,6 +486,17 @@ class DotnetPublishController(QObject):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setEnabled"):
                 widget.setEnabled(not building)
+
+        single_selection_utility_enabled = {
+            "dotnet_project_delete_btn": bool(values["project"]) and not building,
+            "dotnet_project_reset_btn": bool(values["project"]) and not building,
+            "dotnet_icon_delete_btn": bool(values["icon"]) and not building,
+            "dotnet_icon_reset_btn": bool(values["icon"]) and not building,
+        }
+        for name, enabled in single_selection_utility_enabled.items():
+            widget = getattr(self.app, name, None)
+            if widget is not None and hasattr(widget, "setEnabled"):
+                widget.setEnabled(enabled)
         for name in (
             "dotnet_project_select_btn", "dotnet_icon_select_btn",
             "dotnet_output_select_btn",
@@ -553,9 +564,10 @@ class DotnetPublishController(QObject):
         ):
             widget = getattr(self.app, name, None)
             if widget is not None and hasattr(widget, "setStyleSheet"):
+                disabled = building or not single_selection_utility_enabled.get(name, True)
                 widget.setStyleSheet(
-                    utility_icon_button_disabled_style(True)
-                    if building else utility_icon_button_style()
+                    build_disabled_button()
+                    if disabled else utility_icon_button_style()
                 )
 
         utility_button_icons = {
@@ -584,7 +596,8 @@ class DotnetPublishController(QObject):
                 continue
             if hasattr(widget, "setFixedSize"):
                 widget.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
-            if building:
+            disabled = building or not single_selection_utility_enabled.get(name, True)
+            if disabled:
                 if hasattr(widget, "setIcon"):
                     widget.setIcon(QIcon())
                 if hasattr(widget, "setText"):

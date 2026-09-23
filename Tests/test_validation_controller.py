@@ -294,6 +294,56 @@ def test_python_utility_icons_restore_after_build_lock(monkeypatch, tmp_path):
     assert all(not button.icon.isNull() for button in buttons)
 
 
+def test_python_empty_selection_clear_and_delete_controls_are_greyed(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="custom-name")
+    app.entry_script = None
+    app.script_path = ""
+    app.script_path_input.setText("")
+    app.python_interpreter_path = ""
+    app.python_entry_input.setText("")
+    app.icon_path = ""
+    app.icon_path_input.setText("")
+
+    ValidationController(app).update_ui_state()
+
+    for button in (
+        app.delete_recent_icons,
+        app.delete_recent_folder,
+        app.python_delete_interpreter,
+        app.icon_clear_btn,
+        app.script_clear_btn,
+        app.interpreter_refresh_btn,
+    ):
+        assert button.enabled is False
+        assert button.text == ""
+        assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
+        assert button.icon.isNull()
+
+
+def test_python_populated_selection_clear_and_delete_controls_restore(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="custom-name")
+    icon = tmp_path / "tool.ico"
+    icon.write_text("ico", encoding="utf-8")
+    app.icon_path = str(icon)
+    app.icon_path_input.setText(str(icon))
+
+    ValidationController(app).update_ui_state()
+
+    for button in (
+        app.delete_recent_icons,
+        app.delete_recent_folder,
+        app.python_delete_interpreter,
+        app.icon_clear_btn,
+        app.script_clear_btn,
+        app.interpreter_refresh_btn,
+    ):
+        assert button.enabled is True
+        assert qcolor_name(Colors.TITLE_BG) in button.stylesheet
+        assert not button.icon.isNull()
+
+
 def test_environment_sync_uses_disabled_build_styling(monkeypatch, tmp_path):
     monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
     app = make_app(tmp_path, exe_name="main")

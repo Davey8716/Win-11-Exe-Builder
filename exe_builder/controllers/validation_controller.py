@@ -252,6 +252,17 @@ class ValidationController:
                 getattr(app, "interpreter_refresh_btn", None),
             )
 
+        def uses_empty_selection_disabled_style(btn):
+            """Return whether an empty path should visibly disable this action."""
+            return btn in (
+                getattr(app, "delete_recent_icons", None),
+                getattr(app, "delete_recent_folder", None),
+                getattr(app, "python_delete_interpreter", None),
+                getattr(app, "icon_clear_btn", None),
+                getattr(app, "script_clear_btn", None),
+                getattr(app, "interpreter_refresh_btn", None),
+            )
+
         def set_button_icon(btn, visible, icon_path, icon_size, text):
             if hasattr(btn, "setFixedSize"):
                 btn.setFixedSize(*UTILITY_ICON_BUTTON_SIZE)
@@ -303,6 +314,8 @@ class ValidationController:
                     getattr(app, "refresh_btn", None),
                     getattr(app, "output_refresh_btn", None),
                 ):
+                    btn.setStyleSheet(build_disabled_button())
+                elif uses_empty_selection_disabled_style(btn):
                     btn.setStyleSheet(build_disabled_button())
                 elif is_utility_icon_button(btn):
                     btn.setStyleSheet(utility_icon_button_disabled_style(building))

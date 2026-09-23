@@ -620,6 +620,52 @@ def test_refresh_styles_dotnet_utility_buttons_like_python_buttons(tmp_path):
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in controller.app.dotnet_project_delete_btn.stylesheet
 
 
+def test_dotnet_empty_selection_clear_and_delete_controls_are_greyed(tmp_path):
+    controller, _ = make_controller(tmp_path)
+    for name in (
+        "dotnet_project_delete_btn", "dotnet_project_reset_btn",
+        "dotnet_icon_delete_btn", "dotnet_icon_reset_btn",
+    ):
+        setattr(controller.app, name, DummyButton())
+    controller.app.dotnet_project_input.value = ""
+
+    controller.refresh_ui()
+
+    for name in (
+        "dotnet_project_delete_btn", "dotnet_project_reset_btn",
+        "dotnet_icon_delete_btn", "dotnet_icon_reset_btn",
+    ):
+        button = getattr(controller.app, name)
+        assert button.enabled is False
+        assert button.text == ""
+        assert qcolor_name(Colors.BUILD_DISABLED_BG) in button.stylesheet
+        assert button.icon.isNull()
+
+
+def test_dotnet_populated_selection_clear_and_delete_controls_restore(tmp_path):
+    controller, project = make_controller(tmp_path)
+    icon = tmp_path / "tool.ico"
+    icon.write_text("ico", encoding="utf-8")
+    for name in (
+        "dotnet_project_delete_btn", "dotnet_project_reset_btn",
+        "dotnet_icon_delete_btn", "dotnet_icon_reset_btn",
+    ):
+        setattr(controller.app, name, DummyButton())
+    controller.app.dotnet_project_input.value = str(project)
+    controller.app.dotnet_icon_input.value = str(icon)
+
+    controller.refresh_ui()
+
+    for name in (
+        "dotnet_project_delete_btn", "dotnet_project_reset_btn",
+        "dotnet_icon_delete_btn", "dotnet_icon_reset_btn",
+    ):
+        button = getattr(controller.app, name)
+        assert button.enabled is True
+        assert qcolor_name(Colors.TITLE_BG) in button.stylesheet
+        assert not button.icon.isNull()
+
+
 def test_dotnet_output_reset_icon_restores_after_build_lock(tmp_path):
     controller, _ = make_controller(tmp_path)
     output_reset = DummyButton()
@@ -651,6 +697,9 @@ def test_dotnet_utility_icons_clear_and_restore_during_build(tmp_path, monkeypat
     )
     controller, _ = make_controller(tmp_path)
     controller.app.dotnet_name_input.value = "CustomTool"
+    icon = tmp_path / "tool.ico"
+    icon.write_text("ico", encoding="utf-8")
+    controller.app.dotnet_icon_input.value = str(icon)
     button_icons = {
         "dotnet_project_delete_btn": "utility_delete.svg",
         "dotnet_project_delete_all_btn": "utility_delete_all.svg",
