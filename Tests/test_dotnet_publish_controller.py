@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 import pytest
-from PySide6.QtWidgets import QApplication, QComboBox, QPushButton
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QComboBox, QPushButton, QTextEdit
 from exe_builder.ui.path_display_line_edit import PathDisplayLineEdit
 
 from exe_builder.controllers.dotnet_publish_controller import (
@@ -593,6 +594,21 @@ def test_publish_failure_remains_visible_after_controls_refresh(tmp_path):
     assert qcolor_name(Colors.ERROR) in controller.app.dotnet_status_label.stylesheet
 
 
+def test_dotnet_status_text_stays_centered_when_replaced(tmp_path):
+    QApplication.instance() or QApplication([])
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_status_label = QTextEdit()
+
+    controller._set_status("Ready to publish.")
+
+    assert controller.app.dotnet_status_label.toPlainText() == "Ready to publish."
+    assert (
+        controller.app.dotnet_status_label.document().firstBlock().blockFormat().alignment()
+        == Qt.AlignCenter
+    )
+    assert not controller.app.dotnet_status_label.textCursor().hasSelection()
+
+
 def test_refresh_styles_dotnet_paths_like_python_validation(tmp_path):
     controller, project = make_controller(tmp_path)
     icon = tmp_path / "tool.ico"
@@ -610,7 +626,7 @@ def test_refresh_styles_dotnet_paths_like_python_validation(tmp_path):
         assert qcolor_name(Colors.PANEL_BG) in field.stylesheet
         assert qcolor_name(Colors.SUCCESS) in field.stylesheet
     assert qcolor_name(Colors.SUCCESS) in controller.app.dotnet_status_label.stylesheet
-    assert controller.app.dotnet_status_label.text == "Ready to publish"
+    assert controller.app.dotnet_status_label.text == "Ready to publish."
 
     controller.app.dotnet_project_input.value = str(project.with_name("missing.csproj"))
     controller.app.dotnet_icon_input.value = ""

@@ -10,8 +10,8 @@ import time
 import xml.etree.ElementTree as ET
 
 import psutil
-from PySide6.QtCore import QObject, QSize, QThread, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QObject, QSize, Qt, QThread, Signal
+from PySide6.QtGui import QIcon, QTextBlockFormat, QTextCursor
 
 from ..ui.styles import (
     BUILD_DISABLED_TITLE_FRAME_STYLE,
@@ -239,6 +239,20 @@ class DotnetPublishController(QObject):
     def output_path(self):
         values = self.values()
         return os.path.join(values["output"], values["name"]) if values["output"] and values["name"] else ""
+
+    def _set_status(self, text):
+        """Show a .NET publish status message with centered paragraph text."""
+        status_label = self.app.dotnet_status_label
+        status_label.setText(text)
+        if not hasattr(status_label, "textCursor"):
+            return
+        cursor = status_label.textCursor()
+        cursor.select(QTextCursor.Document)
+        text_format = QTextBlockFormat()
+        text_format.setAlignment(Qt.AlignCenter)
+        cursor.mergeBlockFormat(text_format)
+        cursor.clearSelection()
+        status_label.setTextCursor(cursor)
 
     def has_publish_output(self):
         """Return whether the current target contains its published Windows EXE."""
@@ -648,7 +662,7 @@ class DotnetPublishController(QObject):
                 f"QLabel {{ color: {qcolor_name(Colors.BUILD_DISABLED_TEXT if building else Colors.TEXT_LIGHT)}; }}"
             )
         if not building:
-            self.app.dotnet_status_label.setText("Ready to publish." if not error else error)
+            self._set_status("Ready to publish." if not error else error)
 
     def publish(self):
         if getattr(self.app, "building", False):
@@ -656,7 +670,7 @@ class DotnetPublishController(QObject):
             return
         error = self.validation_error(check_sdk=True)
         if error:
-            self.app.dotnet_status_label.setText(error)
+            self._set_status(error)
             self.refresh_ui()
             return
         values = self.values()
@@ -668,7 +682,7 @@ class DotnetPublishController(QObject):
                 handle.write("ok")
             os.remove(test_path)
         except OSError:
-            self.app.dotnet_status_label.setText("Cannot write to the selected publish output folder.")
+            self._set_status("Cannot write to the selected publish output folder.")
             return
 
         self.app.building = True
@@ -678,7 +692,7 @@ class DotnetPublishController(QObject):
         self._publish_output_dir = values["output"]
         self.app.current_build_paths = []
         self.app.build_start_time = time.time()
-        self.app.dotnet_status_label.setText("Publishing .NET project...")
+        self._set_status("Publishing .NET project...")
         log_name = f"DOTNET_PUBLISH_DEBUG_{values['name']}.log"
         log_path = os.path.join(values["output"], log_name)
         self.app.debug_log_path = log_path
@@ -706,7 +720,7 @@ class DotnetPublishController(QObject):
         if proc is not None and proc.poll() is None:
             _kill_process_tree(proc)
         self.refresh_ui()
-        self.app.dotnet_status_label.setText("Publish cancelled.")
+        self._set_status("Publish cancelled.")
 
     def _on_publish_finished(self, result, error):
         if getattr(self.app, "_is_closing", False):
@@ -715,7 +729,7 @@ class DotnetPublishController(QObject):
         self.app.build_process = None
         self.refresh_ui()
         if self._cancelled:
-            self.app.dotnet_status_label.setText("Publish cancelled.")
+            self._set_status("Publish cancelled.")
         elif result == 0:
             try:
                 sync_published_tray_icon(
@@ -724,11 +738,11 @@ class DotnetPublishController(QObject):
                 )
             except OSError as exc:
                 self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.ERROR, border_width=1))
-                self.app.dotnet_status_label.setText(f"Publish succeeded, but tray icon setup failed: {exc}")
+                self._set_status(f"Publish succeeded, but tray icon setup failed: {exc}")
                 return
             self.app.last_build_seconds = int(time.time() - self.app.build_start_time)
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.SUCCESS, border_width=1))
-            self.app.dotnet_status_label.setText("Publish complete.")
+            self._set_status("Publish complete.")
             getattr(self.app.state_ctrl, "save_csharp_state", self.app.state_ctrl.save_state)()
             self.app.build_controller._present_successful_build_outputs(
                 self._publish_output_dir or self.values()["output"]
@@ -736,7 +750,7 @@ class DotnetPublishController(QObject):
             self.app.build_controller._run_success_post_build_action()
         else:
             self.app.dotnet_status_label.setStyleSheet(status_text_style(Colors.ERROR, border_width=1))
-            self.app.dotnet_status_label.setText(error or "Publish failed. See debug log.")
+            self._set_status(error or "Publish failed. See debug log.")
 
     def open_output_folder(self):
         target = self.output_path()

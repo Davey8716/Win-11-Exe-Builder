@@ -41,6 +41,12 @@ def test_dotnet_build_section_is_centered_below_the_selection_grid():
     assert "left_column.addWidget(panel" not in MAIN_SOURCE
 
 
+def test_dotnet_build_status_text_is_centered():
+    assert "self.dotnet_status_label.setAlignment(Qt.AlignCenter)" in MAIN_SOURCE
+    assert "dotnet_status_format.setAlignment(Qt.AlignCenter)" in MAIN_SOURCE
+    assert "dotnet_status_cursor.clearSelection()" in MAIN_SOURCE
+
+
 def test_dotnet_publish_panel_width_fits_the_runtime_and_option_controls():
     assert "self.dotnet_runtime_label.setMinimumWidth(" in MAIN_SOURCE
     assert "self.dotnet_runtime_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)" in MAIN_SOURCE

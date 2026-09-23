@@ -1619,6 +1619,16 @@ class EXEBuilderApp(QWidget):
         self.dotnet_status_label.setReadOnly(True)
         self.dotnet_status_label.setFixedSize(520, 65)
         self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_status_label.setAlignment(Qt.AlignCenter)
+
+        dotnet_status_cursor = self.dotnet_status_label.textCursor()
+        dotnet_status_cursor.select(QTextCursor.Document)
+        dotnet_status_format = QTextBlockFormat()
+        dotnet_status_format.setAlignment(Qt.AlignCenter)
+        dotnet_status_cursor.mergeBlockFormat(dotnet_status_format)
+        dotnet_status_cursor.clearSelection()
+        self.dotnet_status_label.setTextCursor(dotnet_status_cursor)
+
         panel_layout.addWidget(self.dotnet_status_label, alignment=Qt.AlignHCenter)
         actions = QHBoxLayout()
         actions.addStretch()
