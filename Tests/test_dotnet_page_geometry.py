@@ -32,3 +32,12 @@ def test_dotnet_build_section_is_centered_below_the_selection_grid():
     assert "dotnet_layout.addWidget(self.dotnet_build_frame_row)" in MAIN_SOURCE
     assert "dotnet_build_frame_row_layout.addWidget(" in MAIN_SOURCE
     assert "left_column.addWidget(panel" not in MAIN_SOURCE
+
+
+def test_dotnet_selection_sections_are_ordered_in_the_right_column():
+    icon_section = 'path_section("icon", "Icons Select", right_column'
+    file_section = 'path_section("project", "File Select", right_column'
+
+    assert icon_section in MAIN_SOURCE
+    assert file_section in MAIN_SOURCE
+    assert MAIN_SOURCE.index(icon_section) < MAIN_SOURCE.index(file_section)
