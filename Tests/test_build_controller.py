@@ -1960,19 +1960,27 @@ def test_get_project_asset_data_args_includes_parent_project_sibling_svg_assets(
     icon_dir = repo_root / "App Icons" / "Light Theme"
     package_root.mkdir(parents=True)
     icon_dir.mkdir(parents=True)
-    (repo_root / "requirements.txt").write_text("PySide6\n", encoding="utf-8")
+    (repo_root / ".git").mkdir()
+    (package_root / "requirements.txt").write_text("PySide6\n", encoding="utf-8")
 
-    chevron = icon_dir / "Dropdown Chevron.svg"
-    chevron.write_text("<svg/>", encoding="utf-8")
+    dark_chevron = icon_dir / "Dropdown Chevron.svg"
+    light_chevron = icon_dir / "Dropdown Chevron Light.svg"
+    dark_chevron.write_text("<svg/>", encoding="utf-8")
+    light_chevron.write_text("<svg/>", encoding="utf-8")
 
     controller = BuildController(make_app())
 
     args = controller._get_project_asset_data_args(str(package_root))
 
+    destination = os.path.normpath(os.path.join("App Icons", "Light Theme"))
     assert (
-        f"--add-data={os.path.normpath(str(chevron))}{os.pathsep}"
-        f"{os.path.normpath(os.path.join('App Icons', 'Light Theme'))}"
-    ) in args
+        f"--add-data={os.path.normpath(str(dark_chevron))}{os.pathsep}{destination}"
+        in args
+    )
+    assert (
+        f"--add-data={os.path.normpath(str(light_chevron))}{os.pathsep}{destination}"
+        in args
+    )
 
 
 def test_get_project_asset_data_args_bundles_hover_controls_ahk_resource(tmp_path):

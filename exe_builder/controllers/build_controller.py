@@ -654,17 +654,27 @@ class BuildController(QObject):
         return data_args
 
     def _find_nearest_project_container(self, project_root):
-        markers = (".git", "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt")
+        fallback_markers = ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt")
+        ancestors = []
         current = Path(project_root).resolve()
 
         for _ in range(3):
-            if any((current / marker).exists() for marker in markers):
-                return os.path.normpath(str(current))
-
+            ancestors.append(current)
             parent = current.parent
             if parent == current:
                 break
             current = parent
+
+        # A nested source folder can carry its own requirements.txt while shared
+        # runtime assets live at the enclosing repository root. Prefer that root
+        # so asset destinations remain relative to the repository layout.
+        for ancestor in ancestors:
+            if (ancestor / ".git").exists():
+                return os.path.normpath(str(ancestor))
+
+        for ancestor in ancestors:
+            if any((ancestor / marker).exists() for marker in fallback_markers):
+                return os.path.normpath(str(ancestor))
 
         return ""
 
