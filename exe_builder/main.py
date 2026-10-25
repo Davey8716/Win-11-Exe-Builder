@@ -407,6 +407,7 @@ class EXEBuilderApp(QWidget):
         self.env_sync_scan_btn.setFixedSize(145,35)
         self.env_sync_match_btn.setFixedSize(175,35)
         self.env_sync_help_btn.setFixedSize(35,35)
+        self.env_sync_help_btn.setFont(QFont("Rubik UI", 14, QFont.Bold))
         self.env_sync_match_btn.setEnabled(False)
         self.env_sync_scan_btn.setStyleSheet(ENV_SYNC_BUTTON_STYLE)
         self.env_sync_match_btn.setStyleSheet(ENV_SYNC_BUTTON_STYLE)
