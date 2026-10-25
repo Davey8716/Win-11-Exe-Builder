@@ -1324,11 +1324,14 @@ class EXEBuilderApp(QWidget):
             ("Output", self.output_title_frame, self.output_frame),
             ("Build", build_title_frame, build_frame),
         )
+        self._create_build_summary()
         for label, title, controls in sections:
             page = QWidget()
             layout = QVBoxLayout(page)
             layout.setContentsMargins(28, 28, 28, 20)
             layout.setSpacing(12)
+            if label == "Build":
+                layout.addWidget(self.build_summary_frame, alignment=Qt.AlignHCenter)
             layout.addWidget(title, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Environment Sync":
@@ -1379,6 +1382,59 @@ class EXEBuilderApp(QWidget):
         self.python_section_nav.currentRowChanged.connect(self.python_section_stack.setCurrentIndex)
         self.python_section_nav.setCurrentRow(0)
         self._update_python_navigation()
+
+    def _create_build_summary(self):
+        """Create the live build-input summary shown above the build controls."""
+        self.build_summary_frame = QFrame()
+        self.build_summary_frame.setObjectName("configurationFrame")
+        self.build_summary_frame.setStyleSheet(MAIN_FRAME_STYLE)
+        self.build_summary_frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+        summary_layout = QVBoxLayout(self.build_summary_frame)
+        summary_layout.setContentsMargins(12, 10, 12, 10)
+        summary_layout.setSpacing(5)
+
+        heading = QLabel("Build Summary")
+        heading.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        heading.setAlignment(Qt.AlignCenter)
+        summary_layout.addWidget(heading)
+
+        self.build_summary_values = {}
+        for key, label_text in (
+            ("interpreter", "Interpreter"),
+            ("icon", "Icon"),
+            ("file", "File"),
+            ("output", "Output"),
+            ("name", "EXE name"),
+        ):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(8)
+            label = QLabel(label_text)
+            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            label.setFixedWidth(85)
+            value = QLineEdit()
+            value.setReadOnly(True)
+            value.setFont(QFont("Rubik UI", 10))
+            value.setToolTip("")
+            row.addWidget(label)
+            row.addWidget(value, 1)
+            summary_layout.addLayout(row)
+            self.build_summary_values[key] = value
+
+    def _update_build_summary(self):
+        if not hasattr(self, "build_summary_values"):
+            return
+        values = {
+            "interpreter": self.python_entry_input.text() or "Not selected",
+            "icon": self.icon_path_input.text() or "No icon selected",
+            "file": self.script_path_input.text() or "Not selected",
+            "output": self.output_path_input.text() or "Not selected",
+            "name": self.exe_name_input.text().strip() or "Not named",
+        }
+        for key, text in values.items():
+            widget = self.build_summary_values[key]
+            widget.setText(text)
+            widget.setToolTip(text)
 
     def _connect_python_progression(self):
         for field in (
@@ -1488,6 +1544,7 @@ class EXEBuilderApp(QWidget):
         if self.guided_flow_enabled and self.python_section_nav.currentRow() > reachable:
             self.python_section_nav.setCurrentRow(reachable)
         self._update_python_progression_controls()
+        self._update_build_summary()
 
     def _set_guided_flow(self, enabled):
         self.guided_flow_enabled = enabled
