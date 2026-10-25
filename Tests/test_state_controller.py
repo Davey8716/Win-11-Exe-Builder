@@ -295,6 +295,17 @@ def test_save_state_writes_environment_sync_profiles(monkeypatch, tmp_path):
     assert data["env_sync_profiles"] == env_sync_profiles
 
 
+def test_save_state_writes_guided_python_steps(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    app = make_app(_completed_python_steps={0, 1, 2, 3, 4})
+
+    controller = StateController(app)
+    controller.save_state()
+
+    data = controller._read(controller.python_state_file_path())
+    assert data["guided_python_steps"] == [0, 1, 2, 3, 4]
+
+
 def test_save_state_preserves_remembered_non_desktop_output_when_output_is_desktop(monkeypatch, tmp_path):
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     remembered_output = tmp_path / "dist"

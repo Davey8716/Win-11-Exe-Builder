@@ -119,6 +119,21 @@ class StateController:
                 app.last_output_dir = app.last_non_desktop_output_dir
             app.python_interpreter_path = norm(python_data.get("python_interpreter_path", "")); app.python_path = app.python_interpreter_path
             app.exe_name = python_data.get("last_exe_name", ""); app.append_datetime = python_data.get("append_datetime", False); app.datetime_format = python_data.get("datetime_format")
+            # The selected values must also remain available to the recent-item
+            # lists. Those lists are populated immediately after state loading
+            # and otherwise clear a valid selection that predates its recents.
+            recents_changed = False
+            for key, path in (
+                ("recent_scripts", app.script_path),
+                ("recent_icons", app.icon_path),
+                ("recent_interpreters", app.python_interpreter_path),
+            ):
+                items = list(python_data.get(key, []))
+                if path and all(os.path.normcase(norm(item)) != os.path.normcase(path) for item in items):
+                    python_data[key] = [path, *items]
+                    recents_changed = True
+            if recents_changed:
+                self._write(self.python_state_file_path(), python_data)
             app.last_build_seconds = python_data.get("last_build_seconds", csharp_data.get("last_build_seconds", 45))
             for name in ("icon_user_cleared", "script_user_cleared", "interpreter_user_cleared", "append_py_version"):
                 setattr(app, name, python_data.get(name, False))
@@ -155,6 +170,9 @@ class StateController:
             env = getattr(app, "environment_sync_controller", None)
             if env is not None and python_data.get("env_sync_profiles"): env.load_serialized_profiles(python_data["env_sync_profiles"], update_ui=True)
             app.validator.update_ui_state()
+            restore_workflow = getattr(app, "restore_python_guided_workflow", None)
+            if restore_workflow is not None:
+                restore_workflow(python_data.get("guided_python_steps", []))
             if hasattr(app, "set_build_mode"): app.set_build_mode(app.build_mode if app.build_mode in {"python", "dotnet"} else "python", save=False)
         finally:
             for widget in blocked: widget.blockSignals(False)
@@ -169,7 +187,7 @@ class StateController:
         output = norm(app.output_path)
         desktop = norm(os.path.join(os.path.expanduser("~"), "Desktop"))
         remembered = norm(getattr(app, "last_non_desktop_output_dir", "")) or (output if output and os.path.normcase(output) != os.path.normcase(desktop) else "")
-        data = {"last_script_path": norm(app.script_path), "last_icon_path": norm(app.icon_path), "last_output_folder": output, "last_non_desktop_output_folder": remembered, "python_interpreter_path": norm(getattr(app, "python_interpreter_path", "")), "last_exe_name": app.exe_name, "recent_scripts": app.state_data.get("recent_scripts", existing.get("recent_scripts", [])), "recent_icons": app.state_data.get("recent_icons", existing.get("recent_icons", [])), "recent_interpreters": app.state_data.get("recent_interpreters", existing.get("recent_interpreters", [])), "env_sync_profiles": env.serialize_profiles() if env else app.state_data.get("env_sync_profiles", []), "last_build_seconds": app.last_build_seconds, "icon_user_cleared": getattr(app, "icon_user_cleared", False), "script_user_cleared": getattr(app, "script_user_cleared", False), "interpreter_user_cleared": getattr(app, "interpreter_user_cleared", False), "append_datetime": getattr(app, "append_datetime", False), "datetime_format": getattr(app, "datetime_format", None), "append_py_version": getattr(app, "append_py_version", False)}
+        data = {"last_script_path": norm(app.script_path), "last_icon_path": norm(app.icon_path), "last_output_folder": output, "last_non_desktop_output_folder": remembered, "python_interpreter_path": norm(getattr(app, "python_interpreter_path", "")), "last_exe_name": app.exe_name, "recent_scripts": app.state_data.get("recent_scripts", existing.get("recent_scripts", [])), "recent_icons": app.state_data.get("recent_icons", existing.get("recent_icons", [])), "recent_interpreters": app.state_data.get("recent_interpreters", existing.get("recent_interpreters", [])), "env_sync_profiles": env.serialize_profiles() if env else app.state_data.get("env_sync_profiles", []), "last_build_seconds": app.last_build_seconds, "icon_user_cleared": getattr(app, "icon_user_cleared", False), "script_user_cleared": getattr(app, "script_user_cleared", False), "interpreter_user_cleared": getattr(app, "interpreter_user_cleared", False), "append_datetime": getattr(app, "append_datetime", False), "datetime_format": getattr(app, "datetime_format", None), "append_py_version": getattr(app, "append_py_version", False), "guided_python_steps": sorted(getattr(app, "_completed_python_steps", set()))}
         app.state_data = data; self._write(self.python_state_file_path(), data)
 
     def save_csharp_state(self):

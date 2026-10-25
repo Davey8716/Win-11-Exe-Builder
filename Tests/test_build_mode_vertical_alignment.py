@@ -1,6 +1,8 @@
 """Check the sidebar workflow when switching build modes."""
 
 import ctypes
+import json
+import os
 import sys
 
 import pytest
@@ -112,6 +114,60 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.set_build_mode("python", save=False)
         app.processEvents()
         assert window.python_section_stack.currentIndex() == 4
+    finally:
+        window._is_closing = True
+        window.close()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="The app uses Windows APIs")
+def test_ready_saved_python_workflow_opens_build_tab(monkeypatch, tmp_path):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+
+    from exe_builder.controllers.activation_controller import ActivationController
+
+    interpreter = tmp_path / "python.exe"
+    script = tmp_path / "main.py"
+    output = tmp_path / "output"
+    interpreter.write_text("", encoding="utf-8")
+    script.write_text("print('ready')", encoding="utf-8")
+    output.mkdir()
+    state_dir = tmp_path / "EXEBuilder"
+    state_dir.mkdir()
+    (state_dir / "python_exe_builder_state.json").write_text(
+        json.dumps(
+            {
+                "python_interpreter_path": str(interpreter),
+                "last_script_path": str(script),
+                "last_output_folder": str(output),
+                "last_exe_name": "ReadyApp",
+                "guided_python_steps": [0, 1, 2, 3, 4],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (state_dir / "exe_builder_preferences.json").write_text(
+        json.dumps({"build_mode": "python", "guided_flow_enabled": True}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
+    monkeypatch.setattr(ctypes, "GetLastError", lambda: 0)
+    from exe_builder.main import EXEBuilderApp
+
+    app = QApplication.instance() or QApplication([])
+    window = EXEBuilderApp()
+    try:
+        window.show()
+        app.processEvents()
+        assert window.python_section_stack.currentIndex() == 5
+        assert all(
+            bool(window.python_section_nav.item(index).flags() & Qt.ItemIsEnabled)
+            for index in range(6)
+        )
     finally:
         window._is_closing = True
         window.close()

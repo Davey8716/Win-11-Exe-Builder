@@ -1559,9 +1559,63 @@ class EXEBuilderApp(QWidget):
         self._completed_python_steps.add(index)
         next_index = index + 1
         self._update_python_navigation()
+        if not self._loading_state:
+            self.state_ctrl.save_python_state()
         if self.guided_flow_enabled and self.build_mode == "python":
             if self.python_section_nav.currentRow() == index:
                 self.python_section_nav.setCurrentRow(min(next_index, 5))
+
+    def restore_python_guided_workflow(self, saved_steps=()):
+        """Restore a valid saved Python workflow without trapping it at Sync."""
+        if not hasattr(self, "python_section_nav"):
+            return
+
+        python_path = getattr(self, "python_interpreter_path", "").strip()
+        script_path = getattr(self, "script_path", "").strip()
+        output_path = getattr(self, "output_path", "").strip()
+        icon_path = getattr(self, "icon_path", "").strip()
+        exe_name = self.exe_name_input.text().strip()
+        is_file = lambda path: bool(path and os.path.isfile(os.path.normpath(path)))
+        is_directory = lambda path: bool(path and os.path.isdir(os.path.normpath(path)))
+
+        # Saved selections mean Environment Sync has already been intentionally
+        # bypassed or completed. Revalidate every required path before opening Build.
+        has_saved_selection = bool(python_path or script_path or output_path or exe_name)
+        completed = {int(step) for step in saved_steps if isinstance(step, int) and 0 <= step <= 4}
+        if has_saved_selection:
+            completed.add(0)
+        if is_file(python_path):
+            completed.add(1)
+        else:
+            completed.discard(1)
+        if not icon_path or is_file(icon_path):
+            completed.add(2)
+        else:
+            completed.discard(2)
+        if is_file(script_path):
+            completed.add(3)
+        else:
+            completed.discard(3)
+        if is_directory(output_path) and exe_name:
+            completed.add(4)
+        else:
+            completed.discard(4)
+
+        self._completed_python_steps = completed
+        self._update_python_navigation()
+        if self.guided_flow_enabled:
+            if all(step in completed for step in range(5)):
+                self.python_section_nav.setCurrentRow(5)
+            elif 0 not in completed:
+                self.python_section_nav.setCurrentRow(0)
+            elif 1 not in completed:
+                self.python_section_nav.setCurrentRow(1)
+            elif 2 not in completed:
+                self.python_section_nav.setCurrentRow(2)
+            elif 3 not in completed:
+                self.python_section_nav.setCurrentRow(3)
+            else:
+                self.python_section_nav.setCurrentRow(4)
 
     def _update_python_navigation(self):
         if not hasattr(self, "python_section_nav"):
