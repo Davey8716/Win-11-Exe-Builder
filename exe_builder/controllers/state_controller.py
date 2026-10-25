@@ -96,8 +96,10 @@ class StateController:
         preferences = self._read(self.preferences_file_path())
         app.state_data = python_data
         app.csharp_state_data = csharp_data
+        saved_setups = python_data.get("saved_build_setups", [])
+        app.saved_build_setups = saved_setups if isinstance(saved_setups, list) else []
         blocked = []
-        names = ("tooltips_checkbox", "suppress_exit_dialogue", "guided_flow_checkbox", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
+        names = ("tooltips_checkbox", "suppress_exit_dialogue", "guided_flow_checkbox", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "appened_py_version", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
         for name in names:
             widget = getattr(app, name, None)
             if widget is not None:
@@ -137,6 +139,8 @@ class StateController:
             app.last_build_seconds = python_data.get("last_build_seconds", csharp_data.get("last_build_seconds", 45))
             for name in ("icon_user_cleared", "script_user_cleared", "interpreter_user_cleared", "append_py_version"):
                 setattr(app, name, python_data.get(name, False))
+            if hasattr(app, "appened_py_version"):
+                app.appened_py_version.setChecked(app.append_py_version)
             app.entry_script = app.script_path or None; app.project_root = os.path.dirname(app.script_path) if app.script_path else None
             for field, value, method in (("script_path_input", app.script_path, "set_display_path"), ("icon_path_input", app.icon_path, "set_display_path"), ("output_path_input", app.output_path, "set_display_path"), ("exe_name_input", app.exe_name, "setText"), ("python_entry_input", app.python_interpreter_path, "set_display_path")):
                 if hasattr(app, field): getattr(getattr(app, field), method)(value)
@@ -173,6 +177,8 @@ class StateController:
             restore_workflow = getattr(app, "restore_python_guided_workflow", None)
             if restore_workflow is not None:
                 restore_workflow(python_data.get("guided_python_steps", []))
+            if hasattr(app, "_populate_saved_build_setups"):
+                app._populate_saved_build_setups()
             if hasattr(app, "set_build_mode"): app.set_build_mode(app.build_mode if app.build_mode in {"python", "dotnet"} else "python", save=False)
         finally:
             for widget in blocked: widget.blockSignals(False)
@@ -187,7 +193,7 @@ class StateController:
         output = norm(app.output_path)
         desktop = norm(os.path.join(os.path.expanduser("~"), "Desktop"))
         remembered = norm(getattr(app, "last_non_desktop_output_dir", "")) or (output if output and os.path.normcase(output) != os.path.normcase(desktop) else "")
-        data = {"last_script_path": norm(app.script_path), "last_icon_path": norm(app.icon_path), "last_output_folder": output, "last_non_desktop_output_folder": remembered, "python_interpreter_path": norm(getattr(app, "python_interpreter_path", "")), "last_exe_name": app.exe_name, "recent_scripts": app.state_data.get("recent_scripts", existing.get("recent_scripts", [])), "recent_icons": app.state_data.get("recent_icons", existing.get("recent_icons", [])), "recent_interpreters": app.state_data.get("recent_interpreters", existing.get("recent_interpreters", [])), "env_sync_profiles": env.serialize_profiles() if env else app.state_data.get("env_sync_profiles", []), "last_build_seconds": app.last_build_seconds, "icon_user_cleared": getattr(app, "icon_user_cleared", False), "script_user_cleared": getattr(app, "script_user_cleared", False), "interpreter_user_cleared": getattr(app, "interpreter_user_cleared", False), "append_datetime": getattr(app, "append_datetime", False), "datetime_format": getattr(app, "datetime_format", None), "append_py_version": getattr(app, "append_py_version", False), "guided_python_steps": sorted(getattr(app, "_completed_python_steps", set()))}
+        data = {"last_script_path": norm(app.script_path), "last_icon_path": norm(app.icon_path), "last_output_folder": output, "last_non_desktop_output_folder": remembered, "python_interpreter_path": norm(getattr(app, "python_interpreter_path", "")), "last_exe_name": app.exe_name, "recent_scripts": app.state_data.get("recent_scripts", existing.get("recent_scripts", [])), "recent_icons": app.state_data.get("recent_icons", existing.get("recent_icons", [])), "recent_interpreters": app.state_data.get("recent_interpreters", existing.get("recent_interpreters", [])), "saved_build_setups": getattr(app, "saved_build_setups", existing.get("saved_build_setups", [])), "env_sync_profiles": env.serialize_profiles() if env else app.state_data.get("env_sync_profiles", []), "last_build_seconds": app.last_build_seconds, "icon_user_cleared": getattr(app, "icon_user_cleared", False), "script_user_cleared": getattr(app, "script_user_cleared", False), "interpreter_user_cleared": getattr(app, "interpreter_user_cleared", False), "append_datetime": getattr(app, "append_datetime", False), "datetime_format": getattr(app, "datetime_format", None), "append_py_version": getattr(app, "append_py_version", False), "guided_python_steps": sorted(getattr(app, "_completed_python_steps", set()))}
         app.state_data = data; self._write(self.python_state_file_path(), data)
 
     def save_csharp_state(self):

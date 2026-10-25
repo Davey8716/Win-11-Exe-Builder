@@ -12,12 +12,15 @@ from exe_builder.controllers.build_controller import BuildController
 from exe_builder.controllers.dotnet_publish_controller import DotnetPublishController
 from exe_builder.build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_LABEL,
+    ISO_MASS_DATETIME_BUILD_SENTINEL,
     MASS_DATETIME_BUILD_LABEL,
     MASS_DATETIME_BUILD_SENTINEL,
     NO_DATETIME_LABEL,
     REGIONAL_DATETIME_DROPDOWN_GROUPS,
     UK_MASS_DATETIME_BUILD_LABEL,
+    UK_MASS_DATETIME_BUILD_SENTINEL,
     USA_MASS_DATETIME_BUILD_LABEL,
+    USA_MASS_DATETIME_BUILD_SENTINEL,
 )
 from exe_builder.controllers.environment_sync_controller import EnvironmentSyncController
 from exe_builder.ui.path_hover import attach_path_hovers
@@ -192,6 +195,7 @@ class EXEBuilderApp(QWidget):
         self.build_mode = "python"
         self.guided_flow_enabled = True
         self._completed_python_steps = set()
+        self.saved_build_setups = []
                     
         # =============================================================
         # Title + Build Options
@@ -1355,6 +1359,13 @@ class EXEBuilderApp(QWidget):
             if label == "Build":
                 layout.addWidget(self.build_summary_title_frame, alignment=Qt.AlignHCenter)
                 layout.addWidget(self.build_summary_frame, alignment=Qt.AlignHCenter)
+                save_setup_row = QWidget()
+                save_setup_row.setFixedWidth(PAIRED_FRAME_WIDTH)
+                save_setup_layout = QHBoxLayout(save_setup_row)
+                save_setup_layout.setContentsMargins(0, 0, 0, 0)
+                save_setup_layout.addStretch()
+                save_setup_layout.addWidget(self.save_build_setup_btn)
+                layout.addWidget(save_setup_row, alignment=Qt.AlignHCenter)
             layout.addWidget(title, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Environment Sync":
@@ -1404,6 +1415,13 @@ class EXEBuilderApp(QWidget):
         sidebar_layout.addWidget(self.build_mode_label)
         sidebar_layout.addWidget(self.python_mode_btn)
         sidebar_layout.addWidget(self.dotnet_mode_btn)
+        saved_setups_label = QLabel("Saved setups")
+        saved_setups_label.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        sidebar_layout.addWidget(saved_setups_label)
+        sidebar_layout.addWidget(self.saved_build_setup_dropdown)
+        sidebar_layout.addWidget(self.delete_build_setup_btn, alignment=Qt.AlignRight)
         sidebar_layout.addWidget(self.python_section_nav, 1)
 
         shell = QWidget()
@@ -1435,6 +1453,7 @@ class EXEBuilderApp(QWidget):
             "Clear current selections in both build modes and start at Environment Sync."
         )
         self.build_summary_clear_btn.setFixedSize(70, 28)
+        self.build_summary_clear_btn.setFont(QFont("Rubik UI", 10, QFont.Bold))
         self.build_summary_clear_btn.setStyleSheet(button_base())
         self.build_summary_clear_btn.clicked.connect(self._clear_build_workflows)
         summary_title_layout.addStretch()
@@ -1456,6 +1475,40 @@ class EXEBuilderApp(QWidget):
         summary_layout = QVBoxLayout(self.build_summary_frame)
         summary_layout.setContentsMargins(12, 10, 12, 10)
         summary_layout.setSpacing(5)
+
+        self.saved_build_setup_dropdown = QComboBox()
+        self.saved_build_setup_dropdown.addItem("Saved build setups")
+        self.saved_build_setup_dropdown.setAccessibleName("Saved build setups")
+        self.saved_build_setup_dropdown.setToolTip(
+            "Choose a saved setup to fill the build fields, then click Build EXE."
+        )
+        self.saved_build_setup_dropdown.setFixedWidth(185)
+        self.saved_build_setup_dropdown.setStyleSheet(COMBO_BOX_STYLE)
+        self.saved_build_setup_dropdown.currentIndexChanged.connect(
+            self._load_selected_build_setup
+        )
+        self.save_build_setup_btn = QPushButton("Save setup")
+        self.save_build_setup_btn.setAccessibleName("Save current build setup")
+        self.save_build_setup_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.save_build_setup_btn.setFixedSize(135, 38)
+        self.save_build_setup_btn.setStyleSheet(
+            button_base()
+            + "QPushButton { padding: 4px 12px; }"
+            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
+        )
+        self.save_build_setup_btn.clicked.connect(self._save_current_build_setup)
+        self.delete_build_setup_btn = QPushButton("Delete")
+        self.delete_build_setup_btn.setAccessibleName("Delete selected build setup")
+        self.delete_build_setup_btn.setFont(QFont("Rubik UI", 10, QFont.Bold))
+        self.delete_build_setup_btn.setFixedSize(75, 28)
+        self.delete_build_setup_btn.setStyleSheet(
+            button_base()
+            + "QPushButton { padding: 2px 5px; }"
+            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
+        )
+        self.delete_build_setup_btn.clicked.connect(self._delete_selected_build_setup)
 
         self.build_summary_labels = {}
         self.build_summary_values = {}
@@ -1517,6 +1570,163 @@ class EXEBuilderApp(QWidget):
                     f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
                     f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
                 )
+        self._update_saved_build_setup_controls()
+
+    def _current_build_setup(self):
+        return {
+            "interpreter": self.python_entry_input.text().strip(),
+            "icon": self.icon_path_input.text().strip(),
+            "script": self.script_path_input.text().strip(),
+            "output": self.output_path_input.text().strip(),
+            "name": self.exe_name_input.text().strip(),
+            "datetime_format": self.date_time_dropdown.currentData(),
+            "append_py_version": self.appened_py_version.isChecked(),
+        }
+
+    @staticmethod
+    def _build_setup_is_available(setup):
+        return (
+            isinstance(setup, dict)
+            and all(isinstance(setup.get(key), str) for key in
+                    ("interpreter", "icon", "script", "output", "name"))
+            and bool(setup["name"].strip())
+            and os.path.isfile(setup["interpreter"])
+            and os.path.isfile(setup["script"])
+            and os.path.isdir(setup["output"])
+            and (not setup["icon"] or os.path.isfile(setup["icon"]))
+        )
+
+    def _populate_saved_build_setups(self):
+        dropdown = self.saved_build_setup_dropdown
+        previous = dropdown.blockSignals(True)
+        try:
+            dropdown.clear()
+            dropdown.addItem("Saved build setups")
+            for index, setup in enumerate(self.saved_build_setups):
+                if not isinstance(setup, dict):
+                    continue
+                name = str(setup.get("name", "Unnamed"))
+                script = os.path.basename(str(setup.get("script", "")))
+                dropdown.addItem(f"{name} — {script}", index)
+                dropdown.setItemData(dropdown.count() - 1, "\n".join(
+                    str(setup.get(key, "")) for key in
+                    ("interpreter", "script", "output", "icon")
+                ), Qt.ToolTipRole)
+            dropdown.setCurrentIndex(0)
+        finally:
+            dropdown.blockSignals(previous)
+        self._update_saved_build_setup_controls()
+
+    def _update_saved_build_setup_controls(self):
+        if not hasattr(self, "save_build_setup_btn"):
+            return
+        busy = self.building or self.environment_sync_controller.is_running
+        current_setup = self._current_build_setup()
+        self.save_build_setup_btn.setEnabled(
+            not busy
+            and self._build_setup_is_available(current_setup)
+            and current_setup not in self.saved_build_setups
+        )
+        self.saved_build_setup_dropdown.setEnabled(
+            not busy and self.saved_build_setup_dropdown.count() > 1
+        )
+        self.delete_build_setup_btn.setEnabled(
+            not busy and self.saved_build_setup_dropdown.currentIndex() > 0
+        )
+
+    def _save_current_build_setup(self):
+        setup = self._current_build_setup()
+        if (self.building or self.environment_sync_controller.is_running
+                or not self._build_setup_is_available(setup)
+                or setup in self.saved_build_setups):
+            return
+        self.saved_build_setups = [
+            setup, *(item for item in self.saved_build_setups if item != setup)
+        ][:50]
+        self._populate_saved_build_setups()
+        self.state_ctrl.save_python_state()
+
+    def _load_selected_build_setup(self, index):
+        if index <= 0 or self.building or self.environment_sync_controller.is_running:
+            self._update_saved_build_setup_controls()
+            return
+        setup_index = self.saved_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_build_setups):
+            return
+        setup = self.saved_build_setups[setup_index]
+        if not self._build_setup_is_available(setup):
+            self.status_label.setText("Saved setup has a missing file or output folder.")
+            self._update_saved_build_setup_controls()
+            return
+
+        fields = (
+            (self.python_entry_input, setup["interpreter"]),
+            (self.icon_path_input, setup["icon"]),
+            (self.script_path_input, setup["script"]),
+            (self.output_path_input, setup["output"]),
+            (self.exe_name_input, setup["name"]),
+        )
+        widgets = [field for field, _value in fields]
+        widgets.extend((self.date_time_dropdown, self.appened_py_version))
+        previous_loading = self._loading_state
+        self._loading_state = True
+        previous_states = [(widget, widget.blockSignals(True)) for widget in widgets]
+        try:
+            for field, value in fields:
+                if field is self.exe_name_input:
+                    field.setText(value)
+                else:
+                    field.set_display_path(value)
+            self.python_interpreter_path = self.python_path = setup["interpreter"]
+            self.icon_path = setup["icon"]
+            self.script_path = self.entry_script = setup["script"]
+            self.project_root = os.path.dirname(setup["script"])
+            self.output_path = setup["output"]
+            self.exe_name = setup["name"]
+            self.interpreter_user_cleared = self.icon_user_cleared = False
+            self.script_user_cleared = self.exe_name_user_modified = False
+            self.datetime_format = setup.get("datetime_format")
+            self.append_py_version = bool(setup.get("append_py_version", False))
+            self.appened_py_version.setChecked(self.append_py_version)
+            datetime_index = (
+                self.date_time_dropdown.findText(NO_DATETIME_LABEL)
+                if self.datetime_format is None
+                else self.date_time_dropdown.findData(self.datetime_format)
+            )
+            if datetime_index < 0:
+                datetime_index = self.date_time_dropdown.findText(NO_DATETIME_LABEL)
+            self.date_time_dropdown.setCurrentIndex(datetime_index)
+            self.datetime_format = self.date_time_dropdown.currentData()
+            self.mass_datetime_build_selected = self.datetime_format in {
+                MASS_DATETIME_BUILD_SENTINEL,
+                ISO_MASS_DATETIME_BUILD_SENTINEL,
+                UK_MASS_DATETIME_BUILD_SENTINEL,
+                USA_MASS_DATETIME_BUILD_SENTINEL,
+            }
+            self.append_datetime = bool(
+                self.datetime_format and not self.mass_datetime_build_selected
+            )
+        finally:
+            for widget, previous_state in previous_states:
+                widget.blockSignals(previous_state)
+            self._loading_state = previous_loading
+        self.restore_python_guided_workflow(range(5))
+        self._update_icon_continue_button()
+        self.validator.validation_status_message()
+        self.validator.update_ui_state()
+        self.state_ctrl.save_python_state()
+        self._update_saved_build_setup_controls()
+
+    def _delete_selected_build_setup(self):
+        index = self.saved_build_setup_dropdown.currentIndex()
+        if index <= 0 or self.building or self.environment_sync_controller.is_running:
+            return
+        setup_index = self.saved_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_build_setups):
+            return
+        del self.saved_build_setups[setup_index]
+        self._populate_saved_build_setups()
+        self.state_ctrl.save_python_state()
 
     def _create_selection_summary(self, keys):
         """Create a compact, read-only recap for selections on earlier pages."""
@@ -1777,6 +1987,7 @@ class EXEBuilderApp(QWidget):
                 not self.building
                 and not self.environment_sync_controller.is_running
             )
+        self._update_saved_build_setup_controls()
 
     def _clear_build_workflows(self):
         """Return both saved workflows to their initial unselected state."""
@@ -1792,6 +2003,7 @@ class EXEBuilderApp(QWidget):
             self.dotnet_runtime_combo, self.dotnet_date_time_dropdown,
             self.dotnet_self_contained, self.dotnet_single_file, self.dotnet_trim,
             self.dotnet_recent_projects, self.dotnet_recent_icons,
+            self.saved_build_setup_dropdown,
         )
         previous_loading = self._loading_state
         self._loading_state = True
@@ -1837,6 +2049,7 @@ class EXEBuilderApp(QWidget):
             ):
                 dropdown.setCurrentIndex(0)
             self.select_recent_icons.setCurrentIndex(1)
+            self.saved_build_setup_dropdown.setCurrentIndex(0)
 
             self.environment_sync_controller.reset_display()
             self.dotnet_publish_controller._last_successful_output = None
@@ -1858,6 +2071,7 @@ class EXEBuilderApp(QWidget):
         self.validator.update_ui_state()
         self.dotnet_publish_controller.refresh_ui()
         self.state_ctrl.save_all_state()
+        self._update_saved_build_setup_controls()
 
     def _set_guided_flow(self, enabled):
         self.guided_flow_enabled = enabled
