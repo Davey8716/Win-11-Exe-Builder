@@ -37,6 +37,9 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             ]
         assert window.python_section_nav.geometry().right() < window.python_section_stack.geometry().left()
         assert not bool(window.python_section_nav.item(1).flags() & Qt.ItemIsEnabled)
+        assert window.interpreter_continue_btn.isHidden()
+        assert window.file_continue_btn.isHidden()
+        assert window.output_continue_btn.isHidden()
 
         continue_sync = next(
             button for button in window.python_section_stack.widget(0).findChildren(QPushButton)
@@ -46,8 +49,12 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_section_stack.currentIndex() == 1
         window.python_entry_input.setText("C:/Python/python.exe")
         assert window.python_section_stack.currentIndex() == 1
+        assert not window.interpreter_continue_btn.isHidden()
+        assert bool(window.python_section_nav.item(2).flags() & Qt.ItemIsEnabled)
         window.icon_path_input.setText("C:/icons/app.ico")
+        assert bool(window.python_section_nav.item(3).flags() & Qt.ItemIsEnabled)
         window.script_path_input.setText("C:/project/main.py")
+        assert bool(window.python_section_nav.item(4).flags() & Qt.ItemIsEnabled)
         window.python_section_nav.setCurrentRow(1)
         next_button = next(
             button for button in window.python_section_stack.widget(1).findChildren(QPushButton)
@@ -69,6 +76,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         )
         continue_file.click()
         assert window.python_section_stack.currentIndex() == 4
+        assert window.output_continue_btn.isHidden()
 
         window.guided_flow_checkbox.setChecked(False)
         assert all(bool(window.python_section_nav.item(i).flags() & Qt.ItemIsEnabled)

@@ -78,7 +78,7 @@ from exe_builder.ui.styles import (
     utility_icon_button_style,
 )
 
-APP_FIXED_SIZE = (1200, 760)
+APP_FIXED_SIZE = (850, 760)
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
@@ -90,7 +90,8 @@ SECTION_NAV_STYLE = (
     "color: #ecf3fa; font: bold 12pt 'Rubik UI'; } "
     "QListWidget::item { height: 44px; padding-left: 12px; border-radius: 6px; } "
     "QListWidget::item:selected { background: #3477ae; color: white; } "
-    "QListWidget::item:hover:!selected { background: #2c3d4b; }"
+    "QListWidget::item:hover:!selected { background: #2c3d4b; } "
+    "QListWidget::item:disabled { color: #71808c; background: transparent; }"
 )
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
@@ -1336,25 +1337,25 @@ class EXEBuilderApp(QWidget):
                 skip.clicked.connect(self._continue_to_interpreter)
                 layout.addWidget(skip, alignment=Qt.AlignHCenter)
             elif label == "Interpreter":
-                next_btn = QPushButton("Continue to icons")
-                next_btn.setStyleSheet(button_base())
-                next_btn.clicked.connect(self._continue_to_icons)
-                layout.addWidget(next_btn, alignment=Qt.AlignHCenter)
+                self.interpreter_continue_btn = QPushButton("Continue to icons")
+                self.interpreter_continue_btn.setStyleSheet(button_base())
+                self.interpreter_continue_btn.clicked.connect(self._continue_to_icons)
+                layout.addWidget(self.interpreter_continue_btn, alignment=Qt.AlignHCenter)
             elif label == "Icons":
                 self.icon_continue_btn = QPushButton("Use no icon and continue")
                 self.icon_continue_btn.setStyleSheet(button_base())
                 self.icon_continue_btn.clicked.connect(self._continue_from_icons)
                 layout.addWidget(self.icon_continue_btn, alignment=Qt.AlignHCenter)
             elif label == "File":
-                next_btn = QPushButton("Continue to output")
-                next_btn.setStyleSheet(button_base())
-                next_btn.clicked.connect(lambda: self._try_complete_python_step(3))
-                layout.addWidget(next_btn, alignment=Qt.AlignHCenter)
+                self.file_continue_btn = QPushButton("Continue to output")
+                self.file_continue_btn.setStyleSheet(button_base())
+                self.file_continue_btn.clicked.connect(self._continue_to_output)
+                layout.addWidget(self.file_continue_btn, alignment=Qt.AlignHCenter)
             elif label == "Output":
-                next_btn = QPushButton("Continue to build")
-                next_btn.setStyleSheet(button_base())
-                next_btn.clicked.connect(lambda: self._try_complete_python_step(4))
-                layout.addWidget(next_btn, alignment=Qt.AlignHCenter)
+                self.output_continue_btn = QPushButton("Continue to build")
+                self.output_continue_btn.setStyleSheet(button_base())
+                self.output_continue_btn.clicked.connect(self._continue_to_build)
+                layout.addWidget(self.output_continue_btn, alignment=Qt.AlignHCenter)
             layout.addStretch()
             self.python_section_stack.addWidget(page)
             self.python_section_nav.addItem(label)
@@ -1380,27 +1381,16 @@ class EXEBuilderApp(QWidget):
         self._update_python_navigation()
 
     def _connect_python_progression(self):
-        for index, field in (
-            (3, self.script_path_input),
-            (4, self.output_path_input),
-            (4, self.exe_name_input),
+        for field in (
+            self.python_entry_input,
+            self.script_path_input,
+            self.output_path_input,
+            self.exe_name_input,
         ):
-            field.textChanged.connect(lambda _text, step=index: self._try_complete_python_step(step))
+            field.textChanged.connect(self._update_python_navigation)
         self.icon_path_input.textChanged.connect(self._update_icon_continue_button)
         self._update_icon_continue_button()
         self._update_python_navigation()
-
-    def _try_complete_python_step(self, index):
-        if getattr(self, "_loading_state", False):
-            return
-        fields = {
-            1: self.python_entry_input.text(),
-            2: self.icon_path_input.text(),
-            3: self.script_path_input.text(),
-            4: self.output_path_input.text() and self.exe_name_input.text().strip(),
-        }
-        if fields.get(index):
-            self._complete_python_step(index)
 
     def _update_icon_continue_button(self, *_args):
         """Describe the current icon choice before the user advances."""
@@ -1408,6 +1398,24 @@ class EXEBuilderApp(QWidget):
             self.icon_continue_btn.setText(
                 "Continue to file" if self.icon_path_input.text() else "Use no icon and continue"
             )
+        self._update_python_navigation()
+
+    def _update_python_progression_controls(self, *_args):
+        """Only offer a continuation after the selection needed for it exists."""
+        if not hasattr(self, "interpreter_continue_btn"):
+            return
+        self.interpreter_continue_btn.setVisible(
+            bool(self.python_entry_input.text())
+        )
+        # Choosing no icon is itself a valid choice, so this control remains
+        # available whenever the Icons tab can be reached.
+        self.icon_continue_btn.setVisible(True)
+        self.file_continue_btn.setVisible(
+            bool(self.script_path_input.text())
+        )
+        self.output_continue_btn.setVisible(
+            bool(self.output_path_input.text() and self.exe_name_input.text().strip())
+        )
 
     def _continue_from_icons(self):
         """Keep a selected icon, or clear it, then always show File next."""
@@ -1416,6 +1424,21 @@ class EXEBuilderApp(QWidget):
         self._complete_python_step(2)
         if self.guided_flow_enabled and self.build_mode == "python":
             self.python_section_nav.setCurrentRow(3)
+
+    def _continue_to_output(self):
+        if not self.script_path_input.text() or getattr(self, "_loading_state", False):
+            return
+        self._complete_python_step(3)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(4)
+
+    def _continue_to_build(self):
+        if (not self.output_path_input.text() or not self.exe_name_input.text().strip()
+                or getattr(self, "_loading_state", False)):
+            return
+        self._complete_python_step(4)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(5)
 
     def _continue_to_interpreter(self):
         """Mark sync as skipped and always show the interpreter step next."""
@@ -1434,15 +1457,6 @@ class EXEBuilderApp(QWidget):
     def _complete_python_step(self, index):
         self._completed_python_steps.add(index)
         next_index = index + 1
-        existing = (
-            None,
-            self.python_entry_input.text(),
-            self.icon_path_input.text(),
-            self.script_path_input.text(),
-        )
-        while next_index < len(existing) and existing[next_index]:
-            self._completed_python_steps.add(next_index)
-            next_index += 1
         self._update_python_navigation()
         if self.guided_flow_enabled and self.build_mode == "python":
             if self.python_section_nav.currentRow() == index:
@@ -1451,15 +1465,29 @@ class EXEBuilderApp(QWidget):
     def _update_python_navigation(self):
         if not hasattr(self, "python_section_nav"):
             return
-        reachable = 0
-        while reachable in self._completed_python_steps and reachable < 5:
-            reachable += 1
+        if not self.guided_flow_enabled:
+            reachable = 5
+        elif 0 not in self._completed_python_steps:
+            reachable = 0
+        elif not self.python_entry_input.text():
+            reachable = 1
+        elif not (self.icon_path_input.text() or 2 in self._completed_python_steps):
+            reachable = 2
+        elif not self.script_path_input.text():
+            reachable = 3
+        elif not (self.output_path_input.text() and self.exe_name_input.text().strip()):
+            reachable = 4
+        else:
+            reachable = 5
         for index in range(self.python_section_nav.count()):
             item = self.python_section_nav.item(index)
-            item.setFlags(item.flags() | Qt.ItemIsEnabled if not self.guided_flow_enabled or index <= reachable
-                          else item.flags() & ~Qt.ItemIsEnabled)
+            item.setFlags(
+                item.flags() | Qt.ItemIsEnabled if index <= reachable
+                else item.flags() & ~Qt.ItemIsEnabled
+            )
         if self.guided_flow_enabled and self.python_section_nav.currentRow() > reachable:
             self.python_section_nav.setCurrentRow(reachable)
+        self._update_python_progression_controls()
 
     def _set_guided_flow(self, enabled):
         self.guided_flow_enabled = enabled
