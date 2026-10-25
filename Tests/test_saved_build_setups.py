@@ -23,24 +23,32 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
     interpreter = tmp_path / "python.exe"
     script = tmp_path / "main.py"
     icon = tmp_path / "icon.ico"
-    output = tmp_path / "output"
+    output = tmp_path / "Local Exes" / "Audio Book"
     for path in (interpreter, script, icon):
         path.write_text("test", encoding="utf-8")
-    output.mkdir()
+    output.mkdir(parents=True)
 
     app = QApplication.instance() or QApplication([])
     window = EXEBuilderApp()
     try:
         window.show()
         app.processEvents()
-        assert window.saved_build_setup_dropdown.parentWidget() is window.python_navigation_sidebar
         build_page = window.python_section_stack.widget(5)
-        save_row = window.save_build_setup_btn.parentWidget()
-        assert save_row.parentWidget() is build_page
+        saved_setups_section = window.save_build_setup_btn.parentWidget()
+        assert saved_setups_section.parentWidget() is build_page
+        assert window.saved_build_setup_dropdown.parentWidget() is saved_setups_section
+        assert window.saved_build_setup_dropdown.width() == 300
+        assert window.delete_build_setup_btn.parentWidget() is saved_setups_section
+        assert window.saved_setups_label.parentWidget() is saved_setups_section
+        assert window.saved_setups_label.font().bold()
+        controls = saved_setups_section.layout().itemAt(1).layout()
+        assert controls.itemAt(0).widget() is window.saved_build_setup_dropdown
+        assert controls.itemAt(1).widget() is window.delete_build_setup_btn
+        assert controls.itemAt(3).widget() is window.save_build_setup_btn
         build_layout = build_page.layout()
-        assert build_layout.indexOf(window.build_summary_frame) < build_layout.indexOf(save_row)
-        assert build_layout.indexOf(save_row) < build_layout.indexOf(window.build_title.parentWidget())
-        assert save_row.width() == window.build_summary_frame.width()
+        assert build_layout.indexOf(window.build_summary_frame) < build_layout.indexOf(saved_setups_section)
+        assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(window.build_title.parentWidget())
+        assert saved_setups_section.width() == window.build_summary_frame.width()
         assert window.build_summary_clear_btn.font().bold()
         assert window.save_build_setup_btn.font().bold()
         assert window.save_build_setup_btn.width() == 135
@@ -55,12 +63,12 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
         window.project_root = str(tmp_path)
         window.icon_path = str(icon) if with_icon else ""
         window.output_path = str(output)
-        window.exe_name = "Example"
+        window.exe_name = "main"
         window.python_entry_input.set_display_path(str(interpreter))
         window.script_path_input.set_display_path(str(script))
         window.icon_path_input.set_display_path(window.icon_path)
         window.output_path_input.set_display_path(str(output))
-        window.exe_name_input.setText("Example")
+        window.exe_name_input.setText("main")
         window.appened_py_version.setChecked(True)
         window._update_python_navigation()
         assert window.save_build_setup_btn.isEnabled()
@@ -71,6 +79,7 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
         window.save_build_setup_btn.click()
         assert len(window.saved_build_setups) == 1
         assert window.saved_build_setup_dropdown.count() == 2
+        assert window.saved_build_setup_dropdown.itemText(1) == "Local Exes / Audio Book / main"
         saved_file = tmp_path / "EXEBuilder" / "python_exe_builder_state.json"
         assert len(json.loads(saved_file.read_text())["saved_build_setups"]) == 1
 
@@ -83,7 +92,7 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
         assert window.script_path_input.text() == str(script)
         assert window.icon_path_input.text() == (str(icon) if with_icon else "")
         assert window.output_path_input.text() == str(output)
-        assert window.exe_name_input.text() == "Example"
+        assert window.exe_name_input.text() == "main"
         assert window.appened_py_version.isChecked()
         assert window.python_section_nav.currentRow() == 5
         assert not window.building

@@ -1359,13 +1359,26 @@ class EXEBuilderApp(QWidget):
             if label == "Build":
                 layout.addWidget(self.build_summary_title_frame, alignment=Qt.AlignHCenter)
                 layout.addWidget(self.build_summary_frame, alignment=Qt.AlignHCenter)
-                save_setup_row = QWidget()
-                save_setup_row.setFixedWidth(PAIRED_FRAME_WIDTH)
-                save_setup_layout = QHBoxLayout(save_setup_row)
-                save_setup_layout.setContentsMargins(0, 0, 0, 0)
-                save_setup_layout.addStretch()
-                save_setup_layout.addWidget(self.save_build_setup_btn)
-                layout.addWidget(save_setup_row, alignment=Qt.AlignHCenter)
+                saved_setups_section = QWidget()
+                saved_setups_section.setFixedWidth(PAIRED_FRAME_WIDTH)
+                saved_setups_layout = QVBoxLayout(saved_setups_section)
+                saved_setups_layout.setContentsMargins(0, 0, 0, 0)
+                saved_setups_layout.setSpacing(6)
+                self.saved_setups_label = QLabel("Saved setups")
+                self.saved_setups_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+                self.saved_setups_label.setStyleSheet(
+                    f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+                )
+                saved_setups_layout.addWidget(self.saved_setups_label)
+                saved_setups_controls = QHBoxLayout()
+                saved_setups_controls.setContentsMargins(0, 0, 0, 0)
+                saved_setups_controls.setSpacing(8)
+                saved_setups_controls.addWidget(self.saved_build_setup_dropdown)
+                saved_setups_controls.addWidget(self.delete_build_setup_btn)
+                saved_setups_controls.addStretch()
+                saved_setups_controls.addWidget(self.save_build_setup_btn)
+                saved_setups_layout.addLayout(saved_setups_controls)
+                layout.addWidget(saved_setups_section, alignment=Qt.AlignHCenter)
             layout.addWidget(title, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Environment Sync":
@@ -1415,13 +1428,6 @@ class EXEBuilderApp(QWidget):
         sidebar_layout.addWidget(self.build_mode_label)
         sidebar_layout.addWidget(self.python_mode_btn)
         sidebar_layout.addWidget(self.dotnet_mode_btn)
-        saved_setups_label = QLabel("Saved setups")
-        saved_setups_label.setStyleSheet(
-            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
-        )
-        sidebar_layout.addWidget(saved_setups_label)
-        sidebar_layout.addWidget(self.saved_build_setup_dropdown)
-        sidebar_layout.addWidget(self.delete_build_setup_btn, alignment=Qt.AlignRight)
         sidebar_layout.addWidget(self.python_section_nav, 1)
 
         shell = QWidget()
@@ -1482,7 +1488,7 @@ class EXEBuilderApp(QWidget):
         self.saved_build_setup_dropdown.setToolTip(
             "Choose a saved setup to fill the build fields, then click Build EXE."
         )
-        self.saved_build_setup_dropdown.setFixedWidth(185)
+        self.saved_build_setup_dropdown.setFixedWidth(300)
         self.saved_build_setup_dropdown.setStyleSheet(COMBO_BOX_STYLE)
         self.saved_build_setup_dropdown.currentIndexChanged.connect(
             self._load_selected_build_setup
@@ -1606,8 +1612,11 @@ class EXEBuilderApp(QWidget):
                 if not isinstance(setup, dict):
                     continue
                 name = str(setup.get("name", "Unnamed"))
-                script = os.path.basename(str(setup.get("script", "")))
-                dropdown.addItem(f"{name} — {script}", index)
+                output = os.path.normpath(str(setup.get("output", "")))
+                folder = os.path.basename(output)
+                parent = os.path.basename(os.path.dirname(output))
+                label = " / ".join(part for part in (parent, folder, name) if part)
+                dropdown.addItem(label, index)
                 dropdown.setItemData(dropdown.count() - 1, "\n".join(
                     str(setup.get(key, "")) for key in
                     ("interpreter", "script", "output", "icon")
