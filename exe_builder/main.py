@@ -1436,6 +1436,7 @@ class EXEBuilderApp(QWidget):
         summary_layout.setContentsMargins(12, 10, 12, 10)
         summary_layout.setSpacing(5)
 
+        self.build_summary_labels = {}
         self.build_summary_values = {}
         for key, label_text in (
             ("interpreter", "Interpreter"),
@@ -1452,11 +1453,17 @@ class EXEBuilderApp(QWidget):
             label.setFixedWidth(85)
             value = QLineEdit()
             value.setReadOnly(True)
-            value.setFont(QFont("Rubik UI", 10))
+            value.setFont(QFont("Rubik UI", 10, QFont.Bold))
             value.setToolTip("")
+            text_color = Colors.TEXT_LIGHT if key == "icon" else Colors.SUCCESS
+            label.setStyleSheet(f"QLabel {{ color: {qcolor_name(text_color)}; }}")
+            value.setStyleSheet(
+                f"QLineEdit {{ color: {qcolor_name(text_color)}; font-weight: bold; }}"
+            )
             row.addWidget(label)
             row.addWidget(value, 1)
             summary_layout.addLayout(row)
+            self.build_summary_labels[key] = label
             self.build_summary_values[key] = value
 
     def _update_build_summary(self):

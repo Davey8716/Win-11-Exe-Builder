@@ -15,6 +15,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
     from PySide6.QtWidgets import QApplication, QPushButton
 
     from exe_builder.controllers.activation_controller import ActivationController
+    from exe_builder.ui.styles import Colors, qcolor_name
 
     monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
     monkeypatch.setattr(ctypes, "GetLastError", lambda: 0)
@@ -35,6 +36,9 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         build_page = window.python_section_stack.widget(5)
         assert window.build_summary_title_frame.parentWidget() is build_page
         assert window.build_summary_title.parentWidget() is window.build_summary_title_frame
+        assert window.build_summary_values["interpreter"].font().bold()
+        assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["interpreter"].styleSheet()
+        assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["icon"].styleSheet()
         for index, label in ((1, "Continue to icons"), (3, "Continue to output")):
             assert label in [
                 button.text()
