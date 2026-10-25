@@ -1312,7 +1312,7 @@ class EXEBuilderApp(QWidget):
         self.python_section_stack = QStackedWidget()
         self.python_section_nav = QListWidget()
         self.python_section_nav.setObjectName("sectionNavigation")
-        self.python_section_nav.setFixedWidth(205)
+        self.python_section_nav.setFixedWidth(185)
         self.python_section_nav.setSpacing(4)
         self.python_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.python_section_nav.setStyleSheet(SECTION_NAV_STYLE)
@@ -1372,11 +1372,22 @@ class EXEBuilderApp(QWidget):
             old_row = python_layout.itemAt(row_index)
             if old_row and old_row.widget():
                 old_row.widget().hide()
+        self.python_navigation_sidebar = QWidget()
+        self.python_navigation_sidebar.setFixedWidth(205)
+        self.python_navigation_sidebar.setStyleSheet("background: #19232d;")
+        sidebar_layout = QVBoxLayout(self.python_navigation_sidebar)
+        sidebar_layout.setContentsMargins(10, 12, 10, 8)
+        sidebar_layout.setSpacing(6)
+        sidebar_layout.addWidget(self.build_mode_label)
+        sidebar_layout.addWidget(self.python_mode_btn)
+        sidebar_layout.addWidget(self.dotnet_mode_btn)
+        sidebar_layout.addWidget(self.python_section_nav, 1)
+
         shell = QWidget()
         shell_layout = QHBoxLayout(shell)
         shell_layout.setContentsMargins(0, 0, 0, 0)
         shell_layout.setSpacing(0)
-        shell_layout.addWidget(self.python_section_nav)
+        shell_layout.addWidget(self.python_navigation_sidebar)
         shell_layout.addWidget(self.python_section_stack, 1)
         python_layout.insertWidget(1, shell, 1)
         self.python_section_nav.currentRowChanged.connect(self.python_section_stack.setCurrentIndex)
@@ -1894,25 +1905,18 @@ class EXEBuilderApp(QWidget):
         self.build_mode_stack = QStackedWidget()
         self.build_mode_stack.addWidget(self.python_mode_page)
         self.build_mode_stack.addWidget(self.dotnet_mode_page)
-        mode_row = QWidget()
-        mode_layout = QHBoxLayout(mode_row)
-        mode_layout.setContentsMargins(0, 4, 0, 4)
-        mode_layout.addStretch()
         self.build_mode_label = QLabel("Build mode:")
         self.build_mode_label.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
         )
         self.build_mode_label.setFont(build_mode_button_font())
-        mode_layout.addWidget(self.build_mode_label)
         self.python_mode_btn = QPushButton("Python EXE")
         self.dotnet_mode_btn = QPushButton("C# .NET Publish")
         for button in (self.python_mode_btn, self.dotnet_mode_btn):
             button.setCheckable(True)
-            button.setFixedSize(150, 32)
+            button.setFixedHeight(32)
             button.setFont(build_mode_button_font())
             button.setStyleSheet(button_base())
-            mode_layout.addWidget(button)
-        mode_layout.addStretch()
         self.python_mode_btn.setChecked(True)
         self.python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
         self.dotnet_mode_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
@@ -1933,17 +1937,39 @@ class EXEBuilderApp(QWidget):
             )
         self._sync_dotnet_publish_options()
         self._install_dotnet_sidebar(dotnet_layout, panel)
-        root_layout.addWidget(mode_row)
         root_layout.addWidget(self.build_mode_stack)
 
     def _install_dotnet_sidebar(self, dotnet_layout, build_panel):
         self.dotnet_section_nav = QListWidget()
         self.dotnet_section_nav.setObjectName("sectionNavigation")
-        self.dotnet_section_nav.setFixedWidth(205)
+        self.dotnet_section_nav.setFixedWidth(185)
         self.dotnet_section_nav.setSpacing(4)
         self.dotnet_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.dotnet_section_nav.setStyleSheet(SECTION_NAV_STYLE)
         self.dotnet_section_stack = QStackedWidget()
+        self.dotnet_navigation_sidebar = QWidget()
+        self.dotnet_navigation_sidebar.setFixedWidth(205)
+        self.dotnet_navigation_sidebar.setStyleSheet("background: #19232d;")
+        dotnet_sidebar_layout = QVBoxLayout(self.dotnet_navigation_sidebar)
+        dotnet_sidebar_layout.setContentsMargins(10, 12, 10, 8)
+        dotnet_sidebar_layout.setSpacing(6)
+        self.dotnet_build_mode_label = QLabel("Build mode:")
+        self.dotnet_build_mode_label.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        self.dotnet_build_mode_label.setFont(build_mode_button_font())
+        self.dotnet_python_mode_btn = QPushButton("Python EXE")
+        self.dotnet_mode_sidebar_btn = QPushButton("C# .NET Publish")
+        for button in (self.dotnet_python_mode_btn, self.dotnet_mode_sidebar_btn):
+            button.setCheckable(True)
+            button.setFixedHeight(32)
+            button.setFont(build_mode_button_font())
+            button.setStyleSheet(button_base())
+        self.dotnet_python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
+        self.dotnet_mode_sidebar_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
+        dotnet_sidebar_layout.addWidget(self.dotnet_build_mode_label)
+        dotnet_sidebar_layout.addWidget(self.dotnet_python_mode_btn)
+        dotnet_sidebar_layout.addWidget(self.dotnet_mode_sidebar_btn)
         sections = list(self.dotnet_sections)
         sections.append(("Build", self.dotnet_build_title_frame, build_panel))
         for label, heading, controls in sections:
@@ -1963,11 +1989,13 @@ class EXEBuilderApp(QWidget):
         shell_layout = QHBoxLayout(shell)
         shell_layout.setContentsMargins(0, 0, 0, 0)
         shell_layout.setSpacing(0)
-        shell_layout.addWidget(self.dotnet_section_nav)
+        dotnet_sidebar_layout.addWidget(self.dotnet_section_nav, 1)
+        shell_layout.addWidget(self.dotnet_navigation_sidebar)
         shell_layout.addWidget(self.dotnet_section_stack, 1)
         dotnet_layout.addWidget(shell, 1)
         self.dotnet_section_nav.currentRowChanged.connect(self.dotnet_section_stack.setCurrentIndex)
         self.dotnet_section_nav.setCurrentRow(0)
+        self._apply_build_mode_button_state(self.build_mode)
 
     @staticmethod
     def _populate_datetime_dropdown(dropdown):
@@ -2016,6 +2044,13 @@ class EXEBuilderApp(QWidget):
             mode,
             getattr(self, "building", False),
         )
+        if hasattr(self, "dotnet_python_mode_btn"):
+            apply_build_mode_button_state(
+                self.dotnet_python_mode_btn,
+                self.dotnet_mode_sidebar_btn,
+                mode,
+                getattr(self, "building", False),
+            )
 
     def set_build_mode(self, mode, save=True):
         if mode not in {"python", "dotnet"} or getattr(self, "building", False):

@@ -30,6 +30,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         app.processEvents()
         assert window.python_section_nav.count() == 6
         assert window.python_section_stack.currentIndex() == 0
+        assert window.python_mode_btn.parentWidget() is window.python_navigation_sidebar
+        assert window.dotnet_mode_btn.parentWidget() is window.python_navigation_sidebar
         for index, label in ((1, "Continue to icons"), (3, "Continue to output")):
             assert label in [
                 button.text()
@@ -88,6 +90,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.set_build_mode("dotnet", save=False)
         app.processEvents()
         assert window.dotnet_section_nav.count() == 4
+        assert window.dotnet_python_mode_btn.parentWidget() is window.dotnet_navigation_sidebar
+        assert window.dotnet_mode_sidebar_btn.parentWidget() is window.dotnet_navigation_sidebar
         assert window.dotnet_section_nav.geometry().right() < window.dotnet_section_stack.geometry().left()
         window.set_build_mode("python", save=False)
         app.processEvents()
