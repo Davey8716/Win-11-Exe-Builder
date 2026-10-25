@@ -14,9 +14,11 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
 
     from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QPushButton
 
     from exe_builder.controllers.activation_controller import ActivationController
+    from exe_builder.build.build_cancellation import BuildCancellation
     from exe_builder.ui.styles import Colors, qcolor_name
 
     monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
@@ -149,6 +151,60 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.set_build_mode("python", save=False)
         app.processEvents()
         assert window.python_section_stack.currentIndex() == 4
+
+        window.build_cancellation = BuildCancellation(window, window)
+        window.building = True
+        window.validation_controller.update_ui_state()
+        assert not window.python_section_nav.isEnabled()
+        assert not window.dotnet_section_nav.isEnabled()
+        assert "item:selected:disabled" in window.python_section_nav.styleSheet()
+        for label in (window.build_mode_label, window.dotnet_build_mode_label):
+            assert not label.isEnabled()
+            assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in label.styleSheet()
+        for button in (window.python_mode_btn, window.dotnet_mode_btn,
+                       window.dotnet_python_mode_btn, window.dotnet_mode_sidebar_btn):
+            assert not button.isEnabled()
+        QTest.mouseClick(
+            window.python_section_nav.viewport(), Qt.LeftButton,
+            pos=window.python_section_nav.visualItemRect(window.python_section_nav.item(0)).center(),
+        )
+        assert window.python_section_nav.currentRow() == 4
+        window.building = False
+        window.validation_controller.update_ui_state()
+        assert window.python_section_nav.isEnabled()
+        assert window.dotnet_section_nav.isEnabled()
+        for label in (window.build_mode_label, window.dotnet_build_mode_label):
+            assert label.isEnabled()
+            assert qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet()
+        assert window.dotnet_mode_btn.isEnabled()
+        assert all(bool(window.python_section_nav.item(i).flags() & Qt.ItemIsEnabled)
+                   for i in range(6))
+
+        window.set_build_mode("dotnet", save=False)
+        window.dotnet_section_nav.setCurrentRow(2)
+        window.building = True
+        window.dotnet_publish_controller.refresh_ui()
+        assert not window.python_section_nav.isEnabled()
+        assert not window.dotnet_section_nav.isEnabled()
+        for label in (window.build_mode_label, window.dotnet_build_mode_label):
+            assert not label.isEnabled()
+            assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in label.styleSheet()
+        for button in (window.python_mode_btn, window.dotnet_mode_btn,
+                       window.dotnet_python_mode_btn, window.dotnet_mode_sidebar_btn):
+            assert not button.isEnabled()
+        QTest.mouseClick(
+            window.dotnet_section_nav.viewport(), Qt.LeftButton,
+            pos=window.dotnet_section_nav.visualItemRect(window.dotnet_section_nav.item(0)).center(),
+        )
+        assert window.dotnet_section_nav.currentRow() == 2
+        window.building = False
+        window.dotnet_publish_controller.refresh_ui()
+        assert window.python_section_nav.isEnabled()
+        assert window.dotnet_section_nav.isEnabled()
+        for label in (window.build_mode_label, window.dotnet_build_mode_label):
+            assert label.isEnabled()
+            assert qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet()
+        assert window.dotnet_python_mode_btn.isEnabled()
     finally:
         window._is_closing = True
         window.close()

@@ -93,7 +93,8 @@ SECTION_NAV_STYLE = (
     "QListWidget::item { height: 44px; padding-left: 12px; border-radius: 6px; } "
     "QListWidget::item:selected { background: #3477ae; color: white; } "
     "QListWidget::item:hover:!selected { background: #2c3d4b; } "
-    "QListWidget::item:disabled { color: #71808c; background: transparent; }"
+    "QListWidget::item:disabled { color: #71808c; background: transparent; } "
+    "QListWidget::item:selected:disabled { color: #71808c; background: transparent; }"
 )
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
@@ -1428,13 +1429,23 @@ class EXEBuilderApp(QWidget):
         self.build_summary_title.setFixedHeight(30)
         self.build_summary_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
         self.build_summary_title.setAlignment(Qt.AlignVCenter)
+        self.build_summary_clear_btn = QPushButton("Clear")
+        self.build_summary_clear_btn.setAccessibleName("Clear both build workflows")
+        self.build_summary_clear_btn.setToolTip(
+            "Clear current selections in both build modes and start at Environment Sync."
+        )
+        self.build_summary_clear_btn.setFixedSize(70, 28)
+        self.build_summary_clear_btn.setStyleSheet(button_base())
+        self.build_summary_clear_btn.clicked.connect(self._clear_build_workflows)
         summary_title_layout.addStretch()
         summary_title_layout.addWidget(self.build_summary_title)
+        summary_title_layout.addSpacing(8)
+        summary_title_layout.addWidget(self.build_summary_clear_btn)
         summary_title_layout.addStretch()
         self.build_summary_title_frame.setFixedSize(
             QFontMetrics(self.build_summary_title.font()).horizontalAdvance(
                 self.build_summary_title.text()
-            ) + 25,
+            ) + self.build_summary_clear_btn.width() + 45,
             35,
         )
 
@@ -1750,6 +1761,103 @@ class EXEBuilderApp(QWidget):
         self._update_python_progression_controls()
         self._update_build_summary()
         self._update_python_selection_summaries()
+
+    def _update_section_navigation_enabled(self):
+        """Keep sidebar tabs locked while either build mode is running."""
+        for name in ("python_section_nav", "dotnet_section_nav"):
+            navigation = getattr(self, name, None)
+            if navigation is not None:
+                navigation.setEnabled(not self.building)
+        self._update_clear_button_enabled()
+
+    def _update_clear_button_enabled(self):
+        button = getattr(self, "build_summary_clear_btn", None)
+        if button is not None:
+            button.setEnabled(
+                not self.building
+                and not self.environment_sync_controller.is_running
+            )
+
+    def _clear_build_workflows(self):
+        """Return both saved workflows to their initial unselected state."""
+        if self.building or self.environment_sync_controller.is_running:
+            return
+
+        widgets = (
+            self.python_entry_input, self.icon_path_input, self.script_path_input,
+            self.output_path_input, self.exe_name_input, self.date_time_dropdown,
+            self.appened_py_version, self.select_interpreter, self.select_recent_icons,
+            self.recent_folder_dropdown, self.dotnet_project_input,
+            self.dotnet_icon_input, self.dotnet_output_input, self.dotnet_name_input,
+            self.dotnet_runtime_combo, self.dotnet_date_time_dropdown,
+            self.dotnet_self_contained, self.dotnet_single_file, self.dotnet_trim,
+            self.dotnet_recent_projects, self.dotnet_recent_icons,
+        )
+        previous_loading = self._loading_state
+        self._loading_state = True
+        previous_signal_states = [(widget, widget.blockSignals(True)) for widget in widgets]
+        try:
+            self.python_interpreter_path = self.python_path = ""
+            self.icon_path = self.script_path = self.output_path = self.exe_name = ""
+            self.entry_script = self.project_root = None
+            self.last_non_desktop_output_dir = self.last_output_dir = ""
+            self.interpreter_user_cleared = True
+            self.icon_user_cleared = True
+            self.script_user_cleared = True
+            self.exe_name_user_modified = False
+            self.append_datetime = self.append_py_version = False
+            self.datetime_format = None
+            self.mass_datetime_build_selected = False
+            if hasattr(self, "_mass_datetime_restore_state"):
+                del self._mass_datetime_restore_state
+            self._completed_python_steps.clear()
+            self.last_build_seconds = 45
+            self.build_error = None
+
+            for field in (
+                self.python_entry_input, self.icon_path_input, self.script_path_input,
+                self.output_path_input, self.exe_name_input, self.dotnet_project_input,
+                self.dotnet_icon_input, self.dotnet_output_input, self.dotnet_name_input,
+            ):
+                field.clear()
+            self.date_time_dropdown.setCurrentIndex(
+                self.date_time_dropdown.findText(NO_DATETIME_LABEL)
+            )
+            self.appened_py_version.setChecked(False)
+            self.dotnet_date_time_dropdown.setCurrentIndex(
+                self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
+            )
+            self.dotnet_runtime_combo.setCurrentIndex(0)
+            self.dotnet_self_contained.setChecked(True)
+            self.dotnet_single_file.setChecked(False)
+            self.dotnet_trim.setChecked(False)
+            for dropdown in (
+                self.select_interpreter, self.recent_folder_dropdown,
+                self.dotnet_recent_projects, self.dotnet_recent_icons,
+            ):
+                dropdown.setCurrentIndex(0)
+            self.select_recent_icons.setCurrentIndex(1)
+
+            self.environment_sync_controller.reset_display()
+            self.dotnet_publish_controller._last_successful_output = None
+            self.dotnet_publish_controller._set_status("Select a C# project to begin.")
+            self.status_label.setText("Ready")
+            self.csharp_state_data["last_non_desktop_output_folder"] = ""
+            self.dotnet_section_nav.setCurrentRow(0)
+            self.python_section_nav.setCurrentRow(0)
+        finally:
+            for widget, previous_state in previous_signal_states:
+                widget.blockSignals(previous_state)
+            self._loading_state = previous_loading
+
+        self._sync_dotnet_publish_options()
+        self._update_python_navigation()
+        self._update_dotnet_selection_summaries()
+        self.set_build_mode("python", save=False)
+        self.validator.validation_status_message()
+        self.validator.update_ui_state()
+        self.dotnet_publish_controller.refresh_ui()
+        self.state_ctrl.save_all_state()
 
     def _set_guided_flow(self, enabled):
         self.guided_flow_enabled = enabled
@@ -2230,19 +2338,26 @@ class EXEBuilderApp(QWidget):
 
     def _apply_build_mode_button_state(self, mode):
         """Refresh build-mode selectors for the displayed mode and build state."""
+        building = getattr(self, "building", False)
         apply_build_mode_button_state(
             self.python_mode_btn,
             self.dotnet_mode_btn,
             mode,
-            getattr(self, "building", False),
+            building,
         )
         if hasattr(self, "dotnet_python_mode_btn"):
             apply_build_mode_button_state(
                 self.dotnet_python_mode_btn,
                 self.dotnet_mode_sidebar_btn,
                 mode,
-                getattr(self, "building", False),
+                building,
             )
+        label_color = Colors.BUILD_DISABLED_TEXT if building else Colors.TEXT_LIGHT
+        for name in ("build_mode_label", "dotnet_build_mode_label"):
+            label = getattr(self, name, None)
+            if label is not None:
+                label.setEnabled(not building)
+                label.setStyleSheet(f"QLabel {{ color: {qcolor_name(label_color)}; }}")
 
     def set_build_mode(self, mode, save=True):
         if mode not in {"python", "dotnet"} or getattr(self, "building", False):
