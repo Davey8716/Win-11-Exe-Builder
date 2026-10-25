@@ -40,6 +40,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.build_summary_title.parentWidget() is window.build_summary_title_frame
         assert window.build_summary_values["interpreter"].font().bold()
         assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["interpreter"].styleSheet()
+        assert window.build_summary_values["interpreter"].textInteractionFlags() == Qt.NoTextInteraction
+        assert window.build_summary_values["interpreter"].focusPolicy() == Qt.NoFocus
         assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["icon"].styleSheet()
         assert window.build_summary_values["icon"].text() == "(No icon needed to build)"
         for index, label in ((1, "Continue to icons"), (3, "Continue to output")):

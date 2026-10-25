@@ -1451,14 +1451,20 @@ class EXEBuilderApp(QWidget):
             label = QLabel(label_text)
             label.setFont(QFont("Rubik UI", 10, QFont.Bold))
             label.setFixedWidth(85)
-            value = QLineEdit()
-            value.setReadOnly(True)
+            value = QLabel()
             value.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            value.setFixedHeight(24)
+            value.setWordWrap(False)
+            value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            value.setTextInteractionFlags(Qt.NoTextInteraction)
+            value.setFocusPolicy(Qt.NoFocus)
             value.setToolTip("")
             text_color = Colors.TEXT_LIGHT if key == "icon" else Colors.SUCCESS
             label.setStyleSheet(f"QLabel {{ color: {qcolor_name(text_color)}; }}")
             value.setStyleSheet(
-                f"QLineEdit {{ color: {qcolor_name(text_color)}; font-weight: bold; }}"
+                f"QLabel {{ color: {qcolor_name(text_color)}; font-weight: bold; "
+                f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+                f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
             )
             row.addWidget(label)
             row.addWidget(value, 1)
@@ -1486,7 +1492,9 @@ class EXEBuilderApp(QWidget):
                     f"QLabel {{ color: {qcolor_name(text_color)}; }}"
                 )
                 widget.setStyleSheet(
-                    f"QLineEdit {{ color: {qcolor_name(text_color)}; font-weight: bold; }}"
+                    f"QLabel {{ color: {qcolor_name(text_color)}; font-weight: bold; "
+                    f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+                    f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
                 )
 
     def _connect_python_progression(self):
