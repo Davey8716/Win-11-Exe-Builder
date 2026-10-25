@@ -1,4 +1,4 @@
-"""Check the rendered vertical positions when switching build modes."""
+"""Check the sidebar workflow when switching build modes."""
 
 import ctypes
 import sys
@@ -7,12 +7,12 @@ import pytest
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="The app uses Windows APIs")
-def test_build_mode_pages_share_vertical_landmarks(monkeypatch, tmp_path):
+def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path):
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
 
-    from PySide6.QtCore import QPoint
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication, QPushButton
 
     from exe_builder.controllers.activation_controller import ActivationController
 
@@ -24,69 +24,62 @@ def test_build_mode_pages_share_vertical_landmarks(monkeypatch, tmp_path):
     app.setStyle("Fusion")
     window = EXEBuilderApp()
 
-    def top(widget):
-        return widget.mapTo(window, QPoint(0, 0)).y()
-
-    def bottom(widget):
-        return top(widget) + widget.height()
-
     try:
         window.show()
         window.set_build_mode("python", save=False)
         app.processEvents()
-        python_positions = (
-            top(window.title_frame),
-            top(window.icons_title_frame),
-            top(window.icon_frame),
-            top(window.center_divider),
-            bottom(window.center_divider),
-            top(window.build_title.parentWidget()),
-            top(window.build_btn.parentWidget()),
+        assert window.python_section_nav.count() == 6
+        assert window.python_section_stack.currentIndex() == 0
+        for index, label in ((1, "Continue to icons"), (3, "Continue to output")):
+            assert label in [
+                button.text()
+                for button in window.python_section_stack.widget(index).findChildren(QPushButton)
+            ]
+        assert window.python_section_nav.geometry().right() < window.python_section_stack.geometry().left()
+        assert not bool(window.python_section_nav.item(1).flags() & Qt.ItemIsEnabled)
+
+        window.python_entry_input.setText("C:/Python/python.exe")
+        window.icon_path_input.setText("C:/icons/app.ico")
+        window.script_path_input.setText("C:/project/main.py")
+        continue_sync = next(
+            button for button in window.python_section_stack.widget(0).findChildren(QPushButton)
+            if button.text() == "Continue without syncing"
         )
+        continue_sync.click()
+        assert window.python_section_stack.currentIndex() == 1
+        window.python_section_nav.setCurrentRow(1)
+        next_button = next(
+            button for button in window.python_section_stack.widget(1).findChildren(QPushButton)
+            if button.text() == "Continue to icons"
+        )
+        next_button.click()
+        assert window.python_section_stack.currentIndex() == 2
+        window.ui_handlers.clear_icon()
+        assert window.icon_continue_btn.text() == "Use no icon and continue"
+        window.icon_path_input.setText("C:/icons/app.ico")
+        assert window.icon_continue_btn.text() == "Continue to file"
+        assert window.icon_path_input.text() == "C:/icons/app.ico"
+        assert window.python_section_stack.currentIndex() == 2
+        window.icon_continue_btn.click()
+        assert window.python_section_stack.currentIndex() == 3
+        continue_file = next(
+            button for button in window.python_section_stack.widget(3).findChildren(QPushButton)
+            if button.text() == "Continue to output"
+        )
+        continue_file.click()
+        assert window.python_section_stack.currentIndex() == 4
+
+        window.guided_flow_checkbox.setChecked(False)
+        assert all(bool(window.python_section_nav.item(i).flags() & Qt.ItemIsEnabled)
+                   for i in range(6))
 
         window.set_build_mode("dotnet", save=False)
         app.processEvents()
-        dotnet_positions = (
-            top(window.dotnet_title_container),
-            top(window.dotnet_section_title_frames[1]),
-            top(window.dotnet_configuration_frames[0]),
-            top(window.dotnet_center_divider),
-            bottom(window.dotnet_center_divider),
-            top(window.dotnet_build_title_frame),
-            top(window.dotnet_publish_btn.parentWidget()),
-        )
-
-        assert all(
-            abs(python_y - dotnet_y) <= 2
-            for python_y, dotnet_y in zip(python_positions, dotnet_positions)
-        ), (
-            f"Python: {python_positions}; C#: {dotnet_positions}; "
-            f"Python row heights: {[window.python_mode_page.layout().itemAt(i).widget().height() for i in range(4)]}; "
-            f"C# row heights: {[window.dotnet_mode_page.layout().itemAt(i).widget().height() for i in range(4)]}"
-        )
-        assert (
-            top(window.center_divider),
-            bottom(window.center_divider),
-            window.center_divider.height(),
-        ) == (
-            top(window.dotnet_center_divider),
-            bottom(window.dotnet_center_divider),
-            window.dotnet_center_divider.height(),
-        )
-
+        assert window.dotnet_section_nav.count() == 4
+        assert window.dotnet_section_nav.geometry().right() < window.dotnet_section_stack.geometry().left()
         window.set_build_mode("python", save=False)
         app.processEvents()
-        assert top(window.title_frame) == python_positions[0]
-        assert top(window.build_btn.parentWidget()) == python_positions[-1]
-        assert (
-            top(window.center_divider),
-            bottom(window.center_divider),
-            window.center_divider.height(),
-        ) == (
-            dotnet_positions[3],
-            dotnet_positions[4],
-            window.dotnet_center_divider.height(),
-        )
+        assert window.python_section_stack.currentIndex() == 4
     finally:
         window._is_closing = True
         window.close()

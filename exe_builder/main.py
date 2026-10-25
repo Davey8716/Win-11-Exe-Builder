@@ -23,7 +23,7 @@ from exe_builder.controllers.environment_sync_controller import EnvironmentSyncC
 from exe_builder.ui.path_hover import attach_path_hovers
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog
+from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QListWidget,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog
 from exe_builder.controllers.validation_controller import ValidationController
 from exe_builder.controllers.activation_controller import ActivationController
 from PySide6.QtGui import QFont, QIcon, QPalette
@@ -78,13 +78,20 @@ from exe_builder.ui.styles import (
     utility_icon_button_style,
 )
 
-APP_FIXED_SIZE = (1200, 915)
+APP_FIXED_SIZE = (1200, 760)
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
 BUILD_FRAME_HEIGHT = 170
+SECTION_NAV_STYLE = (
+    "QListWidget { background: #19232d; border: 0; padding: 12px 8px; "
+    "color: #ecf3fa; font: bold 12pt 'Rubik UI'; } "
+    "QListWidget::item { height: 44px; padding-left: 12px; border-radius: 6px; } "
+    "QListWidget::item:selected { background: #3477ae; color: white; } "
+    "QListWidget::item:hover:!selected { background: #2c3d4b; }"
+)
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
     None,
@@ -179,6 +186,8 @@ class EXEBuilderApp(QWidget):
         self.python_path = getattr(self, "python_path", "")
         self.exe_name = getattr(self, "exe_name", "")
         self.build_mode = "python"
+        self.guided_flow_enabled = True
+        self._completed_python_steps = set()
                     
         # =============================================================
         # Title + Build Options
@@ -239,6 +248,12 @@ class EXEBuilderApp(QWidget):
         self.open_output_dir_after_build = QCheckBox("Open Output Directory")
         self.close_after_build = QCheckBox("Close After Build")
         self.open_app_data_btn = QPushButton("Open App Data")
+        self.guided_flow_checkbox = QCheckBox("Guided step progression")
+        self.guided_flow_checkbox.setChecked(True)
+        self.guided_flow_checkbox.setToolTip(
+            "Advance through Environment Sync, Interpreter, Icons, File and Output. "
+            "Turn off to open any tab at any time."
+        )
 
         toggle_columns = QHBoxLayout()
         toggle_columns.setContentsMargins(0, 0, 0, 0)
@@ -255,6 +270,7 @@ class EXEBuilderApp(QWidget):
         left_toggle_column.addWidget(self.tooltips_checkbox, alignment=Qt.AlignLeft | Qt.AlignTop)
         left_toggle_column.addWidget(self.minimize_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
         left_toggle_column.addWidget(self.suppress_exit_dialogue, alignment=Qt.AlignLeft | Qt.AlignTop)
+        left_toggle_column.addWidget(self.guided_flow_checkbox, alignment=Qt.AlignLeft | Qt.AlignTop)
         left_toggle_column.addStretch()
 
         right_toggle_column.addWidget(self.open_output_dir_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
@@ -268,7 +284,7 @@ class EXEBuilderApp(QWidget):
         self.build_options_dialog = QDialog(self)
         self.build_options_dialog.setWindowTitle("Global Build Options")
         self.build_options_dialog.setModal(True)
-        self.build_options_dialog.setFixedSize(500, 150)
+        self.build_options_dialog.setFixedSize(500, 185)
         self.build_options_dialog.setStyleSheet(BUILD_OPTIONS_DIALOG_STYLE)
         apply_build_options_title_bar_style(self.build_options_dialog)
 
@@ -1218,11 +1234,13 @@ class EXEBuilderApp(QWidget):
         
         build_title_row_layout.addWidget(build_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
         build_frame_row_layout.addWidget(build_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        self._install_python_sidebar(python_frame, build_title_frame, build_frame)
 
         attach_tooltips(self)
         attach_path_hovers(self)
         self._loading_state = False
         self.state_ctrl.load_state()
+        self._connect_python_progression()
         self.dotnet_publish_controller.populate_recents("project")
         self.dotnet_publish_controller.populate_recents("icon")
         self.recent_controller.populate_recent_dropdown()
@@ -1270,6 +1288,7 @@ class EXEBuilderApp(QWidget):
         self.open_output_dir_after_build.stateChanged.connect(self.ui_handlers.on_open_output_dir_toggle)
         self.suppress_exit_dialogue.stateChanged.connect(self.ui_handlers.on_suppress_exit_dialogue_toggle)
         self.close_after_build.stateChanged.connect(self.ui_handlers.on_close_toggle)
+        self.guided_flow_checkbox.toggled.connect(self._set_guided_flow)
 
         self.validator.update_ui_state()
         self.validation_controller.update_build_button()
@@ -1286,6 +1305,168 @@ class EXEBuilderApp(QWidget):
             # A mode switch can recreate the native handle; reapply DWM colours.
             apply_build_options_title_bar_style(self.build_options_dialog)
             self.build_options_dialog.exec()
+
+    def _install_python_sidebar(self, python_frame, build_title_frame, build_frame):
+        """Place the existing controls on focused pages without recreating them."""
+        self.python_section_stack = QStackedWidget()
+        self.python_section_nav = QListWidget()
+        self.python_section_nav.setObjectName("sectionNavigation")
+        self.python_section_nav.setFixedWidth(205)
+        self.python_section_nav.setSpacing(4)
+        self.python_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.python_section_nav.setStyleSheet(SECTION_NAV_STYLE)
+        sections = (
+            ("Environment Sync", self.env_sync_title_frame, self.env_sync_frame),
+            ("Interpreter", self.apps_title_frame, self.interpreter_frame),
+            ("Icons", self.icons_title_frame, self.icon_frame),
+            ("File", self.python_title_frame, python_frame),
+            ("Output", self.output_title_frame, self.output_frame),
+            ("Build", build_title_frame, build_frame),
+        )
+        for label, title, controls in sections:
+            page = QWidget()
+            layout = QVBoxLayout(page)
+            layout.setContentsMargins(28, 28, 28, 20)
+            layout.setSpacing(12)
+            layout.addWidget(title, alignment=Qt.AlignHCenter)
+            layout.addWidget(controls, alignment=Qt.AlignHCenter)
+            if label == "Environment Sync":
+                skip = QPushButton("Continue without syncing")
+                skip.setStyleSheet(button_base())
+                skip.clicked.connect(self._continue_to_interpreter)
+                layout.addWidget(skip, alignment=Qt.AlignHCenter)
+            elif label == "Interpreter":
+                next_btn = QPushButton("Continue to icons")
+                next_btn.setStyleSheet(button_base())
+                next_btn.clicked.connect(self._continue_to_icons)
+                layout.addWidget(next_btn, alignment=Qt.AlignHCenter)
+            elif label == "Icons":
+                self.icon_continue_btn = QPushButton("Use no icon and continue")
+                self.icon_continue_btn.setStyleSheet(button_base())
+                self.icon_continue_btn.clicked.connect(self._continue_from_icons)
+                layout.addWidget(self.icon_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "File":
+                next_btn = QPushButton("Continue to output")
+                next_btn.setStyleSheet(button_base())
+                next_btn.clicked.connect(lambda: self._try_complete_python_step(3))
+                layout.addWidget(next_btn, alignment=Qt.AlignHCenter)
+            elif label == "Output":
+                next_btn = QPushButton("Continue to build")
+                next_btn.setStyleSheet(button_base())
+                next_btn.clicked.connect(lambda: self._try_complete_python_step(4))
+                layout.addWidget(next_btn, alignment=Qt.AlignHCenter)
+            layout.addStretch()
+            self.python_section_stack.addWidget(page)
+            self.python_section_nav.addItem(label)
+
+        # The old grid is now empty. Replace it with a single navigation shell.
+        python_layout = self.python_mode_page.layout()
+        for widget in (self.content_row,):
+            python_layout.removeWidget(widget)
+            widget.hide()
+        for row_index in (1, 2):
+            old_row = python_layout.itemAt(row_index)
+            if old_row and old_row.widget():
+                old_row.widget().hide()
+        shell = QWidget()
+        shell_layout = QHBoxLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+        shell_layout.addWidget(self.python_section_nav)
+        shell_layout.addWidget(self.python_section_stack, 1)
+        python_layout.insertWidget(1, shell, 1)
+        self.python_section_nav.currentRowChanged.connect(self.python_section_stack.setCurrentIndex)
+        self.python_section_nav.setCurrentRow(0)
+        self._update_python_navigation()
+
+    def _connect_python_progression(self):
+        for index, field in (
+            (1, self.python_entry_input),
+            (3, self.script_path_input),
+            (4, self.output_path_input),
+            (4, self.exe_name_input),
+        ):
+            field.textChanged.connect(lambda _text, step=index: self._try_complete_python_step(step))
+        self.icon_path_input.textChanged.connect(self._update_icon_continue_button)
+        self._update_icon_continue_button()
+        self._update_python_navigation()
+
+    def _try_complete_python_step(self, index):
+        if getattr(self, "_loading_state", False):
+            return
+        fields = {
+            1: self.python_entry_input.text(),
+            2: self.icon_path_input.text(),
+            3: self.script_path_input.text(),
+            4: self.output_path_input.text() and self.exe_name_input.text().strip(),
+        }
+        if fields.get(index):
+            self._complete_python_step(index)
+
+    def _update_icon_continue_button(self, *_args):
+        """Describe the current icon choice before the user advances."""
+        if hasattr(self, "icon_continue_btn"):
+            self.icon_continue_btn.setText(
+                "Continue to file" if self.icon_path_input.text() else "Use no icon and continue"
+            )
+
+    def _continue_from_icons(self):
+        """Keep a selected icon, or clear it, then always show File next."""
+        if not self.icon_path_input.text():
+            self.ui_handlers.clear_icon()
+        self._complete_python_step(2)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(3)
+
+    def _continue_to_interpreter(self):
+        """Mark sync as skipped and always show the interpreter step next."""
+        self._complete_python_step(0)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(1)
+
+    def _continue_to_icons(self):
+        """Complete the interpreter step and always show the icon step next."""
+        if not self.python_entry_input.text() or getattr(self, "_loading_state", False):
+            return
+        self._complete_python_step(1)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(2)
+
+    def _complete_python_step(self, index):
+        self._completed_python_steps.add(index)
+        next_index = index + 1
+        existing = (
+            None,
+            self.python_entry_input.text(),
+            self.icon_path_input.text(),
+            self.script_path_input.text(),
+        )
+        while next_index < len(existing) and existing[next_index]:
+            self._completed_python_steps.add(next_index)
+            next_index += 1
+        self._update_python_navigation()
+        if self.guided_flow_enabled and self.build_mode == "python":
+            if self.python_section_nav.currentRow() == index:
+                self.python_section_nav.setCurrentRow(min(next_index, 5))
+
+    def _update_python_navigation(self):
+        if not hasattr(self, "python_section_nav"):
+            return
+        reachable = 0
+        while reachable in self._completed_python_steps and reachable < 5:
+            reachable += 1
+        for index in range(self.python_section_nav.count()):
+            item = self.python_section_nav.item(index)
+            item.setFlags(item.flags() | Qt.ItemIsEnabled if not self.guided_flow_enabled or index <= reachable
+                          else item.flags() & ~Qt.ItemIsEnabled)
+        if self.guided_flow_enabled and self.python_section_nav.currentRow() > reachable:
+            self.python_section_nav.setCurrentRow(reachable)
+
+    def _set_guided_flow(self, enabled):
+        self.guided_flow_enabled = enabled
+        self._update_python_navigation()
+        if not getattr(self, "_loading_state", False):
+            self.state_ctrl.save_preferences()
 
     def _install_build_mode_pages(self, root_layout):
         """Move the legacy screen into a Python page and create the .NET page."""
@@ -1343,6 +1524,7 @@ class EXEBuilderApp(QWidget):
         dotnet_title_row.addWidget(self.dotnet_build_options_btn)
         self.dotnet_section_title_frames = []
         self.dotnet_configuration_frames = []
+        self.dotnet_sections = []
         dotnet_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter)
 
         # Keep the C# workflow on the same fixed two-column grid as the
@@ -1430,6 +1612,7 @@ class EXEBuilderApp(QWidget):
             layout.setSpacing(3)
             column.addWidget(heading, alignment=Qt.AlignHCenter)
             column.addWidget(frame, alignment=Qt.AlignHCenter)
+            self.dotnet_sections.append((title, heading, frame))
             return layout
 
         def utility_button(icon_path, icon_size, caption):
@@ -1665,8 +1848,42 @@ class EXEBuilderApp(QWidget):
                 lambda checked, selected=widget: self._on_dotnet_publish_option_toggled(selected, checked)
             )
         self._sync_dotnet_publish_options()
+        self._install_dotnet_sidebar(dotnet_layout, panel)
         root_layout.addWidget(mode_row)
         root_layout.addWidget(self.build_mode_stack)
+
+    def _install_dotnet_sidebar(self, dotnet_layout, build_panel):
+        self.dotnet_section_nav = QListWidget()
+        self.dotnet_section_nav.setObjectName("sectionNavigation")
+        self.dotnet_section_nav.setFixedWidth(205)
+        self.dotnet_section_nav.setSpacing(4)
+        self.dotnet_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.dotnet_section_nav.setStyleSheet(SECTION_NAV_STYLE)
+        self.dotnet_section_stack = QStackedWidget()
+        sections = list(self.dotnet_sections)
+        sections.append(("Build", self.dotnet_build_title_frame, build_panel))
+        for label, heading, controls in sections:
+            page = QWidget()
+            layout = QVBoxLayout(page)
+            layout.setContentsMargins(28, 28, 28, 20)
+            layout.setSpacing(12)
+            layout.addWidget(heading, alignment=Qt.AlignHCenter)
+            layout.addWidget(controls, alignment=Qt.AlignHCenter)
+            layout.addStretch()
+            self.dotnet_section_stack.addWidget(page)
+            self.dotnet_section_nav.addItem(label.replace(" Select", ""))
+        for row in (self.dotnet_content_row, self.dotnet_build_title_row, self.dotnet_build_frame_row):
+            dotnet_layout.removeWidget(row)
+            row.hide()
+        shell = QWidget()
+        shell_layout = QHBoxLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+        shell_layout.addWidget(self.dotnet_section_nav)
+        shell_layout.addWidget(self.dotnet_section_stack, 1)
+        dotnet_layout.addWidget(shell, 1)
+        self.dotnet_section_nav.currentRowChanged.connect(self.dotnet_section_stack.setCurrentIndex)
+        self.dotnet_section_nav.setCurrentRow(0)
 
     @staticmethod
     def _populate_datetime_dropdown(dropdown):
@@ -1848,6 +2065,8 @@ class EXEBuilderApp(QWidget):
         self._sync_center_divider_height()
 
     def _sync_paired_section_geometry(self):
+        if hasattr(self, "python_section_stack"):
+            return
         if not all(
             hasattr(self, attr)
             for attr in (
@@ -1936,6 +2155,8 @@ class EXEBuilderApp(QWidget):
 
     def _sync_center_divider_height(self):
         """Synchronize both mode dividers from the Python layout geometry."""
+        if hasattr(self, "python_section_stack"):
+            return
         python_attrs = (
             "left_content",
             "right_content",

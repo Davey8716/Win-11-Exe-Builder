@@ -446,6 +446,8 @@ class EnvironmentSyncController(QObject):
             plan = payload
             self.last_plan = plan
             self.update_ui_from_plan(plan)
+            if plan.total_actions == 0 and hasattr(self.app, "_complete_python_step"):
+                self.app._complete_python_step(0)
             if self.app is not None and hasattr(self.app, "state_ctrl"):
                 self.app.state_ctrl.save_state()
             return
@@ -468,6 +470,8 @@ class EnvironmentSyncController(QObject):
             self.app.set_env_sync_status(
                 f"Dependency sync complete.\nInstalled {installed_count} packages."
             )
+            if hasattr(self.app, "_complete_python_step"):
+                self.app._complete_python_step(0)
 
     def _on_worker_failed(self, action, message):
         if self._app_is_closing():
