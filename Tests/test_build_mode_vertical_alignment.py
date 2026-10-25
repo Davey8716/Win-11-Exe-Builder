@@ -131,10 +131,6 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_section_stack.currentIndex() == 4
         assert window.output_continue_btn.isHidden()
 
-        window.guided_flow_checkbox.setChecked(False)
-        assert all(bool(window.python_section_nav.item(i).flags() & Qt.ItemIsEnabled)
-                   for i in range(6))
-
         window.set_build_mode("dotnet", save=False)
         app.processEvents()
         dotnet_title_center = window.dotnet_mode_title.mapTo(
@@ -190,7 +186,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             assert qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet()
         assert window.dotnet_mode_btn.isEnabled()
         assert all(bool(window.python_section_nav.item(i).flags() & Qt.ItemIsEnabled)
-                   for i in range(6))
+                   for i in range(5))
+        assert not bool(window.python_section_nav.item(5).flags() & Qt.ItemIsEnabled)
 
         window.set_build_mode("dotnet", save=False)
         window.dotnet_section_nav.setCurrentRow(2)
@@ -258,7 +255,7 @@ def test_ready_saved_python_workflow_opens_build_tab(monkeypatch, tmp_path):
         encoding="utf-8",
     )
     (state_dir / "exe_builder_preferences.json").write_text(
-        json.dumps({"build_mode": "python", "guided_flow_enabled": True}),
+        json.dumps({"build_mode": "python"}),
         encoding="utf-8",
     )
     (state_dir / "csharp_exe_builder_state.json").write_text(

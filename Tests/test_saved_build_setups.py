@@ -13,6 +13,7 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
 
+    from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication
     from exe_builder.controllers.activation_controller import ActivationController
 
@@ -42,17 +43,18 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert window.delete_build_setup_btn.parentWidget() is saved_setups_section
         assert window.saved_setups_label.parentWidget() is saved_setups_section
         assert window.saved_setups_label.font().bold()
+        assert window.saved_setups_label.alignment() == Qt.AlignCenter
         controls = saved_setups_section.layout().itemAt(1).layout()
-        assert controls.itemAt(0).widget() is window.saved_build_setup_dropdown
-        assert controls.itemAt(1).widget() is window.delete_build_setup_btn
-        assert controls.itemAt(3).widget() is window.save_build_setup_btn
+        assert controls.itemAt(0).widget() is window.save_build_setup_btn
+        assert controls.itemAt(1).widget() is window.saved_build_setup_dropdown
+        assert controls.itemAt(2).widget() is window.delete_build_setup_btn
         build_layout = build_page.layout()
         assert build_layout.indexOf(window.build_summary_frame) < build_layout.indexOf(saved_setups_section)
         assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(window.build_title.parentWidget())
         assert saved_setups_section.width() == window.build_summary_frame.width()
         assert window.save_build_setup_btn.font().bold()
         assert window.save_build_setup_btn.width() == 135
-        assert window.save_build_setup_btn.height() == 38
+        assert window.save_build_setup_btn.height() == 28
         assert window.delete_build_setup_btn.font().bold()
         assert window.delete_build_setup_btn.width() == 75
         assert window.delete_build_setup_btn.height() == 28

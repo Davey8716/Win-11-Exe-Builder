@@ -34,9 +34,7 @@ Both modes provide controlled PySide6 workflows for selection, validation, outpu
 
 ## Side tab workflow
 
-The Python builder uses side tabs in this order: **Environment Sync → Interpreter → Icons → File → Output → Build**. With **Guided step progression** enabled, each completed selection opens the next tab. The Interpreter and File tabs include continue buttons, while Environment Sync and the icon are optional and can be skipped. Output advances when an output folder and executable name are set. Earlier tabs remain available so you can revise a selection.
-
-Open **Build Options** (the gear button) to turn Guided step progression off. This unlocks every tab and keeps the side tab layout. The preference is saved between launches. C# publishing uses side tabs for Icons, File, Output, and Build.
+The Python builder uses side tabs in this order: **Environment Sync → Interpreter → Icons → File → Output → Build**. Each completed selection opens the next tab. The Interpreter and File tabs include continue buttons, while Environment Sync and the icon are optional and can be skipped. Output advances when an output folder and executable name are set. Earlier tabs remain available so you can revise a selection. C# publishing uses side tabs for Icons, File, Output, and Build.
 
 Selection summaries on later tabs show the earlier choices: Python Icons shows the interpreter, File adds the icon, and Output adds the Python file. In C# mode, File shows the icon and Output shows the icon and project file. The Python Build Summary remains the final review of all build inputs.
 

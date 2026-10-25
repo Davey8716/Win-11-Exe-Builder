@@ -99,7 +99,7 @@ class StateController:
         saved_setups = python_data.get("saved_build_setups", [])
         app.saved_build_setups = saved_setups if isinstance(saved_setups, list) else []
         blocked = []
-        names = ("tooltips_checkbox", "suppress_exit_dialogue", "guided_flow_checkbox", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "appened_py_version", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
+        names = ("tooltips_checkbox", "suppress_exit_dialogue", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "appened_py_version", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
         for name in names:
             widget = getattr(app, name, None)
             if widget is not None:
@@ -110,9 +110,7 @@ class StateController:
             for key, default in (("tooltips_enabled", True), ("close_after_build_enabled", True), ("minimize_after_build_enabled", True), ("open_output_dir_after_build_enabled", False), ("suppress_exit_dialogue_enabled", False)):
                 setattr(app, key, preferences.get(key, default))
             app.build_mode = preferences.get("build_mode", "python")
-            app.guided_flow_enabled = preferences.get("guided_flow_enabled", True)
-            if hasattr(app, "guided_flow_checkbox"):
-                app.guided_flow_checkbox.setChecked(app.guided_flow_enabled)
+            app.guided_flow_enabled = True
             if hasattr(app, "_update_python_navigation"):
                 app._update_python_navigation()
             app.script_path = norm(python_data.get("last_script_path", "")); app.icon_path = norm(python_data.get("last_icon_path", "")); app.output_path = norm(python_data.get("last_output_folder", ""))
@@ -185,7 +183,7 @@ class StateController:
 
     def save_preferences(self):
         app = self.app
-        self._write(self.preferences_file_path(), {key: getattr(app, key, default) for key, default in (("tooltips_enabled", True), ("close_after_build_enabled", True), ("minimize_after_build_enabled", True), ("open_output_dir_after_build_enabled", False), ("suppress_exit_dialogue_enabled", False), ("build_mode", "python"), ("guided_flow_enabled", True))})
+        self._write(self.preferences_file_path(), {key: getattr(app, key, default) for key, default in (("tooltips_enabled", True), ("close_after_build_enabled", True), ("minimize_after_build_enabled", True), ("open_output_dir_after_build_enabled", False), ("suppress_exit_dialogue_enabled", False), ("build_mode", "python"))})
 
     def save_python_state(self):
         app = self.app; norm = lambda path: os.path.normpath(path) if path else ""; existing = self._read(self.python_state_file_path())

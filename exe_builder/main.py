@@ -248,12 +248,6 @@ class EXEBuilderApp(QWidget):
         self.open_output_dir_after_build = QCheckBox("Open Output Directory")
         self.close_after_build = QCheckBox("Close After Build")
         self.open_app_data_btn = QPushButton("Open App Data")
-        self.guided_flow_checkbox = QCheckBox("Guided step progression")
-        self.guided_flow_checkbox.setChecked(True)
-        self.guided_flow_checkbox.setToolTip(
-            "Advance through Environment Sync, Interpreter, Icons, File and Output. "
-            "Turn off to open any tab at any time."
-        )
 
         toggle_columns = QHBoxLayout()
         toggle_columns.setContentsMargins(0, 0, 0, 0)
@@ -270,7 +264,6 @@ class EXEBuilderApp(QWidget):
         left_toggle_column.addWidget(self.tooltips_checkbox, alignment=Qt.AlignLeft | Qt.AlignTop)
         left_toggle_column.addWidget(self.minimize_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
         left_toggle_column.addWidget(self.suppress_exit_dialogue, alignment=Qt.AlignLeft | Qt.AlignTop)
-        left_toggle_column.addWidget(self.guided_flow_checkbox, alignment=Qt.AlignLeft | Qt.AlignTop)
         left_toggle_column.addStretch()
 
         right_toggle_column.addWidget(self.open_output_dir_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
@@ -284,7 +277,7 @@ class EXEBuilderApp(QWidget):
         self.build_options_dialog = QDialog(self)
         self.build_options_dialog.setWindowTitle("Global Build Options")
         self.build_options_dialog.setModal(True)
-        self.build_options_dialog.setFixedSize(500, 185)
+        self.build_options_dialog.setFixedSize(500, 155)
         self.build_options_dialog.setStyleSheet(BUILD_OPTIONS_DIALOG_STYLE)
         apply_build_options_title_bar_style(self.build_options_dialog)
 
@@ -1295,7 +1288,6 @@ class EXEBuilderApp(QWidget):
         self.open_output_dir_after_build.stateChanged.connect(self.ui_handlers.on_open_output_dir_toggle)
         self.suppress_exit_dialogue.stateChanged.connect(self.ui_handlers.on_suppress_exit_dialogue_toggle)
         self.close_after_build.stateChanged.connect(self.ui_handlers.on_close_toggle)
-        self.guided_flow_checkbox.toggled.connect(self._set_guided_flow)
 
         self.validator.update_ui_state()
         self.validation_controller.update_build_button()
@@ -1364,6 +1356,7 @@ class EXEBuilderApp(QWidget):
                 saved_setups_layout.setSpacing(6)
                 self.saved_setups_label = QLabel("Saved setups")
                 self.saved_setups_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+                self.saved_setups_label.setAlignment(Qt.AlignCenter)
                 self.saved_setups_label.setStyleSheet(
                     f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
                 )
@@ -1371,10 +1364,9 @@ class EXEBuilderApp(QWidget):
                 saved_setups_controls = QHBoxLayout()
                 saved_setups_controls.setContentsMargins(0, 0, 0, 0)
                 saved_setups_controls.setSpacing(8)
+                saved_setups_controls.addWidget(self.save_build_setup_btn)
                 saved_setups_controls.addWidget(self.saved_build_setup_dropdown)
                 saved_setups_controls.addWidget(self.delete_build_setup_btn)
-                saved_setups_controls.addStretch()
-                saved_setups_controls.addWidget(self.save_build_setup_btn)
                 saved_setups_layout.addLayout(saved_setups_controls)
                 layout.addWidget(saved_setups_section, alignment=Qt.AlignHCenter)
             layout.addWidget(title, alignment=Qt.AlignHCenter)
@@ -1483,10 +1475,10 @@ class EXEBuilderApp(QWidget):
         self.save_build_setup_btn = QPushButton("Save setup")
         self.save_build_setup_btn.setAccessibleName("Save current build setup")
         self.save_build_setup_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
-        self.save_build_setup_btn.setFixedSize(135, 38)
+        self.save_build_setup_btn.setFixedSize(135, 28)
         self.save_build_setup_btn.setStyleSheet(
             button_base()
-            + "QPushButton { padding: 4px 12px; }"
+            + "QPushButton { padding: 2px 12px; }"
             + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
               f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
         )
@@ -1975,12 +1967,6 @@ class EXEBuilderApp(QWidget):
             if navigation is not None:
                 navigation.setEnabled(not self.building)
         self._update_saved_build_setup_controls()
-
-    def _set_guided_flow(self, enabled):
-        self.guided_flow_enabled = enabled
-        self._update_python_navigation()
-        if not getattr(self, "_loading_state", False):
-            self.state_ctrl.save_preferences()
 
     def _install_build_mode_pages(self, root_layout):
         """Move the legacy screen into a Python page and create the .NET page."""
