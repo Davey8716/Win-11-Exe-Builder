@@ -1381,7 +1381,6 @@ class EXEBuilderApp(QWidget):
 
     def _connect_python_progression(self):
         for index, field in (
-            (1, self.python_entry_input),
             (3, self.script_path_input),
             (4, self.output_path_input),
             (4, self.exe_name_input),

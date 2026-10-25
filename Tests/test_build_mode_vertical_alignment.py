@@ -38,15 +38,16 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_section_nav.geometry().right() < window.python_section_stack.geometry().left()
         assert not bool(window.python_section_nav.item(1).flags() & Qt.ItemIsEnabled)
 
-        window.python_entry_input.setText("C:/Python/python.exe")
-        window.icon_path_input.setText("C:/icons/app.ico")
-        window.script_path_input.setText("C:/project/main.py")
         continue_sync = next(
             button for button in window.python_section_stack.widget(0).findChildren(QPushButton)
             if button.text() == "Continue without syncing"
         )
         continue_sync.click()
         assert window.python_section_stack.currentIndex() == 1
+        window.python_entry_input.setText("C:/Python/python.exe")
+        assert window.python_section_stack.currentIndex() == 1
+        window.icon_path_input.setText("C:/icons/app.ico")
+        window.script_path_input.setText("C:/project/main.py")
         window.python_section_nav.setCurrentRow(1)
         next_button = next(
             button for button in window.python_section_stack.widget(1).findChildren(QPushButton)
