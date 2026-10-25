@@ -39,3 +39,40 @@ def test_dotnet_tooltips_cover_all_publish_controls_and_paths(monkeypatch):
     assert all(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
     app.tooltips_enabled = False
     assert not any(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
+
+
+def test_sidebar_tooltip_uses_the_hovered_section(monkeypatch):
+    captured = {}
+
+    class FakeViewport:
+        def setMouseTracking(self, enabled):
+            captured["mouse_tracking"] = enabled
+
+        def mapFromGlobal(self, position):
+            return position
+
+    class FakeNav:
+        def __init__(self):
+            self.view = FakeViewport()
+
+        def viewport(self):
+            return self.view
+
+        def itemAt(self, position):
+            if position == "section":
+                return SimpleNamespace(text=lambda: "Output")
+            return None
+
+    class FakeTooltip:
+        def __init__(self, widget, text, **kwargs):
+            captured.update(widget=widget, text=text, kwargs=kwargs)
+
+    monkeypatch.setattr(tooltips, "QtTooltip", FakeTooltip)
+    monkeypatch.setattr(tooltips, "QCursor", SimpleNamespace(pos=lambda: "section"))
+    nav = FakeNav()
+    tooltips.attach_section_nav_tooltips(nav, {"Output": "Choose the output folder."})
+
+    assert captured["widget"] is nav.view
+    assert captured["mouse_tracking"] is True
+    assert captured["kwargs"]["position_at_cursor"] is True
+    assert captured["text"]() == "Choose the output folder."

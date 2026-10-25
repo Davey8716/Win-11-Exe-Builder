@@ -573,7 +573,9 @@ class ValidationController:
         app.status_label.setText(status_text)
         app.status_label.selectAll()
         app.status_label.setAlignment(
-            Qt.AlignLeft if is_ready and not output_available else Qt.AlignCenter
+            Qt.AlignLeft
+            if is_ready and not output_available and status_text != "Ready to build."
+            else Qt.AlignCenter
         )
         app.status_label.moveCursor(QTextCursor.Start)
 

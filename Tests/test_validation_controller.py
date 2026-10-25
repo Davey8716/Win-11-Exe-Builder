@@ -280,6 +280,7 @@ def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path
 
     controller.update_ui_state()
     assert app.status_label.text == "Ready to build."
+    assert app.status_label.alignment == validation_controller.Qt.AlignCenter
 
     app.minimize_after_build.setChecked(True)
     app.open_output_dir_after_build.setChecked(True)
@@ -305,6 +306,7 @@ def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path
     app.close_after_build.setChecked(False)
     controller.update_ui_state()
     assert app.status_label.text == "Ready to build."
+    assert app.status_label.alignment == validation_controller.Qt.AlignCenter
 
 
 def test_exe_refresh_enabled_when_name_empty(monkeypatch, tmp_path):

@@ -16,6 +16,7 @@ class QtTooltip(QObject):
         direct_widget_only=False,
         ignored_hover_children=None,
         blocked_hover_widgets=None,
+        position_at_cursor=False,
     ):
         super().__init__(widget)
 
@@ -25,6 +26,7 @@ class QtTooltip(QObject):
         self.direct_widget_only = direct_widget_only
         self.ignored_hover_children = set(ignored_hover_children or [])
         self.blocked_hover_widgets = set(blocked_hover_widgets or [])
+        self.position_at_cursor = position_at_cursor
 
         self.tip_window = None
         self.timer = QTimer()
@@ -76,10 +78,14 @@ class QtTooltip(QObject):
             if not root.tooltips_enabled:
                 return
 
+        text = self.text() if callable(self.text) else self.text
+        if not text:
+            return
+
         if self.tip_window:
             return
 
-        self.tip_window = QLabel(self.text, None)
+        self.tip_window = QLabel(text, None)
         self.tip_window.setWindowFlags(
             Qt.ToolTip | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
         )
@@ -90,7 +96,10 @@ class QtTooltip(QObject):
         self.tip_window.adjustSize()
 
         # Position relative to widget (same offsets as before)
-        pos = self.widget.mapToGlobal(QPoint(40, 25))
+        pos = (
+            QCursor.pos() + QPoint(16, 18)
+            if self.position_at_cursor else self.widget.mapToGlobal(QPoint(40, 25))
+        )
         self.tip_window.move(pos)
 
         self.tip_window.show()
@@ -148,6 +157,11 @@ class QtTooltip(QObject):
         return False
 
     def _handle_hover_update(self):
+        if self.tip_window:
+            text = self.text() if callable(self.text) else self.text
+            if text != self.tip_window.text():
+                self._hide_tip_window()
+
         if not self.blocked_hover_widgets:
             self.schedule()
             return
@@ -168,6 +182,18 @@ class QtTooltip(QObject):
 #  Tooltip wiring (UI → text mapping) [Qt version]
 # -------------------------------------------------------------
 
+def attach_section_nav_tooltips(nav, descriptions):
+    """Show the description for the sidebar row under the pointer."""
+    viewport = nav.viewport()
+    viewport.setMouseTracking(True)
+
+    def hovered_description():
+        item = nav.itemAt(viewport.mapFromGlobal(QCursor.pos()))
+        return descriptions.get(item.text(), "") if item else ""
+
+    QtTooltip(viewport, hovered_description, position_at_cursor=True)
+
+
 def attach_tooltips(app):
     """
     Attach all tooltips to the EXEBuilderApp instance.
@@ -182,6 +208,21 @@ def attach_tooltips(app):
         app.build_options_btn,
         "Open build options and application preferences."
     )
+
+    attach_section_nav_tooltips(app.python_section_nav, {
+        "Environment Sync": "Compare and sync packages across detected Python installations.",
+        "Interpreter": "Choose the Python installation used to build the EXE.",
+        "Icons": "Choose an optional icon for the EXE.",
+        "File": "Select the Python script to run when the EXE starts.",
+        "Output": "Choose the output folder and name the EXE.",
+        "Build": "Review the settings, save a setup, and build the EXE.",
+    })
+    attach_section_nav_tooltips(app.dotnet_section_nav, {
+        "Icons": "Choose an optional icon for the published app.",
+        "File": "Select the C# project file to publish.",
+        "Output": "Choose the publish folder and name the executable.",
+        "Build": "Choose publish options and build the C# app.",
+    })
 
     QtTooltip(
         app.tooltips_checkbox,
