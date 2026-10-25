@@ -41,6 +41,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.build_summary_values["interpreter"].font().bold()
         assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["interpreter"].styleSheet()
         assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["icon"].styleSheet()
+        assert window.build_summary_values["icon"].text() == "(No icon needed to build)"
         for index, label in ((1, "Continue to icons"), (3, "Continue to output")):
             assert label in [
                 button.text()
@@ -75,6 +76,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.icon_path_input.setText("C:/icons/app.ico")
         assert bool(window.python_section_nav.item(3).flags() & Qt.ItemIsEnabled)
         assert window.build_summary_values["icon"].text() == "C:/icons/app.ico"
+        assert qcolor_name(Colors.SUCCESS) in window.build_summary_labels["icon"].styleSheet()
+        assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["icon"].styleSheet()
         window.script_path_input.setText("C:/project/main.py")
         assert bool(window.python_section_nav.item(4).flags() & Qt.ItemIsEnabled)
         assert window.build_summary_values["file"].text() == "C:/project/main.py"

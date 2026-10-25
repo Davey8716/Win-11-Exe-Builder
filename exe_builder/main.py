@@ -1471,7 +1471,7 @@ class EXEBuilderApp(QWidget):
             return
         values = {
             "interpreter": self.python_entry_input.text() or "Not selected",
-            "icon": self.icon_path_input.text() or "No icon selected",
+            "icon": self.icon_path_input.text() or "(No icon needed to build)",
             "file": self.script_path_input.text() or "Not selected",
             "output": self.output_path_input.text() or "Not selected",
             "name": self.exe_name_input.text().strip() or "Not named",
@@ -1480,6 +1480,14 @@ class EXEBuilderApp(QWidget):
             widget = self.build_summary_values[key]
             widget.setText(text)
             widget.setToolTip(text)
+            if key == "icon":
+                text_color = Colors.SUCCESS if self.icon_path_input.text() else Colors.TEXT_LIGHT
+                self.build_summary_labels[key].setStyleSheet(
+                    f"QLabel {{ color: {qcolor_name(text_color)}; }}"
+                )
+                widget.setStyleSheet(
+                    f"QLineEdit {{ color: {qcolor_name(text_color)}; font-weight: bold; }}"
+                )
 
     def _connect_python_progression(self):
         for field in (
