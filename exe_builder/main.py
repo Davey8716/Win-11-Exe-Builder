@@ -86,6 +86,7 @@ ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
 BUILD_FRAME_HEIGHT = 170
 DOTNET_BUILD_FRAME_WIDTH = 450
+PROGRESSION_BUTTON_SIZE = (280, 42)
 SECTION_NAV_STYLE = (
     "QListWidget { background: #19232d; border: 0; padding: 12px 8px; "
     "color: #ecf3fa; font: bold 12pt 'Rubik UI'; } "
@@ -1326,6 +1327,15 @@ class EXEBuilderApp(QWidget):
             ("Build", build_title_frame, build_frame),
         )
         self._create_build_summary()
+
+        def progression_button(text, callback):
+            button = QPushButton(text)
+            button.setFixedSize(*PROGRESSION_BUTTON_SIZE)
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
+            button.setStyleSheet(button_base())
+            button.clicked.connect(callback)
+            return button
+
         for label, title, controls in sections:
             page = QWidget()
             layout = QVBoxLayout(page)
@@ -1337,29 +1347,29 @@ class EXEBuilderApp(QWidget):
             layout.addWidget(title, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Environment Sync":
-                skip = QPushButton("Continue without syncing")
-                skip.setStyleSheet(button_base())
-                skip.clicked.connect(self._continue_to_interpreter)
+                skip = progression_button(
+                    "Continue without syncing", self._continue_to_interpreter
+                )
                 layout.addWidget(skip, alignment=Qt.AlignHCenter)
             elif label == "Interpreter":
-                self.interpreter_continue_btn = QPushButton("Continue to icons")
-                self.interpreter_continue_btn.setStyleSheet(button_base())
-                self.interpreter_continue_btn.clicked.connect(self._continue_to_icons)
+                self.interpreter_continue_btn = progression_button(
+                    "Continue to icons", self._continue_to_icons
+                )
                 layout.addWidget(self.interpreter_continue_btn, alignment=Qt.AlignHCenter)
             elif label == "Icons":
-                self.icon_continue_btn = QPushButton("Use no icon and continue")
-                self.icon_continue_btn.setStyleSheet(button_base())
-                self.icon_continue_btn.clicked.connect(self._continue_from_icons)
+                self.icon_continue_btn = progression_button(
+                    "Use no icon and continue", self._continue_from_icons
+                )
                 layout.addWidget(self.icon_continue_btn, alignment=Qt.AlignHCenter)
             elif label == "File":
-                self.file_continue_btn = QPushButton("Continue to output")
-                self.file_continue_btn.setStyleSheet(button_base())
-                self.file_continue_btn.clicked.connect(self._continue_to_output)
+                self.file_continue_btn = progression_button(
+                    "Continue to output", self._continue_to_output
+                )
                 layout.addWidget(self.file_continue_btn, alignment=Qt.AlignHCenter)
             elif label == "Output":
-                self.output_continue_btn = QPushButton("Continue to build")
-                self.output_continue_btn.setStyleSheet(button_base())
-                self.output_continue_btn.clicked.connect(self._continue_to_build)
+                self.output_continue_btn = progression_button(
+                    "Continue to build", self._continue_to_build
+                )
                 layout.addWidget(self.output_continue_btn, alignment=Qt.AlignHCenter)
             layout.addStretch()
             self.python_section_stack.addWidget(page)

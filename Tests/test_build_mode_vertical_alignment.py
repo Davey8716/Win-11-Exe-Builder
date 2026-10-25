@@ -45,6 +45,15 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.interpreter_continue_btn.isHidden()
         assert window.file_continue_btn.isHidden()
         assert window.output_continue_btn.isHidden()
+        for button in (
+            window.interpreter_continue_btn,
+            window.icon_continue_btn,
+            window.file_continue_btn,
+            window.output_continue_btn,
+        ):
+            assert button.width() == 280
+            assert button.height() == 42
+            assert button.font().bold()
 
         continue_sync = next(
             button for button in window.python_section_stack.widget(0).findChildren(QPushButton)
