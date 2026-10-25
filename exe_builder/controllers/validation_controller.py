@@ -1,6 +1,6 @@
 import os
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QTextCursor
 from PySide6.QtWidgets import QCheckBox
 from ..ui.styles import (
     APPEND_PY_VERSION_STYLE,
@@ -571,7 +571,11 @@ class ValidationController:
             status_text = "Missing required inputs."
 
         app.status_label.setText(status_text)
-        app.status_label.setAlignment(Qt.AlignCenter)
+        app.status_label.selectAll()
+        app.status_label.setAlignment(
+            Qt.AlignLeft if is_ready and not output_available else Qt.AlignCenter
+        )
+        app.status_label.moveCursor(QTextCursor.Start)
 
         if building:
             color = Colors.BLACK

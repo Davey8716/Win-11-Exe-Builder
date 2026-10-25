@@ -147,6 +147,12 @@ class DummyLabel:
     def setText(self, value):
         self.text = value
 
+    def selectAll(self):
+        pass
+
+    def moveCursor(self, operation):
+        pass
+
     def setAlignment(self, value):
         self.alignment = value
 
@@ -290,6 +296,7 @@ def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path
         "Ready to build.\nThe output folder will open after building."
         "\nThe app will then close."
     )
+    assert app.status_label.alignment == validation_controller.Qt.AlignLeft
 
     app.open_output_dir_after_build.setChecked(False)
     controller.update_ui_state()
