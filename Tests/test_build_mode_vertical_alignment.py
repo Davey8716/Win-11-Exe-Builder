@@ -13,7 +13,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
 
-    from PySide6.QtCore import Qt
+    from PySide6.QtCore import QPoint, Qt
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QPushButton
 
@@ -33,6 +33,12 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.show()
         window.set_build_mode("python", save=False)
         app.processEvents()
+        python_title_center = window.title_label.mapTo(
+            window, QPoint(window.title_label.width() // 2, 0)
+        ).x()
+        assert abs(python_title_center - window.width() / 2) <= 1
+        assert window.build_options_btn.text() == "☰"
+        assert window.build_options_btn.mapTo(window, QPoint(0, 0)).y() + window.build_options_btn.height() <= window.python_navigation_sidebar.mapTo(window, QPoint(0, 0)).y()
         assert window.python_section_nav.count() == 6
         assert window.python_section_stack.currentIndex() == 0
         assert window.python_mode_btn.parentWidget() is window.python_navigation_sidebar
@@ -131,6 +137,12 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
 
         window.set_build_mode("dotnet", save=False)
         app.processEvents()
+        dotnet_title_center = window.dotnet_mode_title.mapTo(
+            window, QPoint(window.dotnet_mode_title.width() // 2, 0)
+        ).x()
+        assert abs(dotnet_title_center - window.width() / 2) <= 1
+        assert window.dotnet_build_options_btn.text() == "☰"
+        assert window.dotnet_build_options_btn.mapTo(window, QPoint(0, 0)).y() + window.dotnet_build_options_btn.height() <= window.dotnet_navigation_sidebar.mapTo(window, QPoint(0, 0)).y()
         assert window.dotnet_section_nav.count() == 4
         assert window.dotnet_python_mode_btn.parentWidget() is window.dotnet_navigation_sidebar
         assert window.dotnet_mode_sidebar_btn.parentWidget() is window.dotnet_navigation_sidebar

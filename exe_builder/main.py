@@ -76,7 +76,6 @@ from exe_builder.ui.styles import (
     button_base,
     qcolor_name,
     required_selection_checkbox,
-    title_frame_minimum_width,
     Colors,
     utility_icon_button_style,
 )
@@ -218,12 +217,9 @@ class EXEBuilderApp(QWidget):
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet(APP_TITLE_LABEL_STYLE)
 
-        title_spacer = QWidget()
-        title_spacer.setFixedSize(34, 34)
-
-        self.build_options_btn = QPushButton("⚙")
+        self.build_options_btn = QPushButton("☰")
         self.build_options_btn.setObjectName("buildOptionsButton")
-        self.build_options_btn.setAccessibleName("Build options")
+        self.build_options_btn.setAccessibleName("Options menu")
         self.build_options_btn.setAccessibleDescription(
             "Open build options and application preferences."
         )
@@ -231,20 +227,16 @@ class EXEBuilderApp(QWidget):
         self.build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
         self.build_options_btn.setStyleSheet(utility_icon_button_style())
 
-        title_frame_width = title_frame_minimum_width(
+        title_frame_width = (
             QFontMetrics(self.title_label.font()).horizontalAdvance(
                 self.title_label.text()
-            ),
-            self.build_options_btn.width(),
-            10,
+            ) + 25
         )
         self.title_frame.setFixedWidth(title_frame_width)
 
-        title_layout.addWidget(title_spacer)
         title_layout.addStretch()
         title_layout.addWidget(self.title_label)
         title_layout.addStretch()
-        title_layout.addWidget(self.build_options_btn)
 
         # -------------------------------
         # BUILD OPTIONS DIALOG
@@ -323,9 +315,15 @@ class EXEBuilderApp(QWidget):
         title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         title_row.setFixedHeight(44)
         title_row_layout = QHBoxLayout(title_row)
-        title_row_layout.setContentsMargins(0, 0, 0, 0)
-        title_row_layout.setSpacing(20)
+        title_row_layout.setContentsMargins(5, 0, 5, 0)
+        title_row_layout.setSpacing(0)
+        title_row_layout.addWidget(self.build_options_btn)
+        title_row_layout.addStretch()
         title_row_layout.addWidget(self.title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        title_row_layout.addStretch()
+        title_right_spacer = QWidget()
+        title_right_spacer.setFixedSize(34, 34)
+        title_row_layout.addWidget(title_right_spacer)
 
         self.content_row = QWidget()
         self.content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -2009,39 +2007,45 @@ class EXEBuilderApp(QWidget):
         self.dotnet_mode_title.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
         )
-        self.dotnet_build_options_btn = QPushButton("⚙")
+        self.dotnet_build_options_btn = QPushButton("☰")
         self.dotnet_build_options_btn.setObjectName("dotnetBuildOptionsButton")
-        self.dotnet_build_options_btn.setAccessibleName("Build options")
+        self.dotnet_build_options_btn.setAccessibleName("Options menu")
         self.dotnet_build_options_btn.setAccessibleDescription(
             "Open build options and application preferences."
         )
         self.dotnet_build_options_btn.setFixedSize(34, 34)
         self.dotnet_build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
         self.dotnet_build_options_btn.setStyleSheet(utility_icon_button_style())
-        dotnet_title_spacer = QWidget()
-        dotnet_title_spacer.setFixedSize(34, 34)
         self.dotnet_title_container = QWidget()
         self.dotnet_title_container.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.dotnet_title_container.setFixedHeight(44)
-        self.dotnet_title_container.setFixedWidth(title_frame_minimum_width(
+        self.dotnet_title_container.setFixedWidth(
             QFontMetrics(self.dotnet_mode_title.font()).horizontalAdvance(
                 self.dotnet_mode_title.text()
-            ),
-            self.dotnet_build_options_btn.width(),
-            10,
-        ))
-        dotnet_title_row = QHBoxLayout(self.dotnet_title_container)
-        dotnet_title_row.setContentsMargins(5, 5, 5, 5)
-        dotnet_title_row.setSpacing(0)
-        dotnet_title_row.addWidget(dotnet_title_spacer)
-        dotnet_title_row.addStretch()
-        dotnet_title_row.addWidget(self.dotnet_mode_title)
-        dotnet_title_row.addStretch()
-        dotnet_title_row.addWidget(self.dotnet_build_options_btn)
+            ) + 25
+        )
+        dotnet_title_layout = QHBoxLayout(self.dotnet_title_container)
+        dotnet_title_layout.setContentsMargins(5, 5, 5, 5)
+        dotnet_title_layout.addStretch()
+        dotnet_title_layout.addWidget(self.dotnet_mode_title)
+        dotnet_title_layout.addStretch()
+        dotnet_header = QWidget()
+        dotnet_header.setFixedHeight(44)
+        dotnet_header.setFixedWidth(APP_FIXED_SIZE[0])
+        dotnet_header_layout = QHBoxLayout(dotnet_header)
+        dotnet_header_layout.setContentsMargins(5, 0, 5, 0)
+        dotnet_header_layout.setSpacing(0)
+        dotnet_header_layout.addWidget(self.dotnet_build_options_btn)
+        dotnet_header_layout.addStretch()
+        dotnet_header_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        dotnet_header_layout.addStretch()
+        dotnet_title_right_spacer = QWidget()
+        dotnet_title_right_spacer.setFixedSize(34, 34)
+        dotnet_header_layout.addWidget(dotnet_title_right_spacer)
         self.dotnet_section_title_frames = []
         self.dotnet_configuration_frames = []
         self.dotnet_sections = []
-        dotnet_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter)
+        dotnet_layout.addWidget(dotnet_header)
 
         # Keep the C# workflow on the same fixed two-column grid as the
         # Python workflow.  This makes both pages share the exact divider,
