@@ -40,6 +40,7 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert saved_setups_section.parentWidget() is build_page
         assert window.saved_build_setup_dropdown.parentWidget() is saved_setups_section
         assert window.saved_build_setup_dropdown.width() == 300
+        assert not window.saved_build_setup_dropdown.model().item(0).isEnabled()
         assert window.delete_build_setup_btn.parentWidget() is saved_setups_section
         assert window.saved_setups_label.parentWidget() is saved_setups_section
         assert window.saved_setups_label.font().bold()
@@ -112,7 +113,13 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert reopened.script_path_input.text() == str(script)
         assert reopened.exe_name_input.text() == "main"
         assert reopened.delete_build_setup_btn.isEnabled()
-        reopened.delete_build_setup_btn.click()
+        confirmations = []
+        reopened._confirm_delete_saved_build_setup = lambda name: confirmations.append(name) or False
+        reopened._delete_selected_build_setup()
+        assert confirmations == ["Local Exes / Audio Book / main"]
+        assert reopened.saved_build_setup_dropdown.count() == 2
+        reopened._confirm_delete_saved_build_setup = lambda _name: True
+        reopened._delete_selected_build_setup()
         assert reopened.saved_build_setup_dropdown.count() == 1
         assert not reopened.delete_build_setup_btn.isEnabled()
         assert reopened.save_build_setup_btn.isEnabled()

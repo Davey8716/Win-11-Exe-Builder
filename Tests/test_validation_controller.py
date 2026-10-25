@@ -246,7 +246,7 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
 
 def test_python_open_output_button_matches_dotnet_availability_styling(monkeypatch, tmp_path):
     monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
-    app = make_app(tmp_path)
+    app = make_app(tmp_path, exe_name="main")
     app.build_controller = SimpleNamespace(has_python_output=lambda: True)
 
     controller = ValidationController(app)
@@ -254,6 +254,11 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
 
     assert app.python_open_output_btn.enabled is True
     assert qcolor_name(Colors.TITLE_BG) in app.python_open_output_btn.stylesheet
+    assert app.status_label.text == (
+        "A build already exists here. Build again to overwrite it, "
+        "or choose another output folder."
+    )
+    assert app.status_label.size == (250, 80)
 
     app.building = True
     controller.update_ui_state()

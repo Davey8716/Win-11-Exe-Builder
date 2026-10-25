@@ -949,7 +949,9 @@ class EXEBuilderApp(QWidget):
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
-        self.status_label.setFixedSize(200,100)
+        self.status_label.setFixedSize(250, 80)
+        self.status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.status_label.setAlignment(Qt.AlignCenter)
 
@@ -1587,6 +1589,9 @@ class EXEBuilderApp(QWidget):
         try:
             dropdown.clear()
             dropdown.addItem("Saved build setups")
+            placeholder = dropdown.model().item(0)
+            if placeholder is not None:
+                placeholder.setEnabled(False)
             for index, setup in enumerate(self.saved_build_setups):
                 if not isinstance(setup, dict):
                     continue
@@ -1712,9 +1717,38 @@ class EXEBuilderApp(QWidget):
         setup_index = self.saved_build_setup_dropdown.itemData(index)
         if not isinstance(setup_index, int) or setup_index >= len(self.saved_build_setups):
             return
+        if not self._confirm_delete_saved_build_setup(
+            self.saved_build_setup_dropdown.itemText(index)
+        ):
+            return
         del self.saved_build_setups[setup_index]
         self._populate_saved_build_setups()
         self.state_ctrl.save_python_state()
+
+    def _confirm_delete_saved_build_setup(self, setup_name):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Delete Saved Setup")
+        dialog.setText(f"Delete this saved setup?\n\n{setup_name}")
+        dialog.setIcon(QMessageBox.NoIcon)
+        yes_button = dialog.addButton("Yes", QMessageBox.AcceptRole)
+        cancel_button = dialog.addButton("Cancel", QMessageBox.RejectRole)
+        dialog.setDefaultButton(cancel_button)
+        dialog.setEscapeButton(cancel_button)
+        dialog.setStyleSheet(CONFIRMATION_MESSAGE_BOX_STYLE)
+        dialog.setWindowFlags(
+            (dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+            | Qt.MSWindowsFixedSizeDialogHint
+        )
+        button_box = dialog.findChild(QDialogButtonBox)
+        if button_box is not None:
+            button_box.setCenterButtons(True)
+        apply_native_title_bar_style(
+            dialog,
+            caption=Colors.PANEL_BG,
+            border=Colors.PANEL_BG,
+        )
+        dialog.exec()
+        return dialog.clickedButton() == yes_button
 
     def _create_selection_summary(self, keys):
         """Create a compact, read-only recap for selections on earlier pages."""

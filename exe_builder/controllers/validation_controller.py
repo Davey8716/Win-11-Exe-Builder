@@ -115,10 +115,7 @@ class ValidationController:
 
         state["is_ready"] = is_ready
 
-        if not is_ready:
-            self.app.status_label.setFixedSize(250,60)
-        else:
-            self.app.status_label.setFixedSize(250,60)
+        self.app.status_label.setFixedSize(250, 80)
 
         # Track previous state
         self.app._was_build_ready = is_ready
@@ -550,7 +547,11 @@ class ValidationController:
             status_text = "Building..."
 
         elif is_ready:
-            status_text = "Ready to build."
+            status_text = (
+                "A build already exists here. Build again to overwrite it, "
+                "or choose another output folder."
+                if output_available else "Ready to build."
+            )
         else:
             status_text = "Missing required inputs."
 
