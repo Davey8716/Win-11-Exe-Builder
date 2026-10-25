@@ -267,6 +267,39 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in app.python_open_output_btn.stylesheet
 
 
+def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    controller = ValidationController(app)
+
+    controller.update_ui_state()
+    assert app.status_label.text == "Ready to build."
+
+    app.minimize_after_build.setChecked(True)
+    app.open_output_dir_after_build.setChecked(True)
+    controller.update_ui_state()
+    assert app.status_label.text == (
+        "Ready to build.\nThe output folder will open after building."
+        "\nThe app will then minimize."
+    )
+
+    app.minimize_after_build.setChecked(False)
+    app.close_after_build.setChecked(True)
+    controller.update_ui_state()
+    assert app.status_label.text == (
+        "Ready to build.\nThe output folder will open after building."
+        "\nThe app will then close."
+    )
+
+    app.open_output_dir_after_build.setChecked(False)
+    controller.update_ui_state()
+    assert app.status_label.text == "Ready to build.\nThe app will close after building."
+
+    app.close_after_build.setChecked(False)
+    controller.update_ui_state()
+    assert app.status_label.text == "Ready to build."
+
+
 def test_exe_refresh_enabled_when_name_empty(monkeypatch, tmp_path):
     monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
     app = make_app(tmp_path, exe_name="")

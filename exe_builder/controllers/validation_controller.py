@@ -547,11 +547,26 @@ class ValidationController:
             status_text = "Building..."
 
         elif is_ready:
-            status_text = (
-                "A build already exists here. Build again to overwrite it, "
-                "or choose another output folder."
-                if output_available else "Ready to build."
-            )
+            if output_available:
+                status_text = (
+                    "A build already exists here. Build again to overwrite it, "
+                    "or choose another output folder."
+                )
+            else:
+                status_text = "Ready to build."
+                opens_output = app.open_output_dir_after_build.isChecked()
+                if opens_output:
+                    status_text += "\nThe output folder will open after building."
+                if app.minimize_after_build.isChecked():
+                    status_text += (
+                        "\nThe app will then minimize."
+                        if opens_output else "\nThe app will minimize after building."
+                    )
+                elif app.close_after_build.isChecked():
+                    status_text += (
+                        "\nThe app will then close."
+                        if opens_output else "\nThe app will close after building."
+                    )
         else:
             status_text = "Missing required inputs."
 
