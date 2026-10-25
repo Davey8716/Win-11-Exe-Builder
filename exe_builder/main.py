@@ -1244,6 +1244,7 @@ class EXEBuilderApp(QWidget):
         self._loading_state = False
         self.state_ctrl.load_state()
         self._connect_python_progression()
+        self._update_dotnet_selection_summaries()
         self.dotnet_publish_controller.populate_recents("project")
         self.dotnet_publish_controller.populate_recents("icon")
         self.recent_controller.populate_recent_dropdown()
@@ -1327,6 +1328,11 @@ class EXEBuilderApp(QWidget):
             ("Build", build_title_frame, build_frame),
         )
         self._create_build_summary()
+        self.python_selection_summaries = {
+            "Icons": self._create_selection_summary(("interpreter",)),
+            "File": self._create_selection_summary(("interpreter", "icon")),
+            "Output": self._create_selection_summary(("interpreter", "icon", "file")),
+        }
 
         def progression_button(text, callback):
             button = QPushButton(text)
@@ -1341,6 +1347,10 @@ class EXEBuilderApp(QWidget):
             layout = QVBoxLayout(page)
             layout.setContentsMargins(28, 28, 28, 20)
             layout.setSpacing(12)
+            if label in self.python_selection_summaries:
+                summary_title, summary_frame, _labels, _values = self.python_selection_summaries[label]
+                layout.addWidget(summary_title, alignment=Qt.AlignHCenter)
+                layout.addWidget(summary_frame, alignment=Qt.AlignHCenter)
             if label == "Build":
                 layout.addWidget(self.build_summary_title_frame, alignment=Qt.AlignHCenter)
                 layout.addWidget(self.build_summary_frame, alignment=Qt.AlignHCenter)
@@ -1496,6 +1506,85 @@ class EXEBuilderApp(QWidget):
                     f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
                     f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
                 )
+
+    def _create_selection_summary(self, keys):
+        """Create a compact, read-only recap for selections on earlier pages."""
+        title_frame = QFrame()
+        title_frame.setFrameShape(QFrame.StyledPanel)
+        title_frame.setFrameShadow(QFrame.Raised)
+        title_frame.setStyleSheet(TITLE_FRAME_STYLE)
+        title_layout = QHBoxLayout(title_frame)
+        title_layout.setContentsMargins(3, 3, 3, 3)
+        title = QLabel("Selection Summary")
+        title.setFixedHeight(30)
+        title.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        title_layout.addStretch()
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        title_frame.setFixedSize(
+            QFontMetrics(title.font()).horizontalAdvance(title.text()) + 25, 35
+        )
+
+        frame = QFrame()
+        frame.setObjectName("configurationFrame")
+        frame.setStyleSheet(MAIN_FRAME_STYLE)
+        frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(5)
+        labels = {}
+        values = {}
+        captions = {"interpreter": "Interpreter", "icon": "Icon", "file": "File"}
+        for key in keys:
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(8)
+            label = QLabel(captions[key])
+            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            label.setFixedWidth(85)
+            value = QLabel()
+            value.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            value.setFixedHeight(24)
+            value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            value.setTextInteractionFlags(Qt.NoTextInteraction)
+            value.setFocusPolicy(Qt.NoFocus)
+            row.addWidget(label)
+            row.addWidget(value, 1)
+            layout.addLayout(row)
+            labels[key] = label
+            values[key] = value
+        return title_frame, frame, labels, values
+
+    def _update_selection_summaries(self, summaries, selections):
+        for _title, _frame, labels, values in summaries.values():
+            for key, value in values.items():
+                path = selections[key].strip()
+                display = path or ("No icon" if key == "icon" else "Not selected")
+                color = Colors.SUCCESS if path else Colors.TEXT_LIGHT
+                label = labels[key]
+                label.setStyleSheet(f"QLabel {{ color: {qcolor_name(color)}; }}")
+                value.setStyleSheet(
+                    f"QLabel {{ color: {qcolor_name(color)}; font-weight: bold; "
+                    f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+                    f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
+                )
+                value.setText(
+                    QFontMetrics(value.font()).elidedText(display, Qt.ElideMiddle, 435)
+                )
+                value.setToolTip(display)
+
+    def _update_python_selection_summaries(self):
+        self._update_selection_summaries(self.python_selection_summaries, {
+            "interpreter": self.python_entry_input.text(),
+            "icon": self.icon_path_input.text(),
+            "file": self.script_path_input.text(),
+        })
+
+    def _update_dotnet_selection_summaries(self):
+        self._update_selection_summaries(self.dotnet_selection_summaries, {
+            "icon": self.dotnet_icon_input.text(),
+            "file": self.dotnet_project_input.text(),
+        })
 
     def _connect_python_progression(self):
         for field in (
@@ -1660,6 +1749,7 @@ class EXEBuilderApp(QWidget):
             self.python_section_nav.setCurrentRow(reachable)
         self._update_python_progression_controls()
         self._update_build_summary()
+        self._update_python_selection_summaries()
 
     def _set_guided_flow(self, enabled):
         self.guided_flow_enabled = enabled
@@ -2066,11 +2156,19 @@ class EXEBuilderApp(QWidget):
         dotnet_sidebar_layout.addWidget(self.dotnet_mode_sidebar_btn)
         sections = list(self.dotnet_sections)
         sections.append(("Build", self.dotnet_build_title_frame, build_panel))
+        self.dotnet_selection_summaries = {
+            "File Select": self._create_selection_summary(("icon",)),
+            "Output Select": self._create_selection_summary(("icon", "file")),
+        }
         for label, heading, controls in sections:
             page = QWidget()
             layout = QVBoxLayout(page)
             layout.setContentsMargins(28, 28, 28, 20)
             layout.setSpacing(12)
+            if label in self.dotnet_selection_summaries:
+                summary_title, summary_frame, _labels, _values = self.dotnet_selection_summaries[label]
+                layout.addWidget(summary_title, alignment=Qt.AlignHCenter)
+                layout.addWidget(summary_frame, alignment=Qt.AlignHCenter)
             layout.addWidget(heading, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             layout.addStretch()
@@ -2164,6 +2262,7 @@ class EXEBuilderApp(QWidget):
             self.state_ctrl.save_preferences()
 
     def _on_dotnet_settings_changed(self, *_args):
+        self._update_dotnet_selection_summaries()
         self.dotnet_publish_controller.refresh_ui()
         if not getattr(self, "_loading_state", False):
             self.state_ctrl.save_csharp_state()

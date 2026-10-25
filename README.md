@@ -38,6 +38,8 @@ The Python builder uses side tabs in this order: **Environment Sync → Interpre
 
 Open **Build Options** (the gear button) to turn Guided step progression off. This unlocks every tab and keeps the side tab layout. The preference is saved between launches. C# publishing uses side tabs for Icons, File, Output, and Build.
 
+Selection summaries on later tabs show the earlier choices: Python Icons shows the interpreter, File adds the icon, and Output adds the Python file. In C# mode, File shows the icon and Output shows the icon and project file. The Python Build Summary remains the final review of all build inputs.
+
 ---
 
 ## C#/.NET Publish Mode
