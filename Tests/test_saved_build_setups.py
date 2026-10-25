@@ -9,7 +9,7 @@ import pytest
 
 @pytest.mark.skipif(sys.platform != "win32", reason="The app uses Windows APIs")
 @pytest.mark.parametrize("with_icon", [False, True])
-def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path, with_icon):
+def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with_icon):
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
 
@@ -33,6 +33,7 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
     try:
         window.show()
         app.processEvents()
+        assert not hasattr(window, "build_summary_clear_btn")
         build_page = window.python_section_stack.widget(5)
         saved_setups_section = window.save_build_setup_btn.parentWidget()
         assert saved_setups_section.parentWidget() is build_page
@@ -49,7 +50,6 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
         assert build_layout.indexOf(window.build_summary_frame) < build_layout.indexOf(saved_setups_section)
         assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(window.build_title.parentWidget())
         assert saved_setups_section.width() == window.build_summary_frame.width()
-        assert window.build_summary_clear_btn.font().bold()
         assert window.save_build_setup_btn.font().bold()
         assert window.save_build_setup_btn.width() == 135
         assert window.save_build_setup_btn.height() == 38
@@ -83,10 +83,9 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
         saved_file = tmp_path / "EXEBuilder" / "python_exe_builder_state.json"
         assert len(json.loads(saved_file.read_text())["saved_build_setups"]) == 1
 
-        window._clear_build_workflows()
+        window.exe_name_input.setText("Changed")
         assert window.saved_build_setup_dropdown.count() == 2
-        assert window.script_path_input.text() == ""
-        assert window.python_section_nav.currentRow() == 0
+        assert window.save_build_setup_btn.isEnabled()
         window.saved_build_setup_dropdown.setCurrentIndex(1)
         assert window.python_entry_input.text() == str(interpreter)
         assert window.script_path_input.text() == str(script)
@@ -106,9 +105,10 @@ def test_save_restore_clear_restart_and_delete_build_setup(monkeypatch, tmp_path
     reopened = EXEBuilderApp()
     try:
         assert reopened.saved_build_setup_dropdown.count() == 2
-        reopened._clear_build_workflows()
+        reopened.exe_name_input.setText("Changed again")
         reopened.saved_build_setup_dropdown.setCurrentIndex(1)
         assert reopened.script_path_input.text() == str(script)
+        assert reopened.exe_name_input.text() == "main"
         assert reopened.delete_build_setup_btn.isEnabled()
         reopened.delete_build_setup_btn.click()
         assert reopened.saved_build_setup_dropdown.count() == 1

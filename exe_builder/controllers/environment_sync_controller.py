@@ -432,21 +432,6 @@ class EnvironmentSyncController(QObject):
 
         app.env_sync_match_btn.setEnabled(plan.total_actions > 0)
 
-    def reset_display(self):
-        """Discard the current scan and show the initial ready state."""
-        if self.is_running:
-            return False
-        self.last_plan = None
-        app = self.app
-        if app is not None and hasattr(app, "env_sync_rows_layout"):
-            self._clear_layout(app.env_sync_rows_layout)
-            app.env_sync_row_labels.clear()
-            app.env_sync_rows_container.setMinimumWidth(0)
-            app.env_sync_match_btn.setEnabled(False)
-            app.set_env_sync_status("Environment sync ready.")
-            app._sync_center_divider_height()
-        return True
-
     def _on_worker_progress(self, message):
         if self._app_is_closing():
             return
@@ -514,8 +499,8 @@ class EnvironmentSyncController(QObject):
         if hasattr(app, "env_sync_match_btn"):
             can_sync = bool(self.last_plan and self.last_plan.total_actions > 0)
             app.env_sync_match_btn.setEnabled(not busy and can_sync)
-        if hasattr(app, "_update_clear_button_enabled"):
-            app._update_clear_button_enabled()
+        if hasattr(app, "_update_saved_build_setup_controls"):
+            app._update_saved_build_setup_controls()
 
     def _install_specs_for_profile(self, profile, plan):
         packages = {}
