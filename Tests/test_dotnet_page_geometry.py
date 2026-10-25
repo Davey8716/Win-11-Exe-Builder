@@ -47,14 +47,13 @@ def test_dotnet_build_status_text_is_centered():
     assert "dotnet_status_cursor.clearSelection()" in MAIN_SOURCE
 
 
-def test_dotnet_publish_panel_width_fits_the_runtime_and_option_controls():
+def test_dotnet_publish_panel_uses_the_compact_build_width():
     assert "self.dotnet_runtime_label.setMinimumWidth(" in MAIN_SOURCE
     assert "self.dotnet_runtime_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)" in MAIN_SOURCE
     assert "self.dotnet_runtime_combo.setMinimumWidth(190)" in MAIN_SOURCE
     assert "checkbox.setMinimumWidth(checkbox.sizeHint().width())" in MAIN_SOURCE
-    assert "runtime_row.minimumSize().width()" in MAIN_SOURCE
-    assert "publish_options_row.minimumSize().width()" in MAIN_SOURCE
-    assert "panel.setFixedWidth(dotnet_publish_panel_width)" in MAIN_SOURCE
+    assert "DOTNET_BUILD_FRAME_WIDTH = 450" in MAIN_SOURCE
+    assert "panel.setFixedWidth(DOTNET_BUILD_FRAME_WIDTH)" in MAIN_SOURCE
     assert "panel.setFixedWidth(PAIRED_FRAME_WIDTH)" not in MAIN_SOURCE
 
 
@@ -67,7 +66,7 @@ def test_dotnet_build_controls_are_ordered_from_runtime_to_actions():
     assert MAIN_SOURCE.index(runtime_row) < MAIN_SOURCE.index(options_row)
     assert MAIN_SOURCE.index(options_row) < MAIN_SOURCE.index(status)
     assert MAIN_SOURCE.index(status) < MAIN_SOURCE.index(actions, MAIN_SOURCE.index(status))
-    assert "self.dotnet_status_label.setFixedSize(520, 40)" in MAIN_SOURCE
+    assert "self.dotnet_status_label.setFixedSize(420, 40)" in MAIN_SOURCE
 
 
 def test_dotnet_runtime_and_publish_options_rows_are_centered():

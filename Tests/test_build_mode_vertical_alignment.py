@@ -32,6 +32,9 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_section_stack.currentIndex() == 0
         assert window.python_mode_btn.parentWidget() is window.python_navigation_sidebar
         assert window.dotnet_mode_btn.parentWidget() is window.python_navigation_sidebar
+        build_page = window.python_section_stack.widget(5)
+        assert window.build_summary_title_frame.parentWidget() is build_page
+        assert window.build_summary_title.parentWidget() is window.build_summary_title_frame
         for index, label in ((1, "Continue to icons"), (3, "Continue to output")):
             assert label in [
                 button.text()

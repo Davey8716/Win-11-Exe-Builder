@@ -85,6 +85,7 @@ PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
 BUILD_FRAME_HEIGHT = 170
+DOTNET_BUILD_FRAME_WIDTH = 450
 SECTION_NAV_STYLE = (
     "QListWidget { background: #19232d; border: 0; padding: 12px 8px; "
     "color: #ecf3fa; font: bold 12pt 'Rubik UI'; } "
@@ -1331,6 +1332,7 @@ class EXEBuilderApp(QWidget):
             layout.setContentsMargins(28, 28, 28, 20)
             layout.setSpacing(12)
             if label == "Build":
+                layout.addWidget(self.build_summary_title_frame, alignment=Qt.AlignHCenter)
                 layout.addWidget(self.build_summary_frame, alignment=Qt.AlignHCenter)
             layout.addWidget(title, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
@@ -1396,6 +1398,26 @@ class EXEBuilderApp(QWidget):
 
     def _create_build_summary(self):
         """Create the live build-input summary shown above the build controls."""
+        self.build_summary_title_frame = QFrame()
+        self.build_summary_title_frame.setFrameShape(QFrame.StyledPanel)
+        self.build_summary_title_frame.setFrameShadow(QFrame.Raised)
+        self.build_summary_title_frame.setStyleSheet(TITLE_FRAME_STYLE)
+        summary_title_layout = QHBoxLayout(self.build_summary_title_frame)
+        summary_title_layout.setContentsMargins(3, 3, 3, 3)
+        self.build_summary_title = QLabel("Build Summary")
+        self.build_summary_title.setFixedHeight(30)
+        self.build_summary_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        self.build_summary_title.setAlignment(Qt.AlignVCenter)
+        summary_title_layout.addStretch()
+        summary_title_layout.addWidget(self.build_summary_title)
+        summary_title_layout.addStretch()
+        self.build_summary_title_frame.setFixedSize(
+            QFontMetrics(self.build_summary_title.font()).horizontalAdvance(
+                self.build_summary_title.text()
+            ) + 25,
+            35,
+        )
+
         self.build_summary_frame = QFrame()
         self.build_summary_frame.setObjectName("configurationFrame")
         self.build_summary_frame.setStyleSheet(MAIN_FRAME_STYLE)
@@ -1403,11 +1425,6 @@ class EXEBuilderApp(QWidget):
         summary_layout = QVBoxLayout(self.build_summary_frame)
         summary_layout.setContentsMargins(12, 10, 12, 10)
         summary_layout.setSpacing(5)
-
-        heading = QLabel("Build Summary")
-        heading.setFont(QFont("Rubik UI", 14, QFont.Bold))
-        heading.setAlignment(Qt.AlignCenter)
-        summary_layout.addWidget(heading)
 
         self.build_summary_values = {}
         for key, label_text in (
@@ -1854,24 +1871,14 @@ class EXEBuilderApp(QWidget):
         panel_layout.addLayout(runtime_row)
         panel_layout.addLayout(publish_options_row)
 
-        # Size the fixed-height panel from its widest control row so runtime
-        # names and publish-option labels cannot be squeezed or elided.
-        panel_margins = panel_layout.contentsMargins()
-        dotnet_publish_panel_width = max(
-            PAIRED_FRAME_WIDTH,
-            max(
-                runtime_row.minimumSize().width(),
-                publish_options_row.minimumSize().width(),
-            )
-            + panel_margins.left()
-            + panel_margins.right(),
-        )
-        panel.setFixedWidth(dotnet_publish_panel_width)
+        # Keep the C# build section compact while retaining room for both
+        # publish-action buttons and the centered option rows.
+        panel.setFixedWidth(DOTNET_BUILD_FRAME_WIDTH)
         panel.setFixedHeight(BUILD_FRAME_HEIGHT)
 
         self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
         self.dotnet_status_label.setReadOnly(True)
-        self.dotnet_status_label.setFixedSize(520, 40)
+        self.dotnet_status_label.setFixedSize(420, 40)
         self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
         self.dotnet_status_label.setAlignment(Qt.AlignCenter)
 
