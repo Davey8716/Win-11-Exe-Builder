@@ -50,19 +50,20 @@ def qcolor_name(color: QColor) -> str:
 
 def build_mode_button_font() -> QFont:
     """Return the typography shared by the build-mode toggle buttons."""
-    return QFont("Rubik UI", 11, QFont.Bold)
+    return QFont("Rubik UI", 10, QFont.DemiBold)
 
 
 def apply_build_mode_button_state(
     python_button, dotnet_button, mode: str, building: bool = False
 ) -> None:
-    """Apply normal mode selection or lock both selectors during a build."""
+    """Apply the segmented build-mode selection or lock it during a build."""
     for button, button_mode in ((python_button, "python"), (dotnet_button, "dotnet")):
         is_active = button_mode == mode
         button.setChecked(is_active)
-        is_disabled = building or is_active
-        button.setEnabled(not is_disabled)
-        button.setStyleSheet(build_disabled_button() if is_disabled else button_base())
+        button.setEnabled(not building)
+        button.setStyleSheet(
+            segmented_build_mode_button_style(is_active, disabled=building)
+        )
 
 
 def title_frame_minimum_width(
@@ -341,6 +342,54 @@ def build_disabled_button(radius: int = 4) -> str:
 
 def utility_icon_button_style() -> str:
     return button_base(border_width=4)
+
+
+def sidebar_menu_button_style(disabled: bool = False) -> str:
+    """Style the global-options menu as a quiet sidebar control."""
+    if disabled:
+        return f"""
+            QPushButton {{
+                background: transparent;
+                color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+                border: 0;
+                border-radius: 4px;
+            }}
+        """
+    return f"""
+        QPushButton {{
+            background: transparent;
+            color: {qcolor_name(Colors.TEXT_LIGHT)};
+            border: 0;
+            border-radius: 4px;
+        }}
+        QPushButton:hover {{ background: {qcolor_name(Colors.SELECTION_BG)}; }}
+        QPushButton:pressed {{ background: {qcolor_name(Colors.SURFACE_SELECTED_HOVER)}; }}
+    """
+
+
+def segmented_build_mode_button_style(active: bool, disabled: bool = False) -> str:
+    """Return one half of the compact build-mode selector."""
+    if disabled:
+        background = Colors.BUILD_DISABLED_BG
+        color = Colors.BUILD_DISABLED_TEXT
+    elif active:
+        background = Colors.SELECTION_BG
+        color = Colors.WHITE
+    else:
+        background = Colors.WINDOW
+        color = Colors.BUILD_DISABLED_TEXT
+    hover = Colors.SURFACE_SELECTED_HOVER if active else Colors.SURFACE_HOVER
+    return f"""
+        QPushButton {{
+            background-color: {qcolor_name(background)};
+            color: {qcolor_name(color)};
+            border: 1px solid {qcolor_name(Colors.BLACK)};
+            border-radius: 4px;
+            padding: 0 4px;
+        }}
+        QPushButton:hover {{ background-color: {qcolor_name(hover)}; }}
+        QPushButton:disabled {{ background-color: {qcolor_name(background)}; color: {qcolor_name(color)}; }}
+    """
 
 
 def utility_icon_button_disabled_style(building: bool) -> str:

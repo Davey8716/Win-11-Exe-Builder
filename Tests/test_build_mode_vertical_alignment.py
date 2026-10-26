@@ -38,11 +38,13 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         ).x()
         assert abs(python_title_center - window.width() / 2) <= 1
         assert window.build_options_btn.text() == "☰"
-        assert window.build_options_btn.mapTo(window, QPoint(0, 0)).y() + window.build_options_btn.height() <= window.python_navigation_sidebar.mapTo(window, QPoint(0, 0)).y()
+        assert window.build_options_btn.parentWidget() is window.title_options_slot
+        assert window.python_mode_selector.layout().count() == 2
+        assert window.python_section_nav.item(0).text() == "Environment Sync"
         assert window.python_section_nav.count() == 6
         assert window.python_section_stack.currentIndex() == 0
-        assert window.python_mode_btn.parentWidget() is window.python_navigation_sidebar
-        assert window.dotnet_mode_btn.parentWidget() is window.python_navigation_sidebar
+        assert window.python_mode_btn.parentWidget() is window.python_mode_selector
+        assert window.dotnet_mode_btn.parentWidget() is window.python_mode_selector
         build_page = window.python_section_stack.widget(5)
         assert window.build_summary_title_frame.parentWidget() is build_page
         assert window.build_summary_title.parentWidget() is window.build_summary_title_frame
@@ -137,11 +139,11 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             window, QPoint(window.dotnet_mode_title.width() // 2, 0)
         ).x()
         assert abs(dotnet_title_center - window.width() / 2) <= 1
-        assert window.dotnet_build_options_btn.text() == "☰"
-        assert window.dotnet_build_options_btn.mapTo(window, QPoint(0, 0)).y() + window.dotnet_build_options_btn.height() <= window.dotnet_navigation_sidebar.mapTo(window, QPoint(0, 0)).y()
+        assert window.build_options_btn.parentWidget() is window.dotnet_title_options_slot
+        assert window.dotnet_mode_selector.layout().count() == 2
         assert window.dotnet_section_nav.count() == 4
-        assert window.dotnet_python_mode_btn.parentWidget() is window.dotnet_navigation_sidebar
-        assert window.dotnet_mode_sidebar_btn.parentWidget() is window.dotnet_navigation_sidebar
+        assert window.dotnet_python_mode_btn.parentWidget() is window.dotnet_mode_selector
+        assert window.dotnet_mode_sidebar_btn.parentWidget() is window.dotnet_mode_selector
         assert window.dotnet_section_nav.geometry().right() < window.dotnet_section_stack.geometry().left()
         assert window.dotnet_selection_summaries["File Select"][3]["icon"].text() == "No icon"
         assert window.dotnet_selection_summaries["Output Select"][3]["file"].text() == "Not selected"
@@ -166,9 +168,6 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert not window.python_section_nav.isEnabled()
         assert not window.dotnet_section_nav.isEnabled()
         assert "item:selected:disabled" in window.python_section_nav.styleSheet()
-        for label in (window.build_mode_label, window.dotnet_build_mode_label):
-            assert not label.isEnabled()
-            assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in label.styleSheet()
         for button in (window.python_mode_btn, window.dotnet_mode_btn,
                        window.dotnet_python_mode_btn, window.dotnet_mode_sidebar_btn):
             assert not button.isEnabled()
@@ -181,9 +180,6 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.validation_controller.update_ui_state()
         assert window.python_section_nav.isEnabled()
         assert window.dotnet_section_nav.isEnabled()
-        for label in (window.build_mode_label, window.dotnet_build_mode_label):
-            assert label.isEnabled()
-            assert qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet()
         assert window.dotnet_mode_btn.isEnabled()
         assert all(bool(window.python_section_nav.item(i).flags() & Qt.ItemIsEnabled)
                    for i in range(5))
@@ -195,9 +191,6 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.dotnet_publish_controller.refresh_ui()
         assert not window.python_section_nav.isEnabled()
         assert not window.dotnet_section_nav.isEnabled()
-        for label in (window.build_mode_label, window.dotnet_build_mode_label):
-            assert not label.isEnabled()
-            assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in label.styleSheet()
         for button in (window.python_mode_btn, window.dotnet_mode_btn,
                        window.dotnet_python_mode_btn, window.dotnet_mode_sidebar_btn):
             assert not button.isEnabled()
@@ -210,9 +203,6 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.dotnet_publish_controller.refresh_ui()
         assert window.python_section_nav.isEnabled()
         assert window.dotnet_section_nav.isEnabled()
-        for label in (window.build_mode_label, window.dotnet_build_mode_label):
-            assert label.isEnabled()
-            assert qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet()
         assert window.dotnet_python_mode_btn.isEnabled()
     finally:
         window._is_closing = True

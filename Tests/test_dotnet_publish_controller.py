@@ -28,7 +28,7 @@ from exe_builder.build.datetime_build_options import (
     USA_MASS_DATETIME_BUILD_SENTINEL,
     USA_MASS_DATETIME_BUILD_SEQUENCE,
 )
-from exe_builder.ui.styles import Colors, build_disabled_button, qcolor_name
+from exe_builder.ui.styles import Colors, build_disabled_button, qcolor_name, sidebar_menu_button_style
 
 
 class DummyInput:
@@ -1006,7 +1006,6 @@ def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
     app.dotnet_configuration_frames = [DummyFrame(), DummyFrame(), DummyFrame()]
     app.dotnet_mode_title = DummyFrame()
     app.build_options_btn = DummyButton()
-    app.dotnet_build_options_btn = DummyButton()
 
     app.building = True
     controller.refresh_ui()
@@ -1037,9 +1036,8 @@ def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
     assert app.dotnet_publish_btn.enabled is True
     assert app.dotnet_publish_btn.text == "Cancel Publish"
     assert qcolor_name(Colors.CANCEL) in app.dotnet_publish_btn.stylesheet
-    for cog in (app.build_options_btn, app.dotnet_build_options_btn):
-        assert cog.enabled is False
-        assert cog.stylesheet == build_disabled_button()
+    assert app.build_options_btn.enabled is False
+    assert app.build_options_btn.stylesheet == sidebar_menu_button_style(disabled=True)
     for frame in app.dotnet_section_title_frames:
         assert qcolor_name(Colors.BUILD_DISABLED_TEXT) in frame.stylesheet
     for frame in app.dotnet_configuration_frames:
@@ -1059,9 +1057,8 @@ def test_publish_lock_keeps_csharp_configuration_frames_blue(tmp_path):
         assert control.enabled is True
     assert app.dotnet_publish_btn.text == "Publish"
     assert qcolor_name(Colors.SUCCESS) in app.dotnet_publish_btn.stylesheet
-    for cog in (app.build_options_btn, app.dotnet_build_options_btn):
-        assert cog.enabled is True
-        assert cog.stylesheet != build_disabled_button()
+    assert app.build_options_btn.enabled is True
+    assert app.build_options_btn.stylesheet == sidebar_menu_button_style()
     for frame in app.dotnet_section_title_frames:
         assert qcolor_name(Colors.TEXT_LIGHT) in frame.stylesheet
     for frame in app.dotnet_configuration_frames:

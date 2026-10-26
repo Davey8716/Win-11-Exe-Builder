@@ -36,6 +36,7 @@ from ..ui.styles import (
     filled_button,
     line_edit_style,
     qcolor_name,
+    sidebar_menu_button_style,
     status_text_style,
     utility_icon_button_disabled_style,
     utility_icon_button_style,
@@ -537,18 +538,15 @@ class DotnetPublishController(QObject):
         self.app.dotnet_open_output_btn.setStyleSheet(
             button_base() if publish_output_available and not building else build_disabled_button()
         )
-        # Build options are shared application preferences.  The Python flow
-        # refreshes them through ValidationController; the isolated .NET
-        # publish flow owns its own refresh, so lock both cogs here as well.
-        for name in ("build_options_btn", "dotnet_build_options_btn"):
-            button = getattr(self.app, name, None)
-            if button is None:
-                continue
+        # Build options are shared application preferences. The C# flow owns
+        # its refresh, so lock the shared sidebar menu during publishing.
+        button = getattr(self.app, "build_options_btn", None)
+        if button is not None:
             if hasattr(button, "setEnabled"):
                 button.setEnabled(not building)
             if hasattr(button, "setStyleSheet"):
                 button.setStyleSheet(
-                    build_disabled_button() if building else utility_icon_button_style()
+                    sidebar_menu_button_style(disabled=building)
                 )
         for field in (
             self.app.dotnet_project_input,

@@ -29,6 +29,7 @@ from ..ui.styles import (
     filled_button,
     line_edit_style,
     qcolor_name,
+    sidebar_menu_button_style,
     status_text_style,
     TITLE_FRAME_STYLE,
     UTILITY_ICON_BUTTON_SIZE,
@@ -307,6 +308,9 @@ class ValidationController:
         def set_btn(btn, enabled, color=None):
             btn.setEnabled(enabled)
 
+            if btn is getattr(app, "build_options_btn", None):
+                btn.setStyleSheet(sidebar_menu_button_style(disabled=not enabled))
+                return
             if not enabled:
                 if isinstance(btn, QCheckBox):
                     btn.setStyleSheet(build_disabled_checkbox())
@@ -389,9 +393,7 @@ class ValidationController:
         )
                         
         # Tooltips
-        for name in ("build_options_btn", "dotnet_build_options_btn"):
-            if hasattr(app, name):
-                set_btn(getattr(app, name), not building)
+        set_btn(app.build_options_btn, not building)
         set_btn(app.tooltips_checkbox, not building)
         if hasattr(app, "suppress_exit_dialogue"):
             set_btn(app.suppress_exit_dialogue, not building)

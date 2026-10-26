@@ -76,6 +76,7 @@ from exe_builder.ui.styles import (
     button_base,
     qcolor_name,
     required_selection_checkbox,
+    sidebar_menu_button_style,
     Colors,
     utility_icon_button_style,
 )
@@ -90,11 +91,11 @@ BUILD_FRAME_HEIGHT = 170
 DOTNET_BUILD_FRAME_WIDTH = 450
 PROGRESSION_BUTTON_SIZE = (280, 42)
 SECTION_NAV_STYLE = (
-    "QListWidget { background: #19232d; border: 0; padding: 12px 8px; "
-    "color: #ecf3fa; font: bold 12pt 'Rubik UI'; } "
-    "QListWidget::item { height: 44px; padding-left: 12px; border-radius: 6px; } "
-    "QListWidget::item:selected { background: #3477ae; color: white; } "
-    "QListWidget::item:hover:!selected { background: #2c3d4b; } "
+    "QListWidget { background: #19232d; border: 0; padding: 4px 0; "
+    "color: #ecf3fa; font: bold 10pt 'Rubik UI'; } "
+    "QListWidget::item { height: 38px; padding-left: 14px; border-left: 4px solid transparent; } "
+    "QListWidget::item:selected { background: #263a4d; color: white; border-left-color: #4a6fa8; } "
+    "QListWidget::item:hover:!selected { background: #24313e; } "
     "QListWidget::item:disabled { color: #71808c; background: transparent; } "
     "QListWidget::item:selected:disabled { color: #71808c; background: transparent; }"
 )
@@ -224,8 +225,8 @@ class EXEBuilderApp(QWidget):
             "Open build options and application preferences."
         )
         self.build_options_btn.setFixedSize(34, 34)
-        self.build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
-        self.build_options_btn.setStyleSheet(utility_icon_button_style())
+        self.build_options_btn.setFont(QFont("Segoe UI Symbol", 16, QFont.Bold))
+        self.build_options_btn.setStyleSheet(sidebar_menu_button_style())
 
         title_frame_width = (
             QFontMetrics(self.title_label.font()).horizontalAdvance(
@@ -310,7 +311,11 @@ class EXEBuilderApp(QWidget):
         title_row_layout = QHBoxLayout(title_row)
         title_row_layout.setContentsMargins(5, 0, 5, 0)
         title_row_layout.setSpacing(0)
-        title_row_layout.addWidget(self.build_options_btn)
+        self.title_options_slot = QWidget()
+        self.title_options_slot.setFixedSize(34, 34)
+        self.title_options_layout = QHBoxLayout(self.title_options_slot)
+        self.title_options_layout.setContentsMargins(0, 0, 0, 0)
+        title_row_layout.addWidget(self.title_options_slot)
         title_row_layout.addStretch()
         title_row_layout.addWidget(self.title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
         title_row_layout.addStretch()
@@ -1314,7 +1319,7 @@ class EXEBuilderApp(QWidget):
         self.python_section_nav = QListWidget()
         self.python_section_nav.setObjectName("sectionNavigation")
         self.python_section_nav.setFixedWidth(185)
-        self.python_section_nav.setSpacing(4)
+        self.python_section_nav.setSpacing(2)
         self.python_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.python_section_nav.setStyleSheet(SECTION_NAV_STYLE)
         sections = (
@@ -1416,11 +1421,19 @@ class EXEBuilderApp(QWidget):
         self.python_navigation_sidebar.setFixedWidth(205)
         self.python_navigation_sidebar.setStyleSheet("background: #19232d;")
         sidebar_layout = QVBoxLayout(self.python_navigation_sidebar)
-        sidebar_layout.setContentsMargins(10, 12, 10, 8)
-        sidebar_layout.setSpacing(6)
-        sidebar_layout.addWidget(self.build_mode_label)
-        sidebar_layout.addWidget(self.python_mode_btn)
-        sidebar_layout.addWidget(self.dotnet_mode_btn)
+        sidebar_layout.setContentsMargins(10, 8, 10, 8)
+        sidebar_layout.setSpacing(4)
+        self.python_mode_selector = QWidget()
+        python_mode_selector_layout = QHBoxLayout(self.python_mode_selector)
+        python_mode_selector_layout.setContentsMargins(0, 0, 0, 0)
+        python_mode_selector_layout.setSpacing(2)
+        self.python_mode_btn.setText("Python")
+        self.dotnet_mode_btn.setText("C# .NET")
+        for button in (self.python_mode_btn, self.dotnet_mode_btn):
+            button.setFixedHeight(30)
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            python_mode_selector_layout.addWidget(button)
+        sidebar_layout.addWidget(self.python_mode_selector)
         sidebar_layout.addWidget(self.python_section_nav, 1)
 
         shell = QWidget()
@@ -1432,6 +1445,7 @@ class EXEBuilderApp(QWidget):
         python_layout.insertWidget(1, shell, 1)
         self.python_section_nav.currentRowChanged.connect(self.python_section_stack.setCurrentIndex)
         self.python_section_nav.setCurrentRow(0)
+        self._place_build_options_button("python")
         self._update_python_navigation()
 
     def _create_build_summary(self):
@@ -2028,15 +2042,6 @@ class EXEBuilderApp(QWidget):
         self.dotnet_mode_title.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
         )
-        self.dotnet_build_options_btn = QPushButton("☰")
-        self.dotnet_build_options_btn.setObjectName("dotnetBuildOptionsButton")
-        self.dotnet_build_options_btn.setAccessibleName("Options menu")
-        self.dotnet_build_options_btn.setAccessibleDescription(
-            "Open build options and application preferences."
-        )
-        self.dotnet_build_options_btn.setFixedSize(34, 34)
-        self.dotnet_build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
-        self.dotnet_build_options_btn.setStyleSheet(utility_icon_button_style())
         self.dotnet_title_container = QWidget()
         self.dotnet_title_container.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.dotnet_title_container.setFixedHeight(44)
@@ -2056,7 +2061,11 @@ class EXEBuilderApp(QWidget):
         dotnet_header_layout = QHBoxLayout(dotnet_header)
         dotnet_header_layout.setContentsMargins(5, 0, 5, 0)
         dotnet_header_layout.setSpacing(0)
-        dotnet_header_layout.addWidget(self.dotnet_build_options_btn)
+        self.dotnet_title_options_slot = QWidget()
+        self.dotnet_title_options_slot.setFixedSize(34, 34)
+        self.dotnet_title_options_layout = QHBoxLayout(self.dotnet_title_options_slot)
+        self.dotnet_title_options_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_header_layout.addWidget(self.dotnet_title_options_slot)
         dotnet_header_layout.addStretch()
         dotnet_header_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter | Qt.AlignTop)
         dotnet_header_layout.addStretch()
@@ -2341,11 +2350,6 @@ class EXEBuilderApp(QWidget):
         self.build_mode_stack = QStackedWidget()
         self.build_mode_stack.addWidget(self.python_mode_page)
         self.build_mode_stack.addWidget(self.dotnet_mode_page)
-        self.build_mode_label = QLabel("Build mode:")
-        self.build_mode_label.setStyleSheet(
-            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
-        )
-        self.build_mode_label.setFont(build_mode_button_font())
         self.python_mode_btn = QPushButton("Python EXE")
         self.dotnet_mode_btn = QPushButton("C# .NET Publish")
         for button in (self.python_mode_btn, self.dotnet_mode_btn):
@@ -2359,7 +2363,6 @@ class EXEBuilderApp(QWidget):
         self._apply_build_mode_button_state("python")
         self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
         self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
-        self.dotnet_build_options_btn.clicked.connect(self._show_build_options)
         for widget in (
             self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
             self.dotnet_name_input,
@@ -2379,7 +2382,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_section_nav = QListWidget()
         self.dotnet_section_nav.setObjectName("sectionNavigation")
         self.dotnet_section_nav.setFixedWidth(185)
-        self.dotnet_section_nav.setSpacing(4)
+        self.dotnet_section_nav.setSpacing(2)
         self.dotnet_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.dotnet_section_nav.setStyleSheet(SECTION_NAV_STYLE)
         self.dotnet_section_stack = QStackedWidget()
@@ -2387,25 +2390,26 @@ class EXEBuilderApp(QWidget):
         self.dotnet_navigation_sidebar.setFixedWidth(205)
         self.dotnet_navigation_sidebar.setStyleSheet("background: #19232d;")
         dotnet_sidebar_layout = QVBoxLayout(self.dotnet_navigation_sidebar)
-        dotnet_sidebar_layout.setContentsMargins(10, 12, 10, 8)
-        dotnet_sidebar_layout.setSpacing(6)
-        self.dotnet_build_mode_label = QLabel("Build mode:")
-        self.dotnet_build_mode_label.setStyleSheet(
-            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
-        )
-        self.dotnet_build_mode_label.setFont(build_mode_button_font())
+        dotnet_sidebar_layout.setContentsMargins(10, 8, 10, 8)
+        dotnet_sidebar_layout.setSpacing(4)
         self.dotnet_python_mode_btn = QPushButton("Python EXE")
         self.dotnet_mode_sidebar_btn = QPushButton("C# .NET Publish")
         for button in (self.dotnet_python_mode_btn, self.dotnet_mode_sidebar_btn):
             button.setCheckable(True)
-            button.setFixedHeight(32)
+            button.setFixedHeight(30)
             button.setFont(build_mode_button_font())
-            button.setStyleSheet(button_base())
+        self.dotnet_python_mode_btn.setText("Python")
+        self.dotnet_mode_sidebar_btn.setText("C# .NET")
         self.dotnet_python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
         self.dotnet_mode_sidebar_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
-        dotnet_sidebar_layout.addWidget(self.dotnet_build_mode_label)
-        dotnet_sidebar_layout.addWidget(self.dotnet_python_mode_btn)
-        dotnet_sidebar_layout.addWidget(self.dotnet_mode_sidebar_btn)
+        self.dotnet_mode_selector = QWidget()
+        dotnet_mode_selector_layout = QHBoxLayout(self.dotnet_mode_selector)
+        dotnet_mode_selector_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_mode_selector_layout.setSpacing(2)
+        for button in (self.dotnet_python_mode_btn, self.dotnet_mode_sidebar_btn):
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            dotnet_mode_selector_layout.addWidget(button)
+        dotnet_sidebar_layout.addWidget(self.dotnet_mode_selector)
         sections = list(self.dotnet_sections)
         sections.append(("Build", self.dotnet_build_title_frame, build_panel))
         self.dotnet_selection_summaries = {
@@ -2496,18 +2500,26 @@ class EXEBuilderApp(QWidget):
                 mode,
                 building,
             )
-        label_color = Colors.BUILD_DISABLED_TEXT if building else Colors.TEXT_LIGHT
-        for name in ("build_mode_label", "dotnet_build_mode_label"):
-            label = getattr(self, name, None)
-            if label is not None:
-                label.setEnabled(not building)
-                label.setStyleSheet(f"QLabel {{ color: {qcolor_name(label_color)}; }}")
+    def _place_build_options_button(self, mode):
+        """Keep the shared options menu in the active workflow's top header."""
+        header_layout = (
+            self.title_options_layout
+            if mode == "python" else self.dotnet_title_options_layout
+        )
+        for layout in (
+            self.title_options_layout,
+            self.dotnet_title_options_layout,
+        ):
+            layout.removeWidget(self.build_options_btn)
+        header_layout.addWidget(self.build_options_btn)
+        self.build_options_btn.show()
 
     def set_build_mode(self, mode, save=True):
         if mode not in {"python", "dotnet"} or getattr(self, "building", False):
             return
         self.build_mode = mode
         self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
+        self._place_build_options_button(mode)
         self._apply_build_mode_button_state(mode)
         self.setFixedSize(*APP_FIXED_SIZE)
         if mode == "python":
