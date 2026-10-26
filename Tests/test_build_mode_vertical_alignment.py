@@ -169,14 +169,14 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             )
             <= interpreter_summary_label.width()
         )
-        assert window.build_summary_title.font().pointSize() == 16
+        assert window.build_summary_title.font().pointSize() == 15
         assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_title_frame.styleSheet()
         assert all(
-            label.font().pointSize() == 12
+            label.font().pointSize() == 11
             for label in window.build_summary_labels.values()
         )
         assert all(
-            value.font().pointSize() == 12
+            value.font().pointSize() == 11
             for value in window.build_summary_values.values()
         )
         for index, keys in ((2, {"interpreter"}), (3, {"interpreter", "icon"}),
@@ -197,10 +197,10 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
                     )
                     <= interpreter_label.width()
                 )
-            assert title.layout().itemAt(1).widget().font().pointSize() == 16
-            assert all(label.font().pointSize() == 12 for label in labels.values())
+            assert title.layout().itemAt(1).widget().font().pointSize() == 15
+            assert all(label.font().pointSize() == 11 for label in labels.values())
             for value in values.values():
-                assert value.font().pointSize() == 12
+                assert value.font().pointSize() == 11
                 assert value.wordWrap()
                 assert value.height() >= value.fontMetrics().lineSpacing() * 2
                 assert qcolor_name(Colors.TEXT_LIGHT) in value.styleSheet()
@@ -371,14 +371,14 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert all(
             label.width() >= 85 for label in window.dotnet_build_summary_labels.values()
         )
-        assert window.dotnet_build_summary_title.font().pointSize() == 16
+        assert window.dotnet_build_summary_title.font().pointSize() == 15
         assert qcolor_name(Colors.TEXT_LIGHT) in window.dotnet_build_summary_title_frame.styleSheet()
         assert all(
-            label.font().pointSize() == 12
+            label.font().pointSize() == 11
             for label in window.dotnet_build_summary_labels.values()
         )
         assert all(
-            value.font().pointSize() == 12
+            value.font().pointSize() == 11
             for value in window.dotnet_build_summary_values.values()
         )
         assert (
@@ -397,12 +397,12 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             == "Build All USA Date/Time Outputs"
         )
         for title, frame, labels, values in window.dotnet_selection_summaries.values():
-            assert title.layout().itemAt(1).widget().font().pointSize() == 16
+            assert title.layout().itemAt(1).widget().font().pointSize() == 15
             assert frame.width() == 575
             assert all(label.width() == 85 for label in labels.values())
-            assert all(label.font().pointSize() == 12 for label in labels.values())
+            assert all(label.font().pointSize() == 11 for label in labels.values())
             for value in values.values():
-                assert value.font().pointSize() == 12
+                assert value.font().pointSize() == 11
                 assert value.height() >= value.fontMetrics().lineSpacing() * 2
                 assert qcolor_name(Colors.TEXT_LIGHT) in value.styleSheet()
             assert qcolor_name(Colors.TEXT_LIGHT) in title.styleSheet()
