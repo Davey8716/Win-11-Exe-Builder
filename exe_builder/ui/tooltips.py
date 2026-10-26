@@ -4,6 +4,42 @@ from PySide6.QtGui import Qt, QCursor
 from .path_hover import PathHover
 from .styles import TOOLTIP_STYLE
 
+
+PYTHON_SUMMARY_HELP_TEXT = {
+    "interpreter": (
+        "Displays the full path to the Python interpreter.\n"
+        "That will be used for building EXEs.\n"
+        "Click a valid path to open it in Windows Explorer.\n"
+        "This is read only.\n"
+        "Once a path has been set the navigation is locked to where pyton interpreters are.\n"
+    ),
+    "icon": "File path to Icon if used. Click a valid path to open it in Windows Explorer.",
+    "file": "File path to python script folder and file. Click a valid path to open it in Windows Explorer.",
+    "output": "File path to the EXE output folder. Click a valid path to open it in Windows Explorer.",
+    "name": "Name of the generated EXE folder and file.\nDo not include .exe.",
+    "python_version": "Append the python version to the file name.",
+    "datetime": (
+        "Select a date/time format to append to the file name.\n"
+        "Formats without minutes will overwrite builds from the same day.\n"
+        "Formats including minutes usually produce a unique file per build.\n"
+        "As most builds take longer than a minute.\nIf a name is reused, wait briefly before rebuilding."
+    ),
+}
+
+DOTNET_SUMMARY_HELP_TEXT = {
+    "project": "File path to the selected SDK-style C# project file.",
+    "icon": "File path to the optional application icon used for this publish.",
+    "output": "File path to the folder that will receive the C# publish output.",
+    "name": "Set the published executable name. Do not include .exe.",
+    "runtime": "Choose the Windows architecture for the published application.",
+    "datetime": PYTHON_SUMMARY_HELP_TEXT["datetime"],
+}
+
+DOTNET_SELECTION_SUMMARY_HELP_TEXT = {
+    "icon": DOTNET_SUMMARY_HELP_TEXT["icon"],
+    "file": DOTNET_SUMMARY_HELP_TEXT["project"],
+}
+
 # -------------------------------------------------------------
 #  Simple tooltip class for Qt widgets (qt_material compatible)
 # -------------------------------------------------------------
@@ -16,6 +52,7 @@ class QtTooltip(QObject):
         direct_widget_only=False,
         ignored_hover_children=None,
         blocked_hover_widgets=None,
+        position_at_cursor=False,
     ):
         super().__init__(widget)
 
@@ -25,6 +62,7 @@ class QtTooltip(QObject):
         self.direct_widget_only = direct_widget_only
         self.ignored_hover_children = set(ignored_hover_children or [])
         self.blocked_hover_widgets = set(blocked_hover_widgets or [])
+        self.position_at_cursor = position_at_cursor
 
         self.tip_window = None
         self.timer = QTimer()
@@ -76,10 +114,14 @@ class QtTooltip(QObject):
             if not root.tooltips_enabled:
                 return
 
+        text = self.text() if callable(self.text) else self.text
+        if not text:
+            return
+
         if self.tip_window:
             return
 
-        self.tip_window = QLabel(self.text, None)
+        self.tip_window = QLabel(text, None)
         self.tip_window.setWindowFlags(
             Qt.ToolTip | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
         )
@@ -90,7 +132,10 @@ class QtTooltip(QObject):
         self.tip_window.adjustSize()
 
         # Position relative to widget (same offsets as before)
-        pos = self.widget.mapToGlobal(QPoint(40, 25))
+        pos = (
+            QCursor.pos() + QPoint(16, 18)
+            if self.position_at_cursor else self.widget.mapToGlobal(QPoint(40, 25))
+        )
         self.tip_window.move(pos)
 
         self.tip_window.show()
@@ -148,6 +193,11 @@ class QtTooltip(QObject):
         return False
 
     def _handle_hover_update(self):
+        if self.tip_window:
+            text = self.text() if callable(self.text) else self.text
+            if text != self.tip_window.text():
+                self._hide_tip_window()
+
         if not self.blocked_hover_widgets:
             self.schedule()
             return
@@ -168,6 +218,18 @@ class QtTooltip(QObject):
 #  Tooltip wiring (UI → text mapping) [Qt version]
 # -------------------------------------------------------------
 
+def attach_section_nav_tooltips(nav, descriptions):
+    """Show the description for the sidebar row under the pointer."""
+    viewport = nav.viewport()
+    viewport.setMouseTracking(True)
+
+    def hovered_description():
+        item = nav.itemAt(viewport.mapFromGlobal(QCursor.pos()))
+        return descriptions.get(item.text(), "") if item else ""
+
+    QtTooltip(viewport, hovered_description, position_at_cursor=True)
+
+
 def attach_tooltips(app):
     """
     Attach all tooltips to the EXEBuilderApp instance.
@@ -182,6 +244,21 @@ def attach_tooltips(app):
         app.build_options_btn,
         "Open build options and application preferences."
     )
+
+    attach_section_nav_tooltips(app.python_section_nav, {
+        "Environment Sync": "Compare and sync packages across detected Python installations.",
+        "Interpreter": "Choose the Python installation used to build the EXE.",
+        "Icons": "Choose an optional icon for the EXE.",
+        "File": "Select the Python script to run when the EXE starts.",
+        "Output": "Choose the output folder and name the EXE.",
+        "Build": "Review the settings, save a setup, and build the EXE.",
+    })
+    attach_section_nav_tooltips(app.dotnet_section_nav, {
+        "Icons": "Choose an optional icon for the published app.",
+        "File": "Select the C# project file to publish.",
+        "Output": "Choose the publish folder and name the executable.",
+        "Build": "Choose publish options and build the C# app.",
+    })
 
     QtTooltip(
         app.tooltips_checkbox,
@@ -200,6 +277,11 @@ def attach_tooltips(app):
         "Opens Output Directory after build if it output directory is not Desktop."
 
     )    
+
+    QtTooltip(
+        app.run_built_app_after_build,
+        "Launch the executable that was just built after a successful build."
+    )
 
     QtTooltip(
         app.suppress_exit_dialogue,
@@ -378,34 +460,21 @@ def attach_tooltips(app):
     # Output / EXE name
     # -----------------------------
 
-    QtTooltip(
-        app.appened_py_version,
-        "Append the python version to the file name."
-    )
+    QtTooltip(app.appened_py_version, PYTHON_SUMMARY_HELP_TEXT["python_version"])
 
     QtTooltip(
         app.output_btn,
         "The file path to the folder the EXE is to be built in."
     )
 
-    QtTooltip(
-        app.date_time_dropdown,
-        "Select a date/time format to append to the file name." 
-        "\nFormats without minutes will overwrite builds from the same day." 
-        "\nFormats including minutes usually produce a unique file per build." 
-        "\nAs most builds take longer than a minute.\nIf a name is reused, wait briefly before rebuilding."
-    )
+    QtTooltip(app.date_time_dropdown, PYTHON_SUMMARY_HELP_TEXT["datetime"])
 
     QtTooltip(
         app.output_refresh_btn,
         "Reset output folder to Desktop."
     )
 
-    QtTooltip(
-        app.exe_name_input,
-        "Name of the generated EXE folder and file.\n"
-        "Do not include .exe."
-    )
+    QtTooltip(app.exe_name_input, PYTHON_SUMMARY_HELP_TEXT["name"])
 
     QtTooltip(
         app.refresh_btn,
@@ -424,14 +493,156 @@ def attach_tooltips(app):
         "Available only when that folder contains its generated EXE."
     )
 
+    attach_saved_setup_tooltips(app, "python")
     attach_dotnet_tooltips(app)
+    attach_summary_hovers(app)
+
+
+def attach_summary_hovers(app):
+    """Attach value-plus-guidance hovers to every read-only summary value."""
+    tooltips_enabled = lambda: getattr(app, "tooltips_enabled", True)
+    summaries = (
+        (app.build_summary_values, PYTHON_SUMMARY_HELP_TEXT),
+        (app.dotnet_build_summary_values, DOTNET_SUMMARY_HELP_TEXT),
+    )
+    summaries += tuple(
+        (values, PYTHON_SUMMARY_HELP_TEXT)
+        for _title, _frame, _labels, values in app.python_selection_summaries.values()
+    )
+    summaries += tuple(
+        (values, DOTNET_SELECTION_SUMMARY_HELP_TEXT)
+        for _title, _frame, _labels, values in app.dotnet_selection_summaries.values()
+    )
+    app._summary_hovers = [
+        PathHover(
+            widget,
+            help_text=help_text[key],
+            help_enabled_getter=tooltips_enabled,
+            normalize_path=False,
+        )
+        for values, help_text in summaries
+        for key, widget in values.items()
+    ]
+
+
+def attach_saved_setup_tooltips(app, mode):
+    """Register help for saved-setup controls in a build mode."""
+
+    if mode == "python":
+        tooltip_text = {
+            "saved_build_setup_dropdown": (
+                "Choose a saved setup to fill the build fields, then click Build EXE."
+            ),
+            "save_build_setup_btn": (
+                "Save the current Python build settings as a setup you can restore later."
+            ),
+            "export_python_build_setups_btn": (
+                "Export saved Python build setups to a JSON backup file."
+            ),
+            "import_python_build_setups_btn": (
+                "Import saved Python build setups from a JSON backup file. "
+                "Imported setups are added to your current list."
+            ),
+            "delete_build_setup_btn": (
+                "Delete the selected saved Python build setup. Use the arrow to delete "
+                "all saved Python build setups."
+            ),
+        }
+    else:
+        tooltip_text = {
+            "saved_dotnet_build_setup_dropdown": (
+                "Choose a saved setup to fill the publish fields, then click Publish."
+            ),
+            "dotnet_save_build_setup_btn": (
+                "Save the current C# publish settings as a setup you can restore later."
+            ),
+            "export_dotnet_build_setups_btn": (
+                "Export saved C# publish setups to a JSON backup file."
+            ),
+            "import_dotnet_build_setups_btn": (
+                "Import saved C# publish setups from a JSON backup file. "
+                "Imported setups are added to your current list."
+            ),
+            "dotnet_delete_build_setup_btn": (
+                "Delete the selected saved C# publish setup. Use the arrow to delete all "
+                "saved C# publish setups."
+            ),
+        }
+
+    for name, text in tooltip_text.items():
+        QtTooltip(getattr(app, name), text)
+
+    dropdown_name = (
+        "saved_build_setup_dropdown"
+        if mode == "python"
+        else "saved_dotnet_build_setup_dropdown"
+    )
+    dropdown = getattr(app, dropdown_name)
+    if hasattr(dropdown, "view"):
+        _attach_saved_setup_item_tooltips(dropdown)
+
+    menu_name = (
+        "delete_build_setup_menu"
+        if mode == "python"
+        else "dotnet_delete_build_setup_menu"
+    )
+    selected_action_name = (
+        "delete_selected_build_setup_action"
+        if mode == "python"
+        else "dotnet_delete_selected_build_setup_action"
+    )
+    all_action_name = (
+        "delete_all_build_setups_action"
+        if mode == "python"
+        else "dotnet_delete_all_build_setups_action"
+    )
+    menu = getattr(app, menu_name, None)
+    if menu is not None:
+        _attach_saved_setup_menu_tooltips(
+            menu,
+            {
+                getattr(app, selected_action_name): (
+                    "Delete the currently selected saved "
+                    f"{'Python build' if mode == 'python' else 'C# publish'} setup."
+                ),
+                getattr(app, all_action_name): (
+                    "Delete every saved "
+                    f"{'Python build' if mode == 'python' else 'C# publish'} setup."
+                ),
+            },
+        )
+
+
+def _attach_saved_setup_item_tooltips(dropdown):
+    """Use the application's tooltip style for open saved-setup combo boxes."""
+
+    view = dropdown.view()
+    viewport = view.viewport()
+    viewport.setMouseTracking(True)
+
+    def hovered_setup_details():
+        index = view.indexAt(viewport.mapFromGlobal(QCursor.pos()))
+        return index.data(Qt.UserRole + 1) if index.isValid() else ""
+
+    QtTooltip(viewport, hovered_setup_details, position_at_cursor=True)
+
+
+def _attach_saved_setup_menu_tooltips(menu, action_text):
+    """Use the application's tooltip style for saved-setup delete-menu actions."""
+
+    menu.setMouseTracking(True)
+
+    def hovered_action_description():
+        action = menu.actionAt(menu.mapFromGlobal(QCursor.pos()))
+        return action_text.get(action, "")
+
+    QtTooltip(menu, hovered_action_description, position_at_cursor=True)
 
 
 def attach_dotnet_tooltips(app):
     """Register help for controls shown by the C# .NET Publish mode."""
 
     tooltip_text = {
-        "dotnet_build_options_btn": "Open build options and application preferences.",
         "dotnet_project_select_btn": "Select the SDK-style C# project file (.csproj) to publish.",
         "dotnet_recent_projects": "Choose a recently used C# project file.",
         "dotnet_project_delete_btn": "Remove the selected project from the recent-project list.",
@@ -445,9 +656,9 @@ def attach_dotnet_tooltips(app):
         "dotnet_icon_reset_btn": "Clear the optional application icon for the next publish.",
         "dotnet_output_select_btn": "Choose the folder where the Release publish output will be created.",
         "dotnet_output_reset_btn": "Reset the publish output folder to Desktop.",
-        "dotnet_name_input": "Set the published executable name. Do not include .exe.",
+        "dotnet_name_input": DOTNET_SUMMARY_HELP_TEXT["name"],
         "dotnet_name_reset_btn": "Reset the executable name to match the selected C# project.",
-        "dotnet_runtime_combo": "Choose the Windows architecture for the published application.",
+        "dotnet_runtime_combo": DOTNET_SUMMARY_HELP_TEXT["runtime"],
         "dotnet_self_contained": (
             "Include the .NET runtime in the publish output. This runs without a separate "
             ".NET install but increases output size."
@@ -472,21 +683,23 @@ def attach_dotnet_tooltips(app):
     for name, text in tooltip_text.items():
         QtTooltip(getattr(app, name), text)
 
+    attach_saved_setup_tooltips(app, "dotnet")
+
     tooltips_enabled = lambda: getattr(app, "tooltips_enabled", True)
     app._dotnet_path_hovers = [
         PathHover(
             app.dotnet_project_input,
-            help_text="File path to the selected SDK-style C# project file.",
+            help_text=DOTNET_SUMMARY_HELP_TEXT["project"],
             help_enabled_getter=tooltips_enabled,
         ),
         PathHover(
             app.dotnet_icon_input,
-            help_text="File path to the optional application icon used for this publish.",
+            help_text=DOTNET_SUMMARY_HELP_TEXT["icon"],
             help_enabled_getter=tooltips_enabled,
         ),
         PathHover(
             app.dotnet_output_input,
-            help_text="File path to the folder that will receive the C# publish output.",
+            help_text=DOTNET_SUMMARY_HELP_TEXT["output"],
             help_enabled_getter=tooltips_enabled,
         ),
     ]

@@ -6,6 +6,7 @@ from ..build.datetime_build_options import (
     DATETIME_FORMAT_REGIONS,
     ISO_MASS_DATETIME_BUILD_SENTINEL,
     ISO_MASS_DATETIME_BUILD_SEQUENCE,
+    MASS_DATETIME_BUILD_SENTINELS,
     MASS_DATETIME_BUILD_SENTINEL,
     MASS_DATETIME_BUILD_SEQUENCE,
     NO_DATETIME_LABEL,
@@ -39,13 +40,6 @@ from ..ui.styles import Colors, status_text_style
 
 CREATE_NO_WINDOW = 0x08000000
 WINDOWS_RESOURCE_PATH_LIMIT = 260
-
-MASS_DATETIME_BUILD_SENTINELS = {
-    MASS_DATETIME_BUILD_SENTINEL,
-    ISO_MASS_DATETIME_BUILD_SENTINEL,
-    UK_MASS_DATETIME_BUILD_SENTINEL,
-    USA_MASS_DATETIME_BUILD_SENTINEL,
-}
 
 def _write_debug_log_banner(file, title):
     file.write(f"=== {title} ===\n\n")
@@ -1200,10 +1194,38 @@ class BuildController(QObject):
 
     def _run_success_post_build_action(self):
         app = self.app
+        self._run_built_application_on_success()
         if getattr(app, "minimize_after_build_enabled", False):
             app.showMinimized()
         if getattr(app, "close_after_build_enabled", False):
             app.close_app()
+
+    def _run_built_application_on_success(self):
+        """Launch the executable produced by this build, when requested."""
+        app = self.app
+        if not getattr(app, "run_built_app_after_build_enabled", False):
+            return
+
+        executable = ""
+        if getattr(app, "build_mode", "python") == "python":
+            output = self.latest_python_output_path()
+            if output:
+                executable = os.path.join(output, f"{os.path.basename(output)}.exe")
+        else:
+            name_input = getattr(app, "dotnet_name_input", None)
+            name = name_input.text().strip() if name_input is not None else ""
+            for output in reversed(getattr(app, "current_build_paths", []) or []):
+                candidate = os.path.join(output, f"{name}.exe") if name else ""
+                if candidate and os.path.isfile(candidate):
+                    executable = candidate
+                    break
+
+        if not executable or not os.path.isfile(executable):
+            return
+        try:
+            os.startfile(executable)
+        except OSError:
+            pass
 
     def _maybe_open_output_directory_on_success(self, output_dir=None):
         app = self.app
@@ -1804,7 +1826,7 @@ class BuildController(QObject):
             f"Building... {elapsed}s elapsed\napprox {remaining}s remaining"
         )
 
-        self.app.status_label.setFixedSize(200,100)
+        self.app.status_label.setFixedSize(420, 75)
 
         QTimer.singleShot(1, self.update_eta_loop)
 

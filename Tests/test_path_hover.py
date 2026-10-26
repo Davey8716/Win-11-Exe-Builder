@@ -28,3 +28,16 @@ def test_path_hover_text_returns_none_for_empty_input():
     text = build_path_hover_text("   ", "File path to python script folder and file.", True)
 
     assert text is None
+
+
+def test_summary_hover_text_preserves_the_displayed_value_and_removes_wrap_points():
+    text = build_path_hover_text(
+        "C:/project/\u200bmain.py",
+        "File path to python script folder and file.",
+        include_help=True,
+        normalize_path=False,
+    )
+
+    assert text == (
+        "C:/project/main.py\n\nFile path to python script folder and file."
+    )

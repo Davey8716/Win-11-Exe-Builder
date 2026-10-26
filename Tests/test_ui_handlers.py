@@ -101,6 +101,54 @@ class DummyPathInput:
         self.cursor_position = position
 
 
+class DummyCheckbox:
+    def __init__(self, checked=False):
+        self.checked = checked
+
+    def setChecked(self, value):
+        self.checked = value
+
+    def isChecked(self):
+        return self.checked
+
+    def blockSignals(self, value):
+        previous = getattr(self, "signals_blocked", False)
+        self.signals_blocked = value
+        return previous
+
+
+def test_post_build_option_toggles_refresh_the_dotnet_ready_status():
+    refreshes = []
+    validator = DummyValidator()
+    app = SimpleNamespace(
+        minimize_after_build=DummyCheckbox(),
+        open_output_dir_after_build=DummyCheckbox(),
+        close_after_build=DummyCheckbox(),
+        state_ctrl=DummyStateController(),
+        validator=validator,
+        dotnet_publish_controller=SimpleNamespace(
+            refresh_ui=lambda: refreshes.append("refresh")
+        ),
+    )
+    handler = UIHandlers(app)
+
+    handler.on_minimize_toggle(1)
+    assert app.minimize_after_build_enabled is True
+    assert app.close_after_build_enabled is False
+    assert app.close_after_build.checked is False
+
+    handler.on_open_output_dir_toggle(1)
+    assert app.open_output_dir_after_build_enabled is True
+
+    handler.on_close_toggle(1)
+    assert app.close_after_build_enabled is True
+    assert app.minimize_after_build_enabled is False
+    assert app.minimize_after_build.checked is False
+
+    assert validator.ui_updated is True
+    assert refreshes == ["refresh", "refresh", "refresh"]
+
+
 def test_mass_datetime_selection_saves_sentinel_and_keeps_restore_state():
     state_ctrl = DummyStateController()
     validator = DummyValidator()
@@ -124,6 +172,58 @@ def test_mass_datetime_selection_saves_sentinel_and_keeps_restore_state():
     assert state_ctrl.saved is True
     assert validator.status_updated is True
     assert validator.ui_updated is True
+
+
+def test_each_mass_datetime_selection_turns_off_run_built_app_and_refreshes_status():
+    for selection in (
+        MASS_DATETIME_BUILD_SENTINEL,
+        ISO_MASS_DATETIME_BUILD_SENTINEL,
+        UK_MASS_DATETIME_BUILD_SENTINEL,
+        USA_MASS_DATETIME_BUILD_SENTINEL,
+    ):
+        state_ctrl = DummyStateController()
+        validator = DummyValidator()
+        run_built_app = DummyCheckbox(True)
+        refreshes = []
+        app = SimpleNamespace(
+            date_time_dropdown=DummyDropdown(selection),
+            append_datetime=False,
+            datetime_format="",
+            run_built_app_after_build=run_built_app,
+            run_built_app_after_build_enabled=True,
+            state_ctrl=state_ctrl,
+            validator=validator,
+            dotnet_publish_controller=SimpleNamespace(
+                refresh_ui=lambda: refreshes.append("refresh")
+            ),
+        )
+
+        UIHandlers(app).on_datetime_format_changed(0)
+
+        assert run_built_app.checked is False
+        assert app.run_built_app_after_build_enabled is False
+        assert state_ctrl.saved is True
+        assert validator.ui_updated is True
+        assert refreshes == ["refresh"]
+
+
+def test_single_datetime_selection_keeps_run_built_app_enabled():
+    state_ctrl = DummyStateController()
+    run_built_app = DummyCheckbox(True)
+    app = SimpleNamespace(
+        date_time_dropdown=DummyDropdown("%Y-%m-%d"),
+        append_datetime=False,
+        datetime_format="",
+        run_built_app_after_build=run_built_app,
+        run_built_app_after_build_enabled=True,
+        state_ctrl=state_ctrl,
+        validator=DummyValidator(),
+    )
+
+    UIHandlers(app).on_datetime_format_changed(0)
+
+    assert run_built_app.checked is True
+    assert app.run_built_app_after_build_enabled is True
 
 
 def test_iso_mass_datetime_selection_saves_sentinel_and_keeps_restore_state():
@@ -497,3 +597,84 @@ def test_force_app_data_folder_on_top_activates_matching_window(monkeypatch, tmp
     assert "activate" in events
     assert ("position", 123, fake_win32con.HWND_TOPMOST, 7) in events
     assert ("position", 123, fake_win32con.HWND_NOTOPMOST, 7) in events
+
+
+def test_open_summary_path_opens_files_or_folders_and_schedules_maximize(monkeypatch, tmp_path):
+    file_directory = tmp_path / "Folder With Spaces"
+    file_directory.mkdir()
+    file_path = file_directory / "tool.py"
+    file_path.write_text("print('ok')", encoding="utf-8")
+    commands = []
+    opened_folders = []
+    scheduled = []
+    monkeypatch.setattr(
+        ui_handlers.subprocess, "Popen", lambda command: commands.append(command)
+    )
+    monkeypatch.setattr(
+        ui_handlers.os, "startfile", lambda path: opened_folders.append(path), raising=False
+    )
+    monkeypatch.setattr(
+        ui_handlers.QTimer,
+        "singleShot",
+        lambda delay, callback: scheduled.append((delay, callback)),
+    )
+    handler = UIHandlers(SimpleNamespace())
+    maximized_folders = []
+    monkeypatch.setattr(
+        handler,
+        "_maximize_explorer_window",
+        lambda folder_path: maximized_folders.append(folder_path),
+    )
+
+    assert handler.open_summary_path_in_explorer(str(file_path)) is True
+    assert commands == [["explorer.exe", "/select,", str(file_path)]]
+    assert scheduled[0][0] == 150
+    scheduled[0][1]()
+    assert maximized_folders == [str(file_directory)]
+
+    assert handler.open_summary_path_in_explorer(str(tmp_path)) is True
+    assert opened_folders == [str(tmp_path)]
+    assert len(commands) == 1
+    assert scheduled[1][0] == 150
+    scheduled[1][1]()
+    assert maximized_folders == [str(file_directory), str(tmp_path)]
+
+    assert handler.open_summary_path_in_explorer(str(tmp_path / "missing")) is False
+    assert len(commands) == 1
+    assert opened_folders == [str(tmp_path)]
+
+
+def test_maximize_explorer_window_for_summary_path(monkeypatch, tmp_path):
+    events = []
+    folder_path = str(tmp_path)
+    documents_window = SimpleNamespace(
+        HWND=123,
+        Document=SimpleNamespace(
+            Folder=SimpleNamespace(Self=SimpleNamespace(Path=str(tmp_path / "Documents")))
+        ),
+    )
+    target_window = SimpleNamespace(
+        HWND=246,
+        Document=SimpleNamespace(Folder=SimpleNamespace(Self=SimpleNamespace(Path=folder_path))),
+    )
+    fake_windows = SimpleNamespace(
+        Count=2,
+        Item=lambda index: (documents_window, target_window)[index],
+    )
+    fake_client = SimpleNamespace(Dispatch=lambda name: SimpleNamespace(Windows=lambda: fake_windows))
+    fake_win32com = SimpleNamespace(client=fake_client)
+    fake_win32con = SimpleNamespace(SW_MAXIMIZE=3)
+    fake_win32gui = SimpleNamespace(
+        ShowWindow=lambda hwnd, command: events.append(("maximize", hwnd, command)),
+        SetForegroundWindow=lambda hwnd: events.append(("foreground", hwnd)),
+    )
+    monkeypatch.setitem(sys.modules, "win32com", fake_win32com)
+    monkeypatch.setitem(sys.modules, "win32com.client", fake_client)
+    monkeypatch.setitem(sys.modules, "win32con", fake_win32con)
+    monkeypatch.setitem(sys.modules, "win32gui", fake_win32gui)
+
+    assert UIHandlers(SimpleNamespace())._maximize_explorer_window(folder_path) is True
+    assert events == [
+        ("maximize", 246, fake_win32con.SW_MAXIMIZE),
+        ("foreground", 246),
+    ]

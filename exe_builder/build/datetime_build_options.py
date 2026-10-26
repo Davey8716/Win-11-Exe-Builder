@@ -8,6 +8,20 @@ USA_MASS_DATETIME_BUILD_SENTINEL = "__BUILD_ALL_USA_DATETIME_OUTPUTS__"
 USA_MASS_DATETIME_BUILD_LABEL = "Build All USA Date/Time Outputs"
 NO_DATETIME_LABEL = "No Date Time Appended"
 
+MASS_DATETIME_BUILD_SENTINELS = frozenset(
+    (
+        MASS_DATETIME_BUILD_SENTINEL,
+        ISO_MASS_DATETIME_BUILD_SENTINEL,
+        UK_MASS_DATETIME_BUILD_SENTINEL,
+        USA_MASS_DATETIME_BUILD_SENTINEL,
+    )
+)
+
+
+def is_mass_datetime_build_selection(selection):
+    """Return whether a date/time selection produces multiple outputs."""
+    return selection in MASS_DATETIME_BUILD_SENTINELS
+
 DATETIME_FORMAT_OPTIONS = [
     ("ISO | YYYY-MM-DD", "%Y-%m-%d"),
     ("ISO | YYYY-MM-DD_HH-MM", "%Y-%m-%d_%H-%M"),

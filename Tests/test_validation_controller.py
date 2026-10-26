@@ -17,8 +17,10 @@ from exe_builder.ui.styles import (
     env_sync_disabled_status_line_style,
     line_edit_style,
     qcolor_name,
+    sidebar_menu_button_style,
 )
 from exe_builder.controllers.validation_controller import ValidationController
+from exe_builder.build.datetime_build_options import ISO_MASS_DATETIME_BUILD_SENTINEL
 
 
 def test_combo_box_disabled_style_greys_drop_down_and_arrow():
@@ -127,8 +129,12 @@ class DummyInput:
 
 
 class DummyDropdown:
-    def __init__(self):
+    def __init__(self, data=None):
         self.enabled = None
+        self.data = data
+
+    def currentData(self):
+        return self.data
 
     def setEnabled(self, value):
         self.enabled = value
@@ -146,6 +152,12 @@ class DummyLabel:
 
     def setText(self, value):
         self.text = value
+
+    def selectAll(self):
+        pass
+
+    def moveCursor(self, operation):
+        pass
 
     def setAlignment(self, value):
         self.alignment = value
@@ -189,10 +201,10 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         python_interpreter_path=str(python),
         icon_path="",
         build_options_btn=DummyButton(),
-        dotnet_build_options_btn=DummyButton(),
         tooltips_checkbox=DummyCheckbox(),
         open_app_data_btn=DummyButton(),
         open_output_dir_after_build=DummyCheckbox(),
+        run_built_app_after_build=DummyCheckbox(),
         minimize_after_build=DummyCheckbox(),
         close_after_build=DummyCheckbox(),
         env_sync_scan_btn=DummyButton(),
@@ -244,9 +256,34 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
     )
 
 
+def test_run_built_app_is_disabled_for_any_batch_datetime_selection(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    controller = ValidationController(app)
+
+    app.date_time_dropdown.data = ISO_MASS_DATETIME_BUILD_SENTINEL
+    controller.update_ui_state()
+    assert app.run_built_app_after_build.enabled is False
+
+    app.date_time_dropdown.data = None
+    app.dotnet_date_time_dropdown = DummyDropdown(ISO_MASS_DATETIME_BUILD_SENTINEL)
+    controller.update_ui_state()
+    assert app.run_built_app_after_build.enabled is False
+
+    app.dotnet_date_time_dropdown.data = None
+    controller.update_ui_state()
+    assert app.run_built_app_after_build.enabled is True
+
+
 def test_python_open_output_button_matches_dotnet_availability_styling(monkeypatch, tmp_path):
     monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
-    app = make_app(tmp_path)
+    scheduled = []
+    monkeypatch.setattr(
+        validation_controller.QTimer,
+        "singleShot",
+        lambda delay_ms, callback: scheduled.append((delay_ms, callback)),
+    )
+    app = make_app(tmp_path, exe_name="main")
     app.build_controller = SimpleNamespace(has_python_output=lambda: True)
 
     controller = ValidationController(app)
@@ -254,12 +291,80 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
 
     assert app.python_open_output_btn.enabled is True
     assert qcolor_name(Colors.TITLE_BG) in app.python_open_output_btn.stylesheet
+    assert app.status_label.text == (
+        "A build already exists here. Build again to overwrite it, "
+        "or choose another output folder."
+    )
+    assert app.status_label.size == (420, 75)
+    assert len(scheduled) == 1
+    assert scheduled[0][0] == 5000
+
+    scheduled[0][1]()
+    assert app.status_label.text == "Ready to build."
 
     app.building = True
     controller.update_ui_state()
 
     assert app.python_open_output_btn.enabled is False
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in app.python_open_output_btn.stylesheet
+
+
+def test_existing_output_warning_callback_cannot_replace_a_newer_status(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    scheduled = []
+    monkeypatch.setattr(
+        validation_controller.QTimer,
+        "singleShot",
+        lambda delay_ms, callback: scheduled.append((delay_ms, callback)),
+    )
+    app = make_app(tmp_path, exe_name="main")
+    app.build_controller = SimpleNamespace(has_python_output=lambda: True)
+    controller = ValidationController(app)
+
+    controller.update_ui_state()
+    callback = scheduled[0][1]
+
+    app.building = True
+    controller.update_ui_state()
+    callback()
+
+    assert app.status_label.text == "Building..."
+
+
+def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    controller = ValidationController(app)
+
+    controller.update_ui_state()
+    assert app.status_label.text == "Ready to build."
+    assert app.status_label.alignment == validation_controller.Qt.AlignCenter
+
+    app.minimize_after_build.setChecked(True)
+    app.open_output_dir_after_build.setChecked(True)
+    controller.update_ui_state()
+    assert app.status_label.text == (
+        "Ready to build.\nThe output folder will open after building."
+        "\nThe app will then minimize."
+    )
+
+    app.minimize_after_build.setChecked(False)
+    app.close_after_build.setChecked(True)
+    controller.update_ui_state()
+    assert app.status_label.text == (
+        "Ready to build.\nThe output folder will open after building."
+        "\nThis app will then close."
+    )
+    assert app.status_label.alignment == validation_controller.Qt.AlignCenter
+
+    app.open_output_dir_after_build.setChecked(False)
+    controller.update_ui_state()
+    assert app.status_label.text == "Ready to build.\nThe app will close after building."
+
+    app.close_after_build.setChecked(False)
+    controller.update_ui_state()
+    assert app.status_label.text == "Ready to build."
+    assert app.status_label.alignment == validation_controller.Qt.AlignCenter
 
 
 def test_exe_refresh_enabled_when_name_empty(monkeypatch, tmp_path):
@@ -467,23 +572,8 @@ def test_build_options_button_is_disabled_while_building(monkeypatch, tmp_path):
     ValidationController(app).update_ui_state()
 
     assert app.build_options_btn.enabled is False
-    assert app.build_options_btn.stylesheet == build_disabled_button()
-    assert app.dotnet_build_options_btn.enabled is False
-    assert app.dotnet_build_options_btn.stylesheet == build_disabled_button()
+    assert app.build_options_btn.stylesheet == sidebar_menu_button_style(disabled=True)
 
-
-def test_dotnet_build_options_button_restores_after_publish_lock(monkeypatch, tmp_path):
-    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
-    app = make_app(tmp_path, exe_name="main")
-    controller = ValidationController(app)
-
-    app.building = True
-    controller.update_ui_state()
-    app.building = False
-    controller.update_ui_state()
-
-    assert app.dotnet_build_options_btn.enabled is True
-    assert app.dotnet_build_options_btn.stylesheet != build_disabled_button()
 
 
 def test_open_output_directory_disabled_for_desktop_output(monkeypatch, tmp_path):

@@ -1,12 +1,14 @@
 import os
 
 
-def build_path_hover_text(raw_text, help_text="", include_help=False):
-    raw_text = raw_text.strip()
+def build_path_hover_text(
+    raw_text, help_text="", include_help=False, normalize_path=True
+):
+    raw_text = raw_text.replace("\u200b", "").strip()
     if not raw_text:
         return None
 
-    full_path = os.path.normpath(raw_text)
+    full_path = os.path.normpath(raw_text) if normalize_path else raw_text
     if include_help and help_text:
         return f"{full_path}\n\n{help_text.strip()}"
 

@@ -1,4 +1,5 @@
 import sys
+import json
 import os
 import ctypes
 import threading
@@ -9,21 +10,29 @@ if __package__ in (None, ""):
 
 from ctypes import wintypes
 from exe_builder.controllers.build_controller import BuildController
-from exe_builder.controllers.dotnet_publish_controller import DotnetPublishController
+from exe_builder.controllers.dotnet_publish_controller import (
+    DotnetPublishController,
+    is_sdk_style_project,
+    validate_executable_name,
+)
 from exe_builder.build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_LABEL,
+    ISO_MASS_DATETIME_BUILD_SENTINEL,
     MASS_DATETIME_BUILD_LABEL,
     MASS_DATETIME_BUILD_SENTINEL,
     NO_DATETIME_LABEL,
     REGIONAL_DATETIME_DROPDOWN_GROUPS,
     UK_MASS_DATETIME_BUILD_LABEL,
+    UK_MASS_DATETIME_BUILD_SENTINEL,
     USA_MASS_DATETIME_BUILD_LABEL,
+    USA_MASS_DATETIME_BUILD_SENTINEL,
 )
 from exe_builder.controllers.environment_sync_controller import EnvironmentSyncController
 from exe_builder.ui.path_hover import attach_path_hovers
+from exe_builder.ui.clickable_path_label import ClickablePathLabel
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog
+from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout,QGridLayout,QComboBox,QTextEdit,QListView,QListWidget,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog,QMenu,QToolButton
 from exe_builder.controllers.validation_controller import ValidationController
 from exe_builder.controllers.activation_controller import ActivationController
 from PySide6.QtGui import QFont, QIcon, QPalette
@@ -73,18 +82,91 @@ from exe_builder.ui.styles import (
     button_base,
     qcolor_name,
     required_selection_checkbox,
-    title_frame_minimum_width,
+    sidebar_menu_button_style,
+    status_text_style,
     Colors,
     utility_icon_button_style,
 )
 
-APP_FIXED_SIZE = (1200, 915)
+APP_FIXED_WIDTH = 850
+PYTHON_APP_FIXED_WIDTH = APP_FIXED_WIDTH + 10
+PYTHON_APP_FIXED_SIZE = (PYTHON_APP_FIXED_WIDTH, 840)
+DOTNET_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 866)
+NAVIGATION_SIDEBAR_WIDTH = 205
+CONTENT_PANE_WIDTH = APP_FIXED_WIDTH - NAVIGATION_SIDEBAR_WIDTH
+PYTHON_CONTENT_PANE_WIDTH = PYTHON_APP_FIXED_WIDTH - NAVIGATION_SIDEBAR_WIDTH
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
+PYTHON_SUMMARY_FRAME_WIDTH = PAIRED_FRAME_WIDTH + 10
+SUMMARY_LABEL_WIDTH = 85
+PYTHON_SUMMARY_LABEL_WIDTH = 96
+SUMMARY_TITLE_FONT_SIZE = 15
+SUMMARY_CONTENT_FONT_SIZE = 11
+SAVED_SETUP_CONTROL_HEIGHT = 28
+SAVED_SETUP_SAVE_BUTTON_WIDTH = 135
+SAVED_SETUP_DELETE_BUTTON_WIDTH = 110
+SAVED_SETUP_CONTROL_SPACING = 8
+SAVED_SETUP_DROPDOWN_WIDTH = (
+    PAIRED_FRAME_WIDTH
+    - SAVED_SETUP_SAVE_BUTTON_WIDTH
+    - SAVED_SETUP_DELETE_BUTTON_WIDTH
+    - (SAVED_SETUP_CONTROL_SPACING * 2)
+)
+PYTHON_SAVED_SETUP_DROPDOWN_WIDTH = (
+    PYTHON_SUMMARY_FRAME_WIDTH
+    - SAVED_SETUP_SAVE_BUTTON_WIDTH
+    - SAVED_SETUP_DELETE_BUTTON_WIDTH
+    - (SAVED_SETUP_CONTROL_SPACING * 2)
+)
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
-BUILD_FRAME_HEIGHT = 170
+ENV_SYNC_CONTENT_FONT_SIZE = 11
+ENV_SYNC_TABLE_ROW_VERTICAL_PADDING = 6
+BUILD_ACTION_FRAME_WIDTH = 450
+PROGRESSION_BUTTON_SIZE = (280, 42)
+SELECTOR_ROW_MARGINS = (1, 1, 1, 1)
+SELECTOR_ROW_SPACING = 4
+PATH_ENTRY_ROW_SPACING = 3
+SELECTOR_SECTION_ROW_SPACING = 3
+SECTION_NAV_STYLE = (
+    "QListWidget { background: #19232d; border: 0; padding: 4px 0; "
+    "color: #ecf3fa; font: bold 12pt 'Rubik UI'; } "
+    "QListWidget::item { height: 38px; padding-left: 14px; border-left: 4px solid transparent; } "
+    "QListWidget::item:selected { background: #263a4d; color: white; border-left-color: #4a6fa8; } "
+    "QListWidget::item:hover:!selected { background: #24313e; } "
+    "QListWidget::item:disabled { color: #71808c; background: transparent; } "
+    "QListWidget::item:selected:disabled { color: #71808c; background: transparent; }"
+)
+SAVED_SETUP_COMBO_BOX_STYLE = COMBO_BOX_STYLE + """
+    QComboBox { font: bold 12pt 'Rubik UI'; }
+    QComboBox QAbstractItemView { font: bold 12pt 'Rubik UI'; }
+"""
+SAVED_SETUP_SAVE_BUTTON_STYLE = button_base() + f"""
+    QPushButton:disabled, QPushButton:disabled:hover {{
+        background-color: {qcolor_name(Colors.DISABLED_BG)};
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+"""
+SAVED_SETUP_DELETE_MENU_STYLE = f"""
+    QToolButton {{
+        background-color: {qcolor_name(Colors.TITLE_BG)};
+        color: {qcolor_name(Colors.TEXT_LIGHT)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 4px;
+        /* Keep the label visually centred in the main button area, clear of its menu arrow. */
+        padding: 2px 20px 2px 10px;
+    }}
+    QToolButton:hover {{ background-color: {qcolor_name(Colors.SURFACE_SELECTED_HOVER)}; }}
+    QToolButton::menu-button {{
+        width: 18px;
+        border-left: 1px solid {qcolor_name(Colors.BLACK)};
+    }}
+    QToolButton:disabled {{
+        background-color: {qcolor_name(Colors.DISABLED_BG)};
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+"""
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
     None,
@@ -164,13 +246,14 @@ class EXEBuilderApp(QWidget):
         self.last_build_seconds = 45
         self.last_build_counter = 0
         
-        self.setFixedSize(*APP_FIXED_SIZE)
+        self.setFixedSize(*PYTHON_APP_FIXED_SIZE)
         self.setWindowTitle(" ")
         self.setContentsMargins(0,0,0,0)
         
         self.close_after_build_enabled = getattr(self, "close_after_build_enabled", True)
         self.minimize_after_build_enabled = getattr(self, "minimize_after_build_enabled", True)
         self.open_output_dir_after_build_enabled = getattr(self, "open_output_dir_after_build_enabled", False)
+        self.run_built_app_after_build_enabled = getattr(self, "run_built_app_after_build_enabled", False)
         self.suppress_exit_dialogue_enabled = getattr(self, "suppress_exit_dialogue_enabled", False)
         self.tooltips_enabled = getattr(self, "tooltips_enabled", True)
         self.script_path = getattr(self, "script_path", "")
@@ -179,6 +262,12 @@ class EXEBuilderApp(QWidget):
         self.python_path = getattr(self, "python_path", "")
         self.exe_name = getattr(self, "exe_name", "")
         self.build_mode = "python"
+        self.guided_flow_enabled = True
+        self._completed_python_steps = set()
+        self._completed_dotnet_steps = set()
+        self.saved_build_setups = []
+        self.saved_dotnet_build_setups = []
+        self._saved_setup_backup_status_tokens = {"python": 0, "dotnet": 0}
                     
         # =============================================================
         # Title + Build Options
@@ -201,33 +290,26 @@ class EXEBuilderApp(QWidget):
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet(APP_TITLE_LABEL_STYLE)
 
-        title_spacer = QWidget()
-        title_spacer.setFixedSize(34, 34)
-
-        self.build_options_btn = QPushButton("⚙")
+        self.build_options_btn = QPushButton("☰")
         self.build_options_btn.setObjectName("buildOptionsButton")
-        self.build_options_btn.setAccessibleName("Build options")
+        self.build_options_btn.setAccessibleName("Options menu")
         self.build_options_btn.setAccessibleDescription(
             "Open build options and application preferences."
         )
         self.build_options_btn.setFixedSize(34, 34)
-        self.build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
-        self.build_options_btn.setStyleSheet(utility_icon_button_style())
+        self.build_options_btn.setFont(QFont("Segoe UI Symbol", 16, QFont.Bold))
+        self.build_options_btn.setStyleSheet(sidebar_menu_button_style())
 
-        title_frame_width = title_frame_minimum_width(
+        title_frame_width = (
             QFontMetrics(self.title_label.font()).horizontalAdvance(
                 self.title_label.text()
-            ),
-            self.build_options_btn.width(),
-            10,
+            ) + 25
         )
         self.title_frame.setFixedWidth(title_frame_width)
 
-        title_layout.addWidget(title_spacer)
         title_layout.addStretch()
         title_layout.addWidget(self.title_label)
         title_layout.addStretch()
-        title_layout.addWidget(self.build_options_btn)
 
         # -------------------------------
         # BUILD OPTIONS DIALOG
@@ -237,45 +319,37 @@ class EXEBuilderApp(QWidget):
         self.minimize_after_build = QCheckBox("Minimize After Build")
         self.suppress_exit_dialogue = QCheckBox("Surpress Exit Dialogue")
         self.open_output_dir_after_build = QCheckBox("Open Output Directory")
+        self.run_built_app_after_build = QCheckBox("Run Built App")
         self.close_after_build = QCheckBox("Close After Build")
         self.open_app_data_btn = QPushButton("Open App Data")
 
-        toggle_columns = QHBoxLayout()
-        toggle_columns.setContentsMargins(0, 0, 0, 0)
-        toggle_columns.setSpacing(0)
+        toggle_grid = QGridLayout()
+        toggle_grid.setContentsMargins(0, 0, 0, 0)
+        toggle_grid.setHorizontalSpacing(20)
+        toggle_grid.setVerticalSpacing(8)
+        toggle_grid.setColumnStretch(0, 1)
+        toggle_grid.setColumnStretch(1, 1)
 
-        left_toggle_column = QVBoxLayout()
-        left_toggle_column.setContentsMargins(0, 0, 0, 0)
-        left_toggle_column.setSpacing(0)
-
-        right_toggle_column = QVBoxLayout()
-        right_toggle_column.setContentsMargins(0, 0, 0, 0)
-        right_toggle_column.setSpacing(0)
-
-        left_toggle_column.addWidget(self.tooltips_checkbox, alignment=Qt.AlignLeft | Qt.AlignTop)
-        left_toggle_column.addWidget(self.minimize_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
-        left_toggle_column.addWidget(self.suppress_exit_dialogue, alignment=Qt.AlignLeft | Qt.AlignTop)
-        left_toggle_column.addStretch()
-
-        right_toggle_column.addWidget(self.open_output_dir_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
-        right_toggle_column.addWidget(self.close_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
-        right_toggle_column.addWidget(self.open_app_data_btn, alignment=Qt.AlignLeft | Qt.AlignTop)
-        right_toggle_column.addStretch()
-
-        toggle_columns.addLayout(left_toggle_column, 1)
-        toggle_columns.addLayout(right_toggle_column, 1)
+        for row, left, right in (
+            (0, self.tooltips_checkbox, self.open_output_dir_after_build),
+            (1, self.minimize_after_build, self.run_built_app_after_build),
+            (2, self.suppress_exit_dialogue, self.close_after_build),
+        ):
+            toggle_grid.addWidget(left, row, 0, alignment=Qt.AlignLeft | Qt.AlignTop)
+            toggle_grid.addWidget(right, row, 1, alignment=Qt.AlignLeft | Qt.AlignTop)
+        toggle_grid.addWidget(self.open_app_data_btn, 3, 0, alignment=Qt.AlignLeft | Qt.AlignTop)
 
         self.build_options_dialog = QDialog(self)
         self.build_options_dialog.setWindowTitle("Global Build Options")
         self.build_options_dialog.setModal(True)
-        self.build_options_dialog.setFixedSize(500, 150)
+        self.build_options_dialog.setFixedSize(500, 220)
         self.build_options_dialog.setStyleSheet(BUILD_OPTIONS_DIALOG_STYLE)
         apply_build_options_title_bar_style(self.build_options_dialog)
 
         build_options_layout = QVBoxLayout(self.build_options_dialog)
-        build_options_layout.setContentsMargins(12, 12, 12, 10)
-        build_options_layout.setSpacing(6)
-        build_options_layout.addLayout(toggle_columns)
+        build_options_layout.setContentsMargins(20, 20, 20, 20)
+        build_options_layout.setSpacing(8)
+        build_options_layout.addLayout(toggle_grid)
 
         build_options_buttons = QDialogButtonBox(QDialogButtonBox.Close)
         build_options_buttons.rejected.connect(self.build_options_dialog.reject)
@@ -284,6 +358,7 @@ class EXEBuilderApp(QWidget):
             QDialogButtonBox.Close
         )
         self.build_options_close_btn.setFixedSize(120, 32)
+        self.build_options_close_btn.setFont(QFont("Rubik UI", 13, QFont.Bold))
         build_options_layout.addWidget(build_options_buttons)
 
         # -------------------------------
@@ -297,11 +372,27 @@ class EXEBuilderApp(QWidget):
 
         title_row = QWidget()
         title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        title_row.setFixedHeight(44)
+        title_row.setFixedSize(PYTHON_APP_FIXED_WIDTH, 44)
         title_row_layout = QHBoxLayout(title_row)
         title_row_layout.setContentsMargins(0, 0, 0, 0)
-        title_row_layout.setSpacing(20)
-        title_row_layout.addWidget(self.title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        title_row_layout.setSpacing(0)
+        self.python_title_navigation_header = QWidget()
+        self.python_title_navigation_header.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
+        title_navigation_layout = QHBoxLayout(self.python_title_navigation_header)
+        title_navigation_layout.setContentsMargins(5, 0, 0, 0)
+        title_navigation_layout.setSpacing(0)
+        self.title_options_slot = QWidget()
+        self.title_options_slot.setFixedSize(34, 34)
+        self.title_options_layout = QHBoxLayout(self.title_options_slot)
+        self.title_options_layout.setContentsMargins(0, 0, 0, 0)
+        title_navigation_layout.addWidget(
+            self.title_options_slot, alignment=Qt.AlignLeft | Qt.AlignVCenter
+        )
+        self.python_title_content_header = QWidget()
+        self.python_title_content_header.setFixedWidth(PYTHON_CONTENT_PANE_WIDTH)
+        self.title_frame.setParent(self.python_title_content_header)
+        title_row_layout.addWidget(self.python_title_navigation_header)
+        title_row_layout.addWidget(self.python_title_content_header)
 
         self.content_row = QWidget()
         self.content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -378,7 +469,10 @@ class EXEBuilderApp(QWidget):
         self.env_sync_log_input.setFixedWidth(ENV_SYNC_CONTENT_WIDTH)
         self.env_sync_log_input.setPlaceholderText("Environment sync ready.")
         self.env_sync_log_input.setText("Environment sync ready.")
-        self.env_sync_log_input.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.env_sync_content_font = QFont(
+            "Rubik UI", ENV_SYNC_CONTENT_FONT_SIZE, QFont.Bold
+        )
+        self.env_sync_log_input.setFont(self.env_sync_content_font)
         self.env_sync_log_input.setStyleSheet(ENV_SYNC_STATUS_LINE_STYLE)
 
         self.env_sync_action_row = QWidget()
@@ -392,6 +486,7 @@ class EXEBuilderApp(QWidget):
         self.env_sync_scan_btn.setFixedSize(145,35)
         self.env_sync_match_btn.setFixedSize(175,35)
         self.env_sync_help_btn.setFixedSize(35,35)
+        self.env_sync_help_btn.setFont(QFont("Rubik UI", 14, QFont.Bold))
         self.env_sync_match_btn.setEnabled(False)
         self.env_sync_scan_btn.setStyleSheet(ENV_SYNC_BUTTON_STYLE)
         self.env_sync_match_btn.setStyleSheet(ENV_SYNC_BUTTON_STYLE)
@@ -406,7 +501,7 @@ class EXEBuilderApp(QWidget):
             "Warning: sync may fail if packages are incompatible."
         )
         self.env_sync_warning_label.setFixedWidth(485)
-        self.env_sync_warning_label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+        self.env_sync_warning_label.setFont(self.env_sync_content_font)
         self.env_sync_warning_label.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.WARNING)}; }}"
         )
@@ -423,15 +518,17 @@ class EXEBuilderApp(QWidget):
 
         self.env_sync_status_labels = []
         self.env_sync_row_labels = []
+        env_sync_font_metrics = QFontMetrics(self.env_sync_content_font)
+        self._env_sync_status_column_widths = [
+            ("Python Version", max(125, env_sync_font_metrics.horizontalAdvance("Python Version") + 12)),
+            ("Packages", max(80, env_sync_font_metrics.horizontalAdvance("Packages") + 12)),
+            ("State", max(275, env_sync_font_metrics.horizontalAdvance("State") + 12)),
+        ]
 
-        for text, width in [
-            ("Python Version", 125),
-            ("Packages", 80),
-            ("State", 275),
-        ]:
+        for text, width in self._env_sync_status_column_widths:
             label = QLabel(text)
             label.setFixedWidth(width)
-            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            label.setFont(self.env_sync_content_font)
             self.env_sync_status_labels.append(label)
             env_sync_status_header_layout.addWidget(label)
 
@@ -448,10 +545,13 @@ class EXEBuilderApp(QWidget):
         self.env_sync_rows_layout.setSpacing(2)
 
         env_sync_visible_rows = 5
-        env_sync_row_height = 22
+        self._env_sync_row_height = max(
+            22,
+            env_sync_font_metrics.height() + ENV_SYNC_TABLE_ROW_VERTICAL_PADDING,
+        )
         env_sync_row_spacing = self.env_sync_rows_layout.spacing()
         env_sync_scroll_height = (
-            env_sync_visible_rows * env_sync_row_height
+            env_sync_visible_rows * self._env_sync_row_height
             + (env_sync_visible_rows - 1) * env_sync_row_spacing
             + (2 * ENV_SYNC_TABLE_PADDING)
         )
@@ -517,8 +617,8 @@ class EXEBuilderApp(QWidget):
         apps_row.setFixedHeight(37)
         apps_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         apps_layout = QHBoxLayout(apps_row)
-        apps_layout.setContentsMargins(1,1,1,1)
-        apps_layout.setSpacing(4)
+        apps_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        apps_layout.setSpacing(SELECTOR_ROW_SPACING)
 
         self.open_python_site_btn = QPushButton("Python.org")
         apps_layout.addWidget(self.open_python_site_btn)
@@ -531,15 +631,15 @@ class EXEBuilderApp(QWidget):
         interpreter_container = QWidget()
         interpreter_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         interpreter_layout = QVBoxLayout(interpreter_container)
-        interpreter_layout.setContentsMargins(0,0,0,0)
-        interpreter_layout.setSpacing(3)
+        interpreter_layout.setContentsMargins(0, 0, 0, 0)
+        interpreter_layout.setSpacing(SELECTOR_SECTION_ROW_SPACING)
 
         interpreter_btn_row = QWidget()
         interpreter_btn_row.setFixedHeight(37)
         interpreter_btn_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         interpreter_btn_layout = QHBoxLayout(interpreter_btn_row)
-        interpreter_btn_layout.setContentsMargins(1,1,1,1)
-        interpreter_btn_layout.setSpacing(4)
+        interpreter_btn_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        interpreter_btn_layout.setSpacing(SELECTOR_ROW_SPACING)
         self.interpreter_btn = QPushButton("Py Interpreter")
     
         self.select_interpreter = QComboBox()
@@ -580,11 +680,11 @@ class EXEBuilderApp(QWidget):
 
         # --- Path row (input + refresh inline) ---
         interpreter_entry_row = QWidget()
-        interpreter_entry_row.setFixedHeight(37)
+        interpreter_entry_row.setFixedHeight(52)
         interpreter_entry_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         interpreter_entry_layout = QHBoxLayout(interpreter_entry_row)
-        interpreter_entry_layout.setContentsMargins(1,1,1,1)
-        interpreter_entry_layout.setSpacing(3)
+        interpreter_entry_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        interpreter_entry_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.python_entry_input = PathDisplayLineEdit()
         self.python_entry_input.setPlaceholderText("No python entry is selected.")
@@ -630,20 +730,20 @@ class EXEBuilderApp(QWidget):
         self.icon_frame.setFrameShadow(QFrame.Raised)
 
         icon_frame_layout = QVBoxLayout(self.icon_frame)
-        icon_frame_layout.setContentsMargins(1,1,1,1)
-        icon_frame_layout.setSpacing(1)
+        icon_frame_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_frame_layout.setSpacing(SELECTOR_SECTION_ROW_SPACING)
 
         icon_block = QWidget()
         icon_block_layout = QVBoxLayout(icon_block)
-        icon_block_layout.setContentsMargins(1,1,1,1)
-        icon_block_layout.setSpacing(1)
+        icon_block_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_block_layout.setSpacing(SELECTOR_SECTION_ROW_SPACING)
 
         # -------- Row 1: Select Icon + Recent Dropdown + Delete --------
 
         icon_row1 = QWidget()
         icon_row1_layout = QHBoxLayout(icon_row1)
-        icon_row1_layout.setContentsMargins(1,1,1,1)
-        icon_row1_layout.setSpacing(1)
+        icon_row1_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_row1_layout.setSpacing(SELECTOR_ROW_SPACING)
 
         self.icon_btn = QPushButton("Select ICO optional")
 
@@ -672,8 +772,8 @@ class EXEBuilderApp(QWidget):
 
         icon_row2 = QWidget()
         icon_row2_layout = QHBoxLayout(icon_row2)
-        icon_row2_layout.setContentsMargins(1,1,1,1)
-        icon_row2_layout.setSpacing(5)
+        icon_row2_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_row2_layout.setSpacing(SELECTOR_ROW_SPACING)
 
         self.ico_convert_btn = QPushButton("Open ICO Convert")
         icon_row1_layout.addWidget(self.ico_convert_btn)
@@ -691,8 +791,8 @@ class EXEBuilderApp(QWidget):
 
         icon_entry_row = QWidget()
         icon_entry_layout = QHBoxLayout(icon_entry_row)
-        icon_entry_layout.setContentsMargins(1,1,1,1)
-        icon_entry_layout.setSpacing(5)
+        icon_entry_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_entry_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.icon_path_input = PathDisplayLineEdit()
         self.icon_path_input.setPlaceholderText("icon_path_input")
@@ -762,8 +862,8 @@ class EXEBuilderApp(QWidget):
         self.delete_all_folders.setIconSize(QSize(*DELETE_ALL_BUTTON_ICON_SIZE))
    
         folder_row = QHBoxLayout()
-        folder_row.setContentsMargins(0, 0, 0, 0)
-        folder_row.setSpacing(5)
+        folder_row.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        folder_row.setSpacing(SELECTOR_ROW_SPACING)
 
         python_layout.addLayout(folder_row)
 
@@ -784,7 +884,8 @@ class EXEBuilderApp(QWidget):
         self.script_clear_btn = QPushButton("")
         script_layout.addWidget(self.script_clear_btn)
 
-        script_layout.setContentsMargins(1,1,1,1)
+        script_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        script_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
         python_layout.addWidget(script_row)
         self.main_layout.addWidget(self.python_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
         self.main_layout.addWidget(python_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
@@ -845,15 +946,15 @@ class EXEBuilderApp(QWidget):
         self._populate_datetime_dropdown(self.date_time_dropdown)
 
         row1 = QHBoxLayout()
-        row1.setContentsMargins(1,1,1,1)
-        row1.setSpacing(4)
+        row1.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        row1.setSpacing(SELECTOR_ROW_SPACING)
 
         row1.addWidget(self.appened_py_version)
         row1.addStretch()
 
         row2 = QHBoxLayout()
-        row2.setContentsMargins(1,1,1,1)
-        row2.setSpacing(4)
+        row2.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        row2.setSpacing(SELECTOR_ROW_SPACING)
         row2.addWidget(self.output_btn)
         row2.addWidget(self.date_time_dropdown)
         row2.addStretch()
@@ -867,8 +968,8 @@ class EXEBuilderApp(QWidget):
 
         output_entry_row = QWidget()
         output_entry_layout = QHBoxLayout(output_entry_row)
-        output_entry_layout.setContentsMargins(1,1,1,1)
-        output_entry_layout.setSpacing(3)
+        output_entry_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        output_entry_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.output_path_input = PathDisplayLineEdit()
         self.output_path_input.setPlaceholderText("No output path selected.")
@@ -884,8 +985,8 @@ class EXEBuilderApp(QWidget):
 
         exe_row = QWidget()
         exe_layout = QHBoxLayout(exe_row)
-        exe_layout.setContentsMargins(1,1,1,1)
-        exe_layout.setSpacing(3)
+        exe_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        exe_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.exe_name_input = QLineEdit()
         self.exe_name_input.setPlaceholderText("Exe has not been named.")
@@ -922,19 +1023,22 @@ class EXEBuilderApp(QWidget):
         build_frame.setFrameShape(QFrame.StyledPanel)
         build_frame.setFrameShadow(QFrame.Raised)
         build_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        build_frame.setObjectName("configurationFrame")
+        build_frame.setStyleSheet(MAIN_FRAME_STYLE)
 
-        build_action_gap = 4
         build_action_edge_padding = 12
         build_layout = QVBoxLayout(build_frame)
         build_layout.setContentsMargins(
-            build_action_edge_padding, 5,
+            build_action_edge_padding, build_action_edge_padding,
             build_action_edge_padding, build_action_edge_padding,
         )
-        build_layout.setSpacing(build_action_gap)
+        build_layout.setSpacing(7)
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
-        self.status_label.setFixedSize(200,100)
+        self.status_label.setFixedSize(420, 75)
+        self.status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.status_label.setAlignment(Qt.AlignCenter)
 
@@ -951,38 +1055,35 @@ class EXEBuilderApp(QWidget):
         
 
         self.build_btn = QPushButton("Build EXE")
-        self.build_btn.setFont(QFont("Rubik UI", 13, QFont.Bold))
+        self.build_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.build_btn.setFixedSize(180, 35)
         self.build_btn.clicked.connect(self.build_controller.build_exe)
 
         self.python_open_output_btn = QPushButton("Open Output Folder")
-        self.python_open_output_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.python_open_output_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.python_open_output_btn.setFixedSize(180, 35)
         self.python_open_output_btn.clicked.connect(
             self.build_controller.open_python_output_folder
         )
 
         build_layout.addWidget(self.status_label, alignment=Qt.AlignHCenter)
-        build_layout.addStretch()
         build_actions = QHBoxLayout()
-        build_actions.setContentsMargins(0, 0, 0, 0)
-        build_actions.setSpacing(build_action_gap)
+        build_actions.addStretch()
         build_actions.addWidget(self.build_btn)
         build_actions.addWidget(self.python_open_output_btn)
+        build_actions.addStretch()
         build_layout.addLayout(build_actions)
 
         output_frame_width = max(
             PAIRED_FRAME_WIDTH,
             self.output_btn.sizeHint().width() + self.date_time_dropdown.width() + 40,
         )
-        self.output_frame.setFixedSize(output_frame_width, 170)
-        self.interpreter_frame.setFixedSize(output_frame_width, self.output_frame.height())
-        build_frame_width = (
-            build_actions.minimumSize().width()
-            + (2 * build_action_edge_padding)
-            + (2 * build_frame.frameWidth())
+        self.output_frame.setFixedWidth(output_frame_width)
+        self.interpreter_frame.setFixedSize(
+            output_frame_width, self.interpreter_frame.sizeHint().height()
         )
-        build_frame.setFixedSize(build_frame_width, BUILD_FRAME_HEIGHT)
+        build_frame.setFixedWidth(BUILD_ACTION_FRAME_WIDTH)
+        build_frame.setFixedHeight(build_frame.sizeHint().height())
         self.env_sync_frame.setFixedWidth(output_frame_width)
 
         for frame in [
@@ -1095,15 +1196,15 @@ class EXEBuilderApp(QWidget):
                 widget.setPlaceholderText(text)
                 widget.setFont(font)
 
-        section_output_line_height = 30
+        section_output_line_height = self.python_entry_input.two_line_height()
         for widget in [
             self.python_entry_input,
             self.icon_path_input,
             self.script_path_input,
             self.output_path_input,
-            self.exe_name_input,
         ]:
             widget.setFixedHeight(section_output_line_height)
+        self.exe_name_input.setFixedHeight(30)
 
         for cb in [
             self.tooltips_checkbox,
@@ -1122,6 +1223,9 @@ class EXEBuilderApp(QWidget):
         self.open_output_dir_after_build.setFont(QFont("Rubik UI", 13, QFont.Bold))
 
         self.open_output_dir_after_build.setChecked(False)
+        self.run_built_app_after_build.setFixedSize(240, 28)
+        self.run_built_app_after_build.setFont(QFont("Rubik UI", 13, QFont.Bold))
+        self.run_built_app_after_build.setChecked(False)
         self.open_app_data_btn.setFixedSize(225, 28)
         self.open_app_data_btn.setFont(QFont("Rubik UI", 13, QFont.Bold))
 
@@ -1204,6 +1308,9 @@ class EXEBuilderApp(QWidget):
 
         for btn in buttons:
             btn.setStyleSheet(button_base())
+
+        output_layout.activate()
+        self.output_frame.setFixedHeight(self.output_frame.sizeHint().height())
                     
         for widget in [
             self.recent_folder_dropdown,
@@ -1218,11 +1325,14 @@ class EXEBuilderApp(QWidget):
         
         build_title_row_layout.addWidget(build_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
         build_frame_row_layout.addWidget(build_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
+        self._install_python_sidebar(python_frame, build_title_frame, build_frame)
 
         attach_tooltips(self)
         attach_path_hovers(self)
         self._loading_state = False
         self.state_ctrl.load_state()
+        self._connect_python_progression()
+        self._update_dotnet_selection_summaries()
         self.dotnet_publish_controller.populate_recents("project")
         self.dotnet_publish_controller.populate_recents("icon")
         self.recent_controller.populate_recent_dropdown()
@@ -1251,6 +1361,25 @@ class EXEBuilderApp(QWidget):
 
         self.date_time_dropdown.currentIndexChanged.connect(self.ui_handlers.on_datetime_format_changed)
         self.appened_py_version.toggled.connect(self.ui_handlers.on_append_py_version_toggle)
+        self.date_time_dropdown.currentIndexChanged.connect(self._update_build_summary)
+        self.appened_py_version.toggled.connect(self._update_build_summary)
+        # A saved setup contains all of these values.  Refresh independently of
+        # summary/navigation updates so Save setup is disabled exactly when the
+        # displayed values already match a saved setup.
+        for field in (
+            self.python_entry_input,
+            self.icon_path_input,
+            self.script_path_input,
+            self.output_path_input,
+            self.exe_name_input,
+        ):
+            field.textChanged.connect(self._update_saved_build_setup_controls)
+        self.date_time_dropdown.currentIndexChanged.connect(
+            self._update_saved_build_setup_controls
+        )
+        self.appened_py_version.toggled.connect(
+            self._update_saved_build_setup_controls
+        )
         self.recent_controller.populate_recent_interpreters_dropdown()
         self.interpreter_refresh_btn.clicked.connect(self.ui_handlers.clear_interpreter_path)
         self.icon_btn.clicked.connect(self.file_pickers.select_icon)
@@ -1268,6 +1397,7 @@ class EXEBuilderApp(QWidget):
         self.script_path_input.textChanged.connect(self.ui_handlers.on_script_path_change)
         self.minimize_after_build.stateChanged.connect(self.ui_handlers.on_minimize_toggle)
         self.open_output_dir_after_build.stateChanged.connect(self.ui_handlers.on_open_output_dir_toggle)
+        self.run_built_app_after_build.stateChanged.connect(self.ui_handlers.on_run_built_app_toggle)
         self.suppress_exit_dialogue.stateChanged.connect(self.ui_handlers.on_suppress_exit_dialogue_toggle)
         self.close_after_build.stateChanged.connect(self.ui_handlers.on_close_toggle)
 
@@ -1286,6 +1416,1557 @@ class EXEBuilderApp(QWidget):
             # A mode switch can recreate the native handle; reapply DWM colours.
             apply_build_options_title_bar_style(self.build_options_dialog)
             self.build_options_dialog.exec()
+
+    def _install_python_sidebar(self, python_frame, build_title_frame, build_frame):
+        """Place the existing controls on focused pages without recreating them."""
+        self.python_section_stack = QStackedWidget()
+        self.python_section_nav = QListWidget()
+        self.python_section_nav.setObjectName("sectionNavigation")
+        self.python_section_nav.setFixedWidth(185)
+        self.python_section_nav.setSpacing(2)
+        self.python_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.python_section_nav.setStyleSheet(SECTION_NAV_STYLE)
+        sections = (
+            ("Environment Sync", self.env_sync_title_frame, self.env_sync_frame),
+            ("Interpreter", self.apps_title_frame, self.interpreter_frame),
+            ("Icons", self.icons_title_frame, self.icon_frame),
+            ("File", self.python_title_frame, python_frame),
+            ("Output", self.output_title_frame, self.output_frame),
+            ("Build", build_title_frame, build_frame),
+        )
+        self._create_build_summary()
+        self.python_selection_summaries = {
+            "Icons": self._create_selection_summary(
+                ("interpreter",),
+                PYTHON_SUMMARY_FRAME_WIDTH,
+                PYTHON_SUMMARY_LABEL_WIDTH,
+            ),
+            "File": self._create_selection_summary(
+                ("interpreter", "icon"),
+                PYTHON_SUMMARY_FRAME_WIDTH,
+                PYTHON_SUMMARY_LABEL_WIDTH,
+            ),
+            "Output": self._create_selection_summary(
+                ("interpreter", "icon", "file"),
+                PYTHON_SUMMARY_FRAME_WIDTH,
+                PYTHON_SUMMARY_LABEL_WIDTH,
+            ),
+        }
+
+        def progression_button(text, callback):
+            button = QPushButton(text)
+            button.setFixedSize(*PROGRESSION_BUTTON_SIZE)
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
+            button.setStyleSheet(button_base())
+            button.clicked.connect(callback)
+            return button
+
+        for label, title, controls in sections:
+            page = QWidget()
+            layout = QVBoxLayout(page)
+            layout.setContentsMargins(28, 28, 28, 20)
+            layout.setSpacing(16 if label == "Build" else 12)
+            if label in self.python_selection_summaries:
+                summary_title, summary_frame, _labels, _values = self.python_selection_summaries[label]
+                layout.addWidget(summary_title, alignment=Qt.AlignHCenter)
+                layout.addWidget(summary_frame, alignment=Qt.AlignHCenter)
+            if label == "Build":
+                layout.addWidget(self.build_summary_title_frame, alignment=Qt.AlignHCenter)
+                layout.addWidget(self.build_summary_frame, alignment=Qt.AlignHCenter)
+            layout.addWidget(title, alignment=Qt.AlignHCenter)
+            layout.addWidget(controls, alignment=Qt.AlignHCenter)
+            if label == "Build":
+                saved_setups_section = QWidget()
+                saved_setups_section.setFixedWidth(PYTHON_SUMMARY_FRAME_WIDTH)
+                saved_setups_layout = QVBoxLayout(saved_setups_section)
+                saved_setups_layout.setContentsMargins(0, 0, 0, 0)
+                saved_setups_layout.setSpacing(16)
+                self.saved_setups_label = QLabel("Saved setups")
+                self.saved_setups_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
+                self.saved_setups_label.setAlignment(Qt.AlignCenter)
+                self.saved_setups_label.setStyleSheet(
+                    f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+                )
+                saved_setups_layout.addWidget(self.saved_setups_label)
+                saved_setups_controls = QHBoxLayout()
+                saved_setups_controls.setContentsMargins(0, 0, 0, 0)
+                saved_setups_controls.setSpacing(SAVED_SETUP_CONTROL_SPACING)
+                saved_setups_controls.addWidget(self.save_build_setup_btn)
+                saved_setups_controls.addWidget(self.saved_build_setup_dropdown, 1)
+                saved_setups_controls.addWidget(self.delete_build_setup_btn)
+                saved_setups_layout.addLayout(saved_setups_controls)
+                layout.addWidget(saved_setups_section, alignment=Qt.AlignHCenter)
+                self.python_saved_setups_backup_section = (
+                    self._create_saved_setups_backup_controls("python")
+                )
+                layout.addWidget(
+                    self.python_saved_setups_backup_section,
+                    alignment=Qt.AlignHCenter,
+                )
+            if label == "Environment Sync":
+                skip = progression_button(
+                    "Continue without syncing", self._continue_to_interpreter
+                )
+                layout.addWidget(skip, alignment=Qt.AlignHCenter)
+            elif label == "Interpreter":
+                self.interpreter_continue_btn = progression_button(
+                    "Continue to icons", self._continue_to_icons
+                )
+                layout.addWidget(self.interpreter_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "Icons":
+                self.icon_continue_btn = progression_button(
+                    "Use no icon and continue", self._continue_from_icons
+                )
+                layout.addWidget(self.icon_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "File":
+                self.file_continue_btn = progression_button(
+                    "Continue to output", self._continue_to_output
+                )
+                layout.addWidget(self.file_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "Output":
+                self.output_continue_btn = progression_button(
+                    "Continue to build", self._continue_to_build
+                )
+                layout.addWidget(self.output_continue_btn, alignment=Qt.AlignHCenter)
+            layout.addStretch()
+            self.python_section_stack.addWidget(page)
+            self.python_section_nav.addItem(label)
+
+        # The old grid is now empty. Replace it with a single navigation shell.
+        python_layout = self.python_mode_page.layout()
+        for widget in (self.content_row,):
+            python_layout.removeWidget(widget)
+            widget.hide()
+        for row_index in (1, 2):
+            old_row = python_layout.itemAt(row_index)
+            if old_row and old_row.widget():
+                old_row.widget().hide()
+        self.python_navigation_sidebar = QWidget()
+        self.python_navigation_sidebar.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
+        self.python_navigation_sidebar.setStyleSheet("background: #19232d;")
+        sidebar_layout = QVBoxLayout(self.python_navigation_sidebar)
+        sidebar_layout.setContentsMargins(10, 8, 10, 8)
+        sidebar_layout.setSpacing(4)
+        self.python_mode_selector = QWidget()
+        python_mode_selector_layout = QHBoxLayout(self.python_mode_selector)
+        python_mode_selector_layout.setContentsMargins(0, 0, 0, 0)
+        python_mode_selector_layout.setSpacing(2)
+        self.python_mode_btn.setText("Python")
+        self.dotnet_mode_btn.setText("C# .NET")
+        for button in (self.python_mode_btn, self.dotnet_mode_btn):
+            button.setFixedHeight(30)
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            python_mode_selector_layout.addWidget(button)
+        sidebar_layout.addWidget(self.python_mode_selector)
+        sidebar_layout.addWidget(self.python_section_nav, 1)
+
+        shell = QWidget()
+        shell_layout = QHBoxLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+        shell_layout.addWidget(self.python_navigation_sidebar)
+        shell_layout.addWidget(self.python_section_stack, 1)
+        python_layout.insertWidget(1, shell, 1)
+        self.python_section_nav.currentRowChanged.connect(self.python_section_stack.setCurrentIndex)
+        self.python_section_nav.setCurrentRow(0)
+        self._place_build_options_button("python")
+        self._update_python_navigation()
+
+    def _create_build_summary(self):
+        """Create the live build-input summary shown above the build controls."""
+        self.build_summary_title_frame = QFrame()
+        self.build_summary_title_frame.setFrameShape(QFrame.StyledPanel)
+        self.build_summary_title_frame.setFrameShadow(QFrame.Raised)
+        self.build_summary_title_frame.setStyleSheet(TITLE_FRAME_STYLE)
+        summary_title_layout = QHBoxLayout(self.build_summary_title_frame)
+        summary_title_layout.setContentsMargins(3, 3, 3, 3)
+        self.build_summary_title = QLabel("Build Summary")
+        self.build_summary_title.setFixedHeight(30)
+        self.build_summary_title.setFont(
+            QFont("Rubik UI", SUMMARY_TITLE_FONT_SIZE, QFont.Bold)
+        )
+        self.build_summary_title.setAlignment(Qt.AlignVCenter)
+        summary_title_layout.addStretch()
+        summary_title_layout.addWidget(self.build_summary_title)
+        summary_title_layout.addStretch()
+        self.build_summary_title_frame.setFixedSize(
+            QFontMetrics(self.build_summary_title.font()).horizontalAdvance(
+                self.build_summary_title.text()
+            ) + 25,
+            35,
+        )
+
+        self.build_summary_frame = QFrame()
+        self.build_summary_frame.setObjectName("configurationFrame")
+        self.build_summary_frame.setStyleSheet(MAIN_FRAME_STYLE)
+        self.build_summary_frame.setFixedWidth(PYTHON_SUMMARY_FRAME_WIDTH)
+        summary_layout = QVBoxLayout(self.build_summary_frame)
+        summary_layout.setContentsMargins(12, 10, 12, 10)
+        summary_layout.setSpacing(5)
+
+        self.saved_build_setup_dropdown = QComboBox()
+        self.saved_build_setup_dropdown.addItem("Saved build setups")
+        self.saved_build_setup_dropdown.setAccessibleName("Saved build setups")
+        self.saved_build_setup_dropdown.setFixedSize(
+            PYTHON_SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
+        self.saved_build_setup_dropdown.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.saved_build_setup_dropdown.setStyleSheet(SAVED_SETUP_COMBO_BOX_STYLE)
+        self.saved_build_setup_dropdown.view().setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.saved_build_setup_dropdown.currentIndexChanged.connect(
+            self._load_selected_build_setup
+        )
+        self.save_build_setup_btn = QPushButton("Save setup")
+        self.save_build_setup_btn.setAccessibleName("Save current build setup")
+        self.save_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.save_build_setup_btn.setFixedSize(
+            SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
+        self.save_build_setup_btn.setStyleSheet(SAVED_SETUP_SAVE_BUTTON_STYLE)
+        self.save_build_setup_btn.clicked.connect(self._save_current_build_setup)
+        self.delete_build_setup_btn = QToolButton()
+        self.delete_build_setup_btn.setText("Delete")
+        self.delete_build_setup_btn.setAccessibleName("Delete saved build setup")
+        self.delete_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.delete_build_setup_btn.setFixedSize(
+            SAVED_SETUP_DELETE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
+        self.delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
+        self.delete_build_setup_menu = QMenu(self.delete_build_setup_btn)
+        self.delete_build_setup_menu.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.delete_selected_build_setup_action = self.delete_build_setup_menu.addAction(
+            "Delete selected"
+        )
+        self.delete_all_build_setups_action = self.delete_build_setup_menu.addAction(
+            "Delete all"
+        )
+        self.delete_selected_build_setup_action.triggered.connect(
+            self._delete_selected_build_setup
+        )
+        self.delete_all_build_setups_action.triggered.connect(
+            self._delete_all_saved_build_setups
+        )
+        self.delete_build_setup_btn.setMenu(self.delete_build_setup_menu)
+        self.delete_build_setup_btn.setPopupMode(QToolButton.MenuButtonPopup)
+        self.delete_build_setup_btn.clicked.connect(self._delete_selected_build_setup)
+
+        self.build_summary_labels = {}
+        self.build_summary_values = {}
+        for key, label_text in (
+            ("interpreter", "Interpreter"),
+            ("icon", "Icon"),
+            ("file", "File"),
+            ("output", "Output"),
+            ("name", "EXE name"),
+            ("python_version", "Python version appended"),
+            ("datetime", "Date/time appended"),
+        ):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(8)
+            label = QLabel(label_text)
+            label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            metadata_label_width = label.fontMetrics().horizontalAdvance(
+                "Python version appended"
+            ) + 4
+            label.setFixedWidth(
+                max(
+                    PYTHON_SUMMARY_LABEL_WIDTH,
+                    metadata_label_width if key in {"python_version", "datetime"} else 0,
+                    label.fontMetrics().horizontalAdvance(label.text()) + 4,
+                )
+            )
+            value = (
+                ClickablePathLabel()
+                if key in {"interpreter", "icon", "file", "output"}
+                else QLabel()
+            )
+            if isinstance(value, ClickablePathLabel):
+                value.pathActivated.connect(self.ui_handlers.open_summary_path_in_explorer)
+            value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
+            value.setWordWrap(True)
+            value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            value.setTextInteractionFlags(Qt.NoTextInteraction)
+            value.setFocusPolicy(Qt.NoFocus)
+            text_color = Colors.TEXT_LIGHT
+            label.setStyleSheet(f"QLabel {{ color: {qcolor_name(text_color)}; }}")
+            value.setStyleSheet(
+                f"QLabel {{ color: {qcolor_name(text_color)}; font-weight: bold; "
+                f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+                f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
+            )
+            row.addWidget(label)
+            row.addWidget(value, 1)
+            summary_layout.addLayout(row)
+            self.build_summary_labels[key] = label
+            self.build_summary_values[key] = value
+
+    @staticmethod
+    def _summary_display_text(text):
+        """Add invisible wrap points at path separators without changing the data."""
+        return text.replace("\\", "\\\u200b").replace("/", "/\u200b")
+
+    def _update_build_summary(self):
+        if not hasattr(self, "build_summary_values"):
+            return
+        self._invalidate_saved_setup_backup_status("python")
+        values = {
+            "interpreter": self.python_entry_input.text() or "Not selected",
+            "icon": self.icon_path_input.text() or "(No icon needed to build)",
+            "file": self.script_path_input.text() or "Not selected",
+            "output": self.output_path_input.text() or "Not selected",
+            "name": self.exe_name_input.text().strip() or "Not named",
+            "python_version": (
+                self.build_controller._get_python_version_suffix()
+                if self.appened_py_version.isChecked()
+                else "Not appended"
+            ),
+            "datetime": self._python_datetime_summary_text(),
+        }
+        for key, text in values.items():
+            widget = self.build_summary_values[key]
+            widget.setText(self._summary_display_text(text))
+            if isinstance(widget, ClickablePathLabel):
+                widget.set_path(text)
+        self._update_saved_build_setup_controls()
+
+    def _python_datetime_summary_text(self):
+        """Return the selected Python naming suffix, or its batch-selection label."""
+        selection = self.date_time_dropdown.currentData()
+        if selection in {
+            MASS_DATETIME_BUILD_SENTINEL,
+            ISO_MASS_DATETIME_BUILD_SENTINEL,
+            UK_MASS_DATETIME_BUILD_SENTINEL,
+            USA_MASS_DATETIME_BUILD_SENTINEL,
+        }:
+            return self.date_time_dropdown.currentText()
+        if not getattr(self, "append_datetime", False):
+            return "Not appended"
+
+        region = self.build_controller._get_datetime_region_identifier()
+        timestamp = self.build_controller._get_datetime_timestamp_suffix()
+        return "_".join(part for part in (region, timestamp) if part) or "Not appended"
+
+    def _current_build_setup(self):
+        return {
+            "interpreter": self.python_entry_input.text().strip(),
+            "icon": self.icon_path_input.text().strip(),
+            "script": self.script_path_input.text().strip(),
+            "output": self.output_path_input.text().strip(),
+            "name": self.exe_name_input.text().strip(),
+            "datetime_format": self.date_time_dropdown.currentData(),
+            "append_py_version": self.appened_py_version.isChecked(),
+        }
+
+    @staticmethod
+    def _build_setup_is_available(setup):
+        return (
+            isinstance(setup, dict)
+            and all(isinstance(setup.get(key), str) for key in
+                    ("interpreter", "icon", "script", "output", "name"))
+            and bool(setup["name"].strip())
+            and os.path.isfile(setup["interpreter"])
+            and os.path.isfile(setup["script"])
+            and os.path.isdir(setup["output"])
+            and (not setup["icon"] or os.path.isfile(setup["icon"]))
+        )
+
+    def _populate_saved_build_setups(self):
+        dropdown = self.saved_build_setup_dropdown
+        previous = dropdown.blockSignals(True)
+        try:
+            dropdown.clear()
+            dropdown.addItem("Saved build setups")
+            placeholder = dropdown.model().item(0)
+            if placeholder is not None:
+                placeholder.setEnabled(False)
+            for index, setup in enumerate(self.saved_build_setups):
+                if not isinstance(setup, dict):
+                    continue
+                name = str(setup.get("name", "Unnamed"))
+                output = os.path.normpath(str(setup.get("output", "")))
+                folder = os.path.basename(output)
+                parent = os.path.basename(os.path.dirname(output))
+                label = " / ".join(part for part in (parent, folder, name) if part)
+                dropdown.addItem(label, index)
+                dropdown.setItemData(dropdown.count() - 1, "\n".join(
+                    str(setup.get(key, "")) for key in
+                    ("interpreter", "script", "output", "icon")
+                ), Qt.UserRole + 1)
+            dropdown.setCurrentIndex(0)
+        finally:
+            dropdown.blockSignals(previous)
+        self._update_saved_build_setup_controls()
+
+    def _update_saved_build_setup_controls(self):
+        if not hasattr(self, "save_build_setup_btn"):
+            return
+        busy = self.building or self.environment_sync_controller.is_running
+        current_setup = self._current_build_setup()
+        self._sync_saved_build_setup_selection(current_setup)
+        self.save_build_setup_btn.setEnabled(
+            not busy
+            and self._build_setup_is_available(current_setup)
+            and current_setup not in self.saved_build_setups
+        )
+        self.saved_build_setup_dropdown.setEnabled(
+            not busy and self.saved_build_setup_dropdown.count() > 1
+        )
+        has_saved_setups = self.saved_build_setup_dropdown.count() > 1
+        self.delete_build_setup_btn.setEnabled(not busy and has_saved_setups)
+        self.delete_selected_build_setup_action.setEnabled(
+            not busy and self.saved_build_setup_dropdown.currentIndex() > 0
+        )
+        self.delete_all_build_setups_action.setEnabled(not busy and has_saved_setups)
+        for name in ("export_python_build_setups_btn", "import_python_build_setups_btn"):
+            button = getattr(self, name, None)
+            if button is not None:
+                button.setEnabled(not busy)
+
+    def _sync_saved_build_setup_selection(self, current_setup):
+        """Reflect the configuration currently displayed in the build summary."""
+        dropdown = self.saved_build_setup_dropdown
+        matching_index = 0
+        for dropdown_index in range(1, dropdown.count()):
+            setup_index = dropdown.itemData(dropdown_index)
+            if (isinstance(setup_index, int)
+                    and 0 <= setup_index < len(self.saved_build_setups)
+                    and self.saved_build_setups[setup_index] == current_setup):
+                matching_index = dropdown_index
+                break
+        if dropdown.currentIndex() != matching_index:
+            previous = dropdown.blockSignals(True)
+            dropdown.setCurrentIndex(matching_index)
+            dropdown.blockSignals(previous)
+
+    def _create_saved_setups_backup_controls(self, mode):
+        """Create portable saved-setup import and export controls for a mode."""
+        section = QWidget()
+        section.setFixedWidth(
+            PYTHON_SUMMARY_FRAME_WIDTH if mode == "python" else PAIRED_FRAME_WIDTH
+        )
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
+        label = QLabel("Setups backup")
+        label.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        label.setAlignment(Qt.AlignCenter)
+        label.setStyleSheet(f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}")
+        layout.addWidget(label)
+        controls = QHBoxLayout()
+        controls.setContentsMargins(0, 0, 0, 0)
+        controls.setSpacing(8)
+        controls.addStretch()
+        export_btn = QPushButton("Export setups")
+        import_btn = QPushButton("Import setups")
+        for button in (export_btn, import_btn):
+            button.setFixedSize(160, 28)
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
+            button.setStyleSheet(button_base() + "QPushButton { padding: 2px 12px; }")
+            controls.addWidget(button)
+        controls.addStretch()
+        export_btn.clicked.connect(lambda: self._export_saved_build_setups(mode))
+        import_btn.clicked.connect(lambda: self._import_saved_build_setups(mode))
+        layout.addLayout(controls)
+        setattr(self, f"export_{mode}_build_setups_btn", export_btn)
+        setattr(self, f"import_{mode}_build_setups_btn", import_btn)
+        return section
+
+    @staticmethod
+    def _portable_saved_setup_is_valid(mode, setup):
+        if not isinstance(setup, dict):
+            return False
+        if mode == "python":
+            return (
+                all(isinstance(setup.get(key), str) for key in
+                    ("interpreter", "icon", "script", "output", "name"))
+                and isinstance(setup.get("append_py_version"), bool)
+                and (setup.get("datetime_format") is None
+                     or isinstance(setup.get("datetime_format"), str))
+            )
+        option_keys = ("self_contained", "single_file", "trim")
+        return (
+            all(isinstance(setup.get(key), str) for key in
+                ("project", "output", "icon", "name", "runtime"))
+            and all(isinstance(setup.get(key), bool) for key in option_keys)
+            and sum(setup[key] for key in option_keys) == 1
+            and (setup.get("datetime_format") is None
+                 or isinstance(setup.get("datetime_format"), str))
+        )
+
+    def _saved_setup_collection(self, mode):
+        if mode == "python":
+            return self.saved_build_setups
+        return self.saved_dotnet_build_setups
+
+    def _replace_saved_setup_collection(self, mode, setups):
+        if mode == "python":
+            self.saved_build_setups = setups
+            self._populate_saved_build_setups()
+            self.state_ctrl.save_python_state()
+        else:
+            self.saved_dotnet_build_setups = setups
+            self._populate_saved_dotnet_build_setups()
+            self.state_ctrl.save_csharp_state()
+
+    def _invalidate_saved_setup_backup_status(self, mode):
+        self._saved_setup_backup_status_tokens[mode] += 1
+
+    def _set_saved_setup_backup_status(self, mode, message, color):
+        self._invalidate_saved_setup_backup_status(mode)
+        if mode == "python":
+            self.status_label.setText(message)
+            self.status_label.setAlignment(Qt.AlignCenter)
+            self.status_label.setStyleSheet(status_text_style(color))
+        else:
+            self.dotnet_publish_controller._set_status(message)
+            self.dotnet_status_label.setStyleSheet(status_text_style(color))
+
+    def _restore_saved_setup_backup_status(self, mode, message, token):
+        """Restore normal status only if this import result is still current."""
+        if (self._saved_setup_backup_status_tokens[mode] != token or self.building):
+            return
+        label = self.status_label if mode == "python" else self.dotnet_status_label
+        current_text = label.toPlainText() if hasattr(label, "toPlainText") else label.text()
+        if current_text != message:
+            return
+        if mode == "python":
+            self.validator.update_ui_state()
+        else:
+            self.dotnet_publish_controller.refresh_ui()
+
+    def _schedule_saved_setup_backup_status_reset(self, mode, message, delay_ms=3000):
+        token = self._saved_setup_backup_status_tokens[mode]
+        QTimer.singleShot(
+            delay_ms,
+            lambda: self._restore_saved_setup_backup_status(mode, message, token),
+        )
+
+    def _export_saved_build_setups(self, mode):
+        title = "Export Python Saved Setups" if mode == "python" else "Export C# Saved Setups"
+        default_name = f"{mode}_exe_builder_saved_setups.json"
+        path, _ = QFileDialog.getSaveFileName(
+            self, title, os.path.join(os.path.expanduser("~"), default_name),
+            "JSON Files (*.json)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".json"):
+            path += ".json"
+        setups = [
+            setup for setup in self._saved_setup_collection(mode)
+            if self._portable_saved_setup_is_valid(mode, setup)
+        ]
+        payload = {
+            "format": "win11-exe-builder-saved-setups",
+            "version": 1,
+            "builder": mode,
+            "saved_setups": setups,
+        }
+        try:
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, indent=4)
+        except OSError as exc:
+            self._set_saved_setup_backup_status(
+                mode, f"Could not export saved setups: {exc}", Colors.ERROR
+            )
+            return
+        self._set_saved_setup_backup_status(
+            mode, f"Exported {len(setups)} saved setup{'s' if len(setups) != 1 else ''}.",
+            Colors.SUCCESS,
+        )
+
+    def _import_saved_build_setups(self, mode, path=None):
+        if path is None:
+            title = "Import Python Saved Setups" if mode == "python" else "Import C# Saved Setups"
+            path, _ = QFileDialog.getOpenFileName(
+                self, title, "", "JSON Files (*.json)"
+            )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            self._set_saved_setup_backup_status(
+                mode, f"Could not import saved setups: {exc}", Colors.ERROR
+            )
+            return
+        if not isinstance(payload, dict) or payload.get("format") != "win11-exe-builder-saved-setups":
+            self._set_saved_setup_backup_status(
+                mode, "That file is not a saved-setups backup.", Colors.ERROR
+            )
+            return
+        if payload.get("version") != 1 or payload.get("builder") != mode:
+            message = "That backup is for a different builder."
+            self._set_saved_setup_backup_status(mode, message, Colors.ERROR)
+            self._schedule_saved_setup_backup_status_reset(mode, message, 5000)
+            return
+        imported = payload.get("saved_setups")
+        if not isinstance(imported, list):
+            self._set_saved_setup_backup_status(
+                mode, "That backup has no valid saved setups.", Colors.ERROR
+            )
+            return
+        imported = [
+            setup for setup in imported
+            if self._portable_saved_setup_is_valid(mode, setup)
+        ]
+        existing = [
+            setup for setup in self._saved_setup_collection(mode)
+            if self._portable_saved_setup_is_valid(mode, setup)
+        ]
+        merged = []
+        for setup in [*imported, *existing]:
+            if setup not in merged:
+                merged.append(setup)
+        added = sum(1 for setup in imported if setup not in existing)
+        self._replace_saved_setup_collection(mode, merged[:50])
+        if not added:
+            message = "Imported 0 saved setups — no new valid setups were found."
+            self._set_saved_setup_backup_status(mode, message, Colors.ERROR)
+            self._schedule_saved_setup_backup_status_reset(mode, message, 5000)
+            return
+        message = f"Imported {added} saved setup{'s' if added != 1 else ''}."
+        self._set_saved_setup_backup_status(mode, message, Colors.SUCCESS)
+        self._schedule_saved_setup_backup_status_reset(mode, message)
+
+    def _create_dotnet_saved_build_setup_controls(self):
+        """Create the C# counterpart of the Python saved-setups controls."""
+        self.dotnet_saved_setups_section = QWidget()
+        self.dotnet_saved_setups_section.setFixedWidth(PAIRED_FRAME_WIDTH)
+        layout = QVBoxLayout(self.dotnet_saved_setups_section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
+
+        self.dotnet_saved_setups_label = QLabel("Saved setups")
+        self.dotnet_saved_setups_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.dotnet_saved_setups_label.setAlignment(Qt.AlignCenter)
+        self.dotnet_saved_setups_label.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        layout.addWidget(self.dotnet_saved_setups_label)
+
+        controls = QHBoxLayout()
+        controls.setContentsMargins(0, 0, 0, 0)
+        controls.setSpacing(SAVED_SETUP_CONTROL_SPACING)
+        self.dotnet_save_build_setup_btn = QPushButton("Save setup")
+        self.dotnet_save_build_setup_btn.setAccessibleName("Save current C# build setup")
+        self.dotnet_save_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.dotnet_save_build_setup_btn.setFixedSize(
+            SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
+        self.dotnet_save_build_setup_btn.setStyleSheet(SAVED_SETUP_SAVE_BUTTON_STYLE)
+        self.dotnet_save_build_setup_btn.clicked.connect(self._save_current_dotnet_build_setup)
+
+        self.saved_dotnet_build_setup_dropdown = QComboBox()
+        self.saved_dotnet_build_setup_dropdown.addItem("Saved build setups")
+        self.saved_dotnet_build_setup_dropdown.setAccessibleName("Saved C# build setups")
+        self.saved_dotnet_build_setup_dropdown.setFixedSize(
+            SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
+        self.saved_dotnet_build_setup_dropdown.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.saved_dotnet_build_setup_dropdown.setStyleSheet(SAVED_SETUP_COMBO_BOX_STYLE)
+        self.saved_dotnet_build_setup_dropdown.view().setFont(
+            QFont("Rubik UI", 12, QFont.Bold)
+        )
+        self.saved_dotnet_build_setup_dropdown.currentIndexChanged.connect(
+            self._load_selected_dotnet_build_setup
+        )
+
+        self.dotnet_delete_build_setup_btn = QToolButton()
+        self.dotnet_delete_build_setup_btn.setText("Delete")
+        self.dotnet_delete_build_setup_btn.setAccessibleName("Delete saved C# build setup")
+        self.dotnet_delete_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.dotnet_delete_build_setup_btn.setFixedSize(
+            SAVED_SETUP_DELETE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
+        self.dotnet_delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
+        self.dotnet_delete_build_setup_menu = QMenu(self.dotnet_delete_build_setup_btn)
+        self.dotnet_delete_build_setup_menu.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.dotnet_delete_selected_build_setup_action = (
+            self.dotnet_delete_build_setup_menu.addAction("Delete selected")
+        )
+        self.dotnet_delete_all_build_setups_action = (
+            self.dotnet_delete_build_setup_menu.addAction("Delete all")
+        )
+        self.dotnet_delete_selected_build_setup_action.triggered.connect(
+            self._delete_selected_dotnet_build_setup
+        )
+        self.dotnet_delete_all_build_setups_action.triggered.connect(
+            self._delete_all_saved_dotnet_build_setups
+        )
+        self.dotnet_delete_build_setup_btn.setMenu(self.dotnet_delete_build_setup_menu)
+        self.dotnet_delete_build_setup_btn.setPopupMode(QToolButton.MenuButtonPopup)
+        self.dotnet_delete_build_setup_btn.clicked.connect(
+            self._delete_selected_dotnet_build_setup
+        )
+
+        controls.addWidget(self.dotnet_save_build_setup_btn)
+        controls.addWidget(self.saved_dotnet_build_setup_dropdown, 1)
+        controls.addWidget(self.dotnet_delete_build_setup_btn)
+        layout.addLayout(controls)
+        self._update_saved_dotnet_build_setup_controls()
+
+    def _create_dotnet_build_summary(self):
+        """Create the C# build recap with the Python builder's presentation."""
+        self.dotnet_build_summary_title_frame = QFrame()
+        self.dotnet_build_summary_title_frame.setFrameShape(QFrame.StyledPanel)
+        self.dotnet_build_summary_title_frame.setFrameShadow(QFrame.Raised)
+        self.dotnet_build_summary_title_frame.setStyleSheet(TITLE_FRAME_STYLE)
+        title_layout = QHBoxLayout(self.dotnet_build_summary_title_frame)
+        title_layout.setContentsMargins(3, 3, 3, 3)
+        self.dotnet_build_summary_title = QLabel("Build Summary")
+        self.dotnet_build_summary_title.setFixedHeight(30)
+        self.dotnet_build_summary_title.setFont(
+            QFont("Rubik UI", SUMMARY_TITLE_FONT_SIZE, QFont.Bold)
+        )
+        self.dotnet_build_summary_title.setAlignment(Qt.AlignVCenter)
+        title_layout.addStretch()
+        title_layout.addWidget(self.dotnet_build_summary_title)
+        title_layout.addStretch()
+        self.dotnet_build_summary_title_frame.setFixedSize(
+            QFontMetrics(self.dotnet_build_summary_title.font()).horizontalAdvance(
+                self.dotnet_build_summary_title.text()
+            ) + 25,
+            35,
+        )
+
+        self.dotnet_build_summary_frame = QFrame()
+        self.dotnet_build_summary_frame.setObjectName("configurationFrame")
+        self.dotnet_build_summary_frame.setStyleSheet(MAIN_FRAME_STYLE)
+        self.dotnet_build_summary_frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+        summary_layout = QVBoxLayout(self.dotnet_build_summary_frame)
+        summary_layout.setContentsMargins(12, 10, 12, 10)
+        summary_layout.setSpacing(5)
+        self.dotnet_build_summary_labels = {}
+        self.dotnet_build_summary_values = {}
+        for key, label_text in (
+            ("project", "Project"),
+            ("icon", "Icon"),
+            ("output", "Output"),
+            ("name", "EXE name"),
+            ("runtime", "Runtime"),
+            ("datetime", "Date/time append type"),
+        ):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(8)
+            label = QLabel(label_text)
+            label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            label.setFixedWidth(
+                max(
+                    SUMMARY_LABEL_WIDTH,
+                    label.fontMetrics().horizontalAdvance(label.text()) + 4,
+                )
+            )
+            value = (
+                ClickablePathLabel()
+                if key in {"project", "icon", "output"}
+                else QLabel()
+            )
+            if isinstance(value, ClickablePathLabel):
+                value.pathActivated.connect(self.ui_handlers.open_summary_path_in_explorer)
+            value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
+            value.setWordWrap(True)
+            value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            value.setTextInteractionFlags(Qt.NoTextInteraction)
+            value.setFocusPolicy(Qt.NoFocus)
+            row.addWidget(label)
+            row.addWidget(value, 1)
+            summary_layout.addLayout(row)
+            self.dotnet_build_summary_labels[key] = label
+            self.dotnet_build_summary_values[key] = value
+        self._update_dotnet_build_summary()
+
+    def _update_dotnet_build_summary(self):
+        if not hasattr(self, "dotnet_build_summary_values"):
+            return
+        values = {
+            "project": self.dotnet_project_input.text() or "Not selected",
+            "icon": self.dotnet_icon_input.text() or "(No icon needed to publish)",
+            "output": self.dotnet_output_input.text() or "Not selected",
+            "name": self.dotnet_name_input.text().strip() or "Not named",
+            "runtime": self.dotnet_runtime_combo.currentText() or "Not selected",
+            "datetime": self.dotnet_date_time_dropdown.currentText(),
+        }
+        for key, text in values.items():
+            color = Colors.TEXT_LIGHT
+            self.dotnet_build_summary_labels[key].setStyleSheet(
+                f"QLabel {{ color: {qcolor_name(color)}; }}"
+            )
+            widget = self.dotnet_build_summary_values[key]
+            widget.setStyleSheet(
+                f"QLabel {{ color: {qcolor_name(color)}; font-weight: bold; "
+                f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+                f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
+            )
+            widget.setText(self._summary_display_text(text))
+            if isinstance(widget, ClickablePathLabel):
+                widget.set_path(text)
+
+    def _current_dotnet_build_setup(self):
+        values = self.dotnet_publish_controller.values()
+        return {
+            **values,
+            "datetime_format": self.dotnet_publish_controller.selected_datetime_format(),
+        }
+
+    def _dotnet_build_setup_is_available(self, setup):
+        required_strings = ("project", "output", "icon", "name", "runtime")
+        option_keys = ("self_contained", "single_file", "trim")
+        if not isinstance(setup, dict) or not all(
+            isinstance(setup.get(key), str) for key in required_strings
+        ):
+            return False
+        if setup.get("datetime_format") is not None and not isinstance(
+            setup.get("datetime_format"), str
+        ):
+            return False
+        if not all(isinstance(setup.get(key), bool) for key in option_keys):
+            return False
+        if sum(setup[key] for key in option_keys) != 1:
+            return False
+
+        original_setup = self._current_dotnet_build_setup()
+        fields = (
+            self.dotnet_project_input,
+            self.dotnet_output_input,
+            self.dotnet_icon_input,
+            self.dotnet_name_input,
+            self.dotnet_runtime_combo,
+            self.dotnet_date_time_dropdown,
+            self.dotnet_self_contained,
+            self.dotnet_single_file,
+            self.dotnet_trim,
+        )
+        previous = [(field, field.blockSignals(True)) for field in fields]
+        try:
+            self.dotnet_project_input.set_display_path(setup["project"])
+            self.dotnet_output_input.set_display_path(setup["output"])
+            self.dotnet_icon_input.set_display_path(setup["icon"])
+            self.dotnet_name_input.setText(setup["name"])
+            runtime_index = self.dotnet_runtime_combo.findData(setup["runtime"])
+            datetime_index = (
+                self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
+                if setup["datetime_format"] is None
+                else self.dotnet_date_time_dropdown.findData(setup["datetime_format"])
+            )
+            if runtime_index < 0 or datetime_index < 0:
+                return False
+            self.dotnet_runtime_combo.setCurrentIndex(runtime_index)
+            self.dotnet_date_time_dropdown.setCurrentIndex(datetime_index)
+            for key, checkbox in zip(option_keys, fields[-3:]):
+                checkbox.setChecked(setup[key])
+            return not self.dotnet_publish_controller.validation_error()
+        finally:
+            self._restore_dotnet_build_setup_fields(original_setup)
+            for field, blocked in previous:
+                field.blockSignals(blocked)
+
+    def _restore_dotnet_build_setup_fields(self, setup):
+        """Restore setup values after temporary validation or saved-setup loading."""
+        self.dotnet_project_input.set_display_path(setup["project"])
+        self.dotnet_output_input.set_display_path(setup["output"])
+        self.dotnet_icon_input.set_display_path(setup["icon"])
+        self.dotnet_name_input.setText(setup["name"])
+        self.dotnet_runtime_combo.setCurrentIndex(
+            self.dotnet_runtime_combo.findData(setup["runtime"])
+        )
+        datetime_index = (
+            self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
+            if setup["datetime_format"] is None
+            else self.dotnet_date_time_dropdown.findData(setup["datetime_format"])
+        )
+        self.dotnet_date_time_dropdown.setCurrentIndex(datetime_index)
+        for key, checkbox in (
+            ("self_contained", self.dotnet_self_contained),
+            ("single_file", self.dotnet_single_file),
+            ("trim", self.dotnet_trim),
+        ):
+            checkbox.setChecked(setup[key])
+
+    def _populate_saved_dotnet_build_setups(self):
+        dropdown = self.saved_dotnet_build_setup_dropdown
+        previous = dropdown.blockSignals(True)
+        try:
+            dropdown.clear()
+            dropdown.addItem("Saved build setups")
+            placeholder = dropdown.model().item(0)
+            if placeholder is not None:
+                placeholder.setEnabled(False)
+            for index, setup in enumerate(self.saved_dotnet_build_setups):
+                if not isinstance(setup, dict):
+                    continue
+                output = os.path.normpath(str(setup.get("output", "")))
+                label = " / ".join(part for part in (
+                    os.path.basename(os.path.dirname(output)),
+                    os.path.basename(output),
+                    str(setup.get("name", "Unnamed")),
+                ) if part)
+                dropdown.addItem(label, index)
+                dropdown.setItemData(dropdown.count() - 1, "\n".join(
+                    str(setup.get(key, "")) for key in ("project", "output", "icon")
+                ), Qt.UserRole + 1)
+            dropdown.setCurrentIndex(0)
+        finally:
+            dropdown.blockSignals(previous)
+        self._update_saved_dotnet_build_setup_controls()
+
+    def _update_saved_dotnet_build_setup_controls(self):
+        if not hasattr(self, "dotnet_save_build_setup_btn"):
+            return
+        current_setup = self._current_dotnet_build_setup()
+        self._sync_saved_dotnet_build_setup_selection(current_setup)
+        self.dotnet_save_build_setup_btn.setEnabled(
+            not self.building
+            and self._dotnet_build_setup_is_available(current_setup)
+            and current_setup not in self.saved_dotnet_build_setups
+        )
+        self.saved_dotnet_build_setup_dropdown.setEnabled(
+            not self.building and self.saved_dotnet_build_setup_dropdown.count() > 1
+        )
+        has_saved_setups = self.saved_dotnet_build_setup_dropdown.count() > 1
+        self.dotnet_delete_build_setup_btn.setEnabled(
+            not self.building and has_saved_setups
+        )
+        self.dotnet_delete_selected_build_setup_action.setEnabled(
+            not self.building
+            and self.saved_dotnet_build_setup_dropdown.currentIndex() > 0
+        )
+        self.dotnet_delete_all_build_setups_action.setEnabled(
+            not self.building and has_saved_setups
+        )
+        for name in ("export_dotnet_build_setups_btn", "import_dotnet_build_setups_btn"):
+            button = getattr(self, name, None)
+            if button is not None:
+                button.setEnabled(not self.building)
+
+    def _sync_saved_dotnet_build_setup_selection(self, current_setup):
+        """Reflect the configuration currently displayed in the C# build summary."""
+        dropdown = self.saved_dotnet_build_setup_dropdown
+        matching_index = 0
+        for dropdown_index in range(1, dropdown.count()):
+            setup_index = dropdown.itemData(dropdown_index)
+            if (isinstance(setup_index, int)
+                    and 0 <= setup_index < len(self.saved_dotnet_build_setups)
+                    and self.saved_dotnet_build_setups[setup_index] == current_setup):
+                matching_index = dropdown_index
+                break
+        if dropdown.currentIndex() != matching_index:
+            previous = dropdown.blockSignals(True)
+            dropdown.setCurrentIndex(matching_index)
+            dropdown.blockSignals(previous)
+
+    def _save_current_dotnet_build_setup(self):
+        setup = self._current_dotnet_build_setup()
+        if (self.building or not self._dotnet_build_setup_is_available(setup)
+                or setup in self.saved_dotnet_build_setups):
+            return
+        self.saved_dotnet_build_setups = [
+            setup, *(item for item in self.saved_dotnet_build_setups if item != setup)
+        ][:50]
+        self._populate_saved_dotnet_build_setups()
+        self.state_ctrl.save_csharp_state()
+
+    def _load_selected_dotnet_build_setup(self, index):
+        if index <= 0 or self.building:
+            self._update_saved_dotnet_build_setup_controls()
+            return
+        setup_index = self.saved_dotnet_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_dotnet_build_setups):
+            return
+        setup = self.saved_dotnet_build_setups[setup_index]
+        if not self._dotnet_build_setup_is_available(setup):
+            self.dotnet_publish_controller._set_status(
+                "Saved setup has a missing file or output folder."
+            )
+            self._update_saved_dotnet_build_setup_controls()
+            return
+
+        fields = (
+            self.dotnet_project_input,
+            self.dotnet_output_input,
+            self.dotnet_icon_input,
+            self.dotnet_name_input,
+            self.dotnet_runtime_combo,
+            self.dotnet_date_time_dropdown,
+            self.dotnet_self_contained,
+            self.dotnet_single_file,
+            self.dotnet_trim,
+        )
+        previous_loading = self._loading_state
+        self._loading_state = True
+        previous = [(field, field.blockSignals(True)) for field in fields]
+        try:
+            self._restore_dotnet_build_setup_fields(setup)
+            selected = next(
+                checkbox for key, checkbox in (
+                    ("self_contained", self.dotnet_self_contained),
+                    ("single_file", self.dotnet_single_file),
+                    ("trim", self.dotnet_trim),
+                ) if setup[key]
+            )
+            self._sync_dotnet_publish_options(selected)
+        finally:
+            for field, blocked in previous:
+                field.blockSignals(blocked)
+            self._loading_state = previous_loading
+        self.restore_dotnet_guided_workflow(range(3))
+        self._on_dotnet_settings_changed()
+        self.state_ctrl.save_csharp_state()
+
+    def _delete_selected_dotnet_build_setup(self):
+        index = self.saved_dotnet_build_setup_dropdown.currentIndex()
+        if index <= 0 or self.building:
+            return
+        setup_index = self.saved_dotnet_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_dotnet_build_setups):
+            return
+        if not self._confirm_delete_saved_dotnet_build_setup(
+            self.saved_dotnet_build_setup_dropdown.itemText(index)
+        ):
+            return
+        del self.saved_dotnet_build_setups[setup_index]
+        self._populate_saved_dotnet_build_setups()
+        self.state_ctrl.save_csharp_state()
+
+    def _delete_all_saved_dotnet_build_setups(self):
+        if self.building or not self.saved_dotnet_build_setups:
+            return
+        if not self._confirm_delete_all_saved_dotnet_build_setups():
+            return
+        self.saved_dotnet_build_setups = []
+        self._populate_saved_dotnet_build_setups()
+        self.state_ctrl.save_csharp_state()
+
+    def _confirm_delete_saved_dotnet_build_setup(self, setup_name):
+        return self._confirm_delete_saved_build_setup(setup_name)
+
+    def _confirm_delete_all_saved_dotnet_build_setups(self):
+        return self._confirm_delete_all_saved_build_setups()
+
+    def _save_current_build_setup(self):
+        setup = self._current_build_setup()
+        if (self.building or self.environment_sync_controller.is_running
+                or not self._build_setup_is_available(setup)
+                or setup in self.saved_build_setups):
+            return
+        self.saved_build_setups = [
+            setup, *(item for item in self.saved_build_setups if item != setup)
+        ][:50]
+        self._populate_saved_build_setups()
+        self.state_ctrl.save_python_state()
+
+    def _load_selected_build_setup(self, index):
+        if index <= 0 or self.building or self.environment_sync_controller.is_running:
+            self._update_saved_build_setup_controls()
+            return
+        setup_index = self.saved_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_build_setups):
+            return
+        setup = self.saved_build_setups[setup_index]
+        if not self._build_setup_is_available(setup):
+            self.status_label.setText("Saved setup has a missing file or output folder.")
+            self._update_saved_build_setup_controls()
+            return
+
+        fields = (
+            (self.python_entry_input, setup["interpreter"]),
+            (self.icon_path_input, setup["icon"]),
+            (self.script_path_input, setup["script"]),
+            (self.output_path_input, setup["output"]),
+            (self.exe_name_input, setup["name"]),
+        )
+        widgets = [field for field, _value in fields]
+        widgets.extend((self.date_time_dropdown, self.appened_py_version))
+        previous_loading = self._loading_state
+        self._loading_state = True
+        previous_states = [(widget, widget.blockSignals(True)) for widget in widgets]
+        try:
+            for field, value in fields:
+                if field is self.exe_name_input:
+                    field.setText(value)
+                else:
+                    field.set_display_path(value)
+            self.python_interpreter_path = self.python_path = setup["interpreter"]
+            self.icon_path = setup["icon"]
+            self.script_path = self.entry_script = setup["script"]
+            self.project_root = os.path.dirname(setup["script"])
+            self.output_path = setup["output"]
+            self.exe_name = setup["name"]
+            self.interpreter_user_cleared = self.icon_user_cleared = False
+            self.script_user_cleared = self.exe_name_user_modified = False
+            self.datetime_format = setup.get("datetime_format")
+            self.append_py_version = bool(setup.get("append_py_version", False))
+            self.appened_py_version.setChecked(self.append_py_version)
+            datetime_index = (
+                self.date_time_dropdown.findText(NO_DATETIME_LABEL)
+                if self.datetime_format is None
+                else self.date_time_dropdown.findData(self.datetime_format)
+            )
+            if datetime_index < 0:
+                datetime_index = self.date_time_dropdown.findText(NO_DATETIME_LABEL)
+            self.date_time_dropdown.setCurrentIndex(datetime_index)
+            self.datetime_format = self.date_time_dropdown.currentData()
+            self.mass_datetime_build_selected = self.datetime_format in {
+                MASS_DATETIME_BUILD_SENTINEL,
+                ISO_MASS_DATETIME_BUILD_SENTINEL,
+                UK_MASS_DATETIME_BUILD_SENTINEL,
+                USA_MASS_DATETIME_BUILD_SENTINEL,
+            }
+            self.append_datetime = bool(
+                self.datetime_format and not self.mass_datetime_build_selected
+            )
+        finally:
+            for widget, previous_state in previous_states:
+                widget.blockSignals(previous_state)
+            self._loading_state = previous_loading
+        self.restore_python_guided_workflow(range(5))
+        self._update_icon_continue_button()
+        self.validator.validation_status_message()
+        self.validator.update_ui_state()
+        self.state_ctrl.save_python_state()
+        self._update_saved_build_setup_controls()
+
+    def _delete_selected_build_setup(self):
+        index = self.saved_build_setup_dropdown.currentIndex()
+        if index <= 0 or self.building or self.environment_sync_controller.is_running:
+            return
+        setup_index = self.saved_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_build_setups):
+            return
+        if not self._confirm_delete_saved_build_setup(
+            self.saved_build_setup_dropdown.itemText(index)
+        ):
+            return
+        del self.saved_build_setups[setup_index]
+        self._populate_saved_build_setups()
+        self.state_ctrl.save_python_state()
+
+    def _delete_all_saved_build_setups(self):
+        if self.building or self.environment_sync_controller.is_running or not self.saved_build_setups:
+            return
+        if not self._confirm_delete_all_saved_build_setups():
+            return
+        self.saved_build_setups = []
+        self._populate_saved_build_setups()
+        self.state_ctrl.save_python_state()
+
+    def _confirm_delete_saved_build_setup(self, setup_name):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Delete Saved Setup")
+        dialog.setText(f"Delete this saved setup?\n\n{setup_name}")
+        dialog.setIcon(QMessageBox.NoIcon)
+        yes_button = dialog.addButton("Yes", QMessageBox.AcceptRole)
+        cancel_button = dialog.addButton("Cancel", QMessageBox.RejectRole)
+        dialog.setDefaultButton(cancel_button)
+        dialog.setEscapeButton(cancel_button)
+        dialog.setStyleSheet(CONFIRMATION_MESSAGE_BOX_STYLE)
+        dialog.setWindowFlags(
+            (dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+            | Qt.MSWindowsFixedSizeDialogHint
+        )
+        button_box = dialog.findChild(QDialogButtonBox)
+        if button_box is not None:
+            button_box.setCenterButtons(True)
+        apply_native_title_bar_style(
+            dialog,
+            caption=Colors.PANEL_BG,
+            border=Colors.PANEL_BG,
+        )
+        dialog.exec()
+        return dialog.clickedButton() == yes_button
+
+    def _confirm_delete_all_saved_build_setups(self):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Delete All Saved Setups")
+        dialog.setText("Delete all saved setups?")
+        dialog.setIcon(QMessageBox.NoIcon)
+        yes_button = dialog.addButton("Yes", QMessageBox.AcceptRole)
+        cancel_button = dialog.addButton("Cancel", QMessageBox.RejectRole)
+        dialog.setDefaultButton(cancel_button)
+        dialog.setEscapeButton(cancel_button)
+        dialog.setStyleSheet(CONFIRMATION_MESSAGE_BOX_STYLE)
+        dialog.setWindowFlags(
+            (dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+            | Qt.MSWindowsFixedSizeDialogHint
+        )
+        button_box = dialog.findChild(QDialogButtonBox)
+        if button_box is not None:
+            button_box.setCenterButtons(True)
+        apply_native_title_bar_style(
+            dialog,
+            caption=Colors.PANEL_BG,
+            border=Colors.PANEL_BG,
+        )
+        dialog.exec()
+        return dialog.clickedButton() == yes_button
+
+    def _create_selection_summary(
+        self,
+        keys,
+        frame_width=PAIRED_FRAME_WIDTH,
+        label_width=SUMMARY_LABEL_WIDTH,
+    ):
+        """Create a compact, read-only recap for selections on earlier pages."""
+        title_frame = QFrame()
+        title_frame.setFrameShape(QFrame.StyledPanel)
+        title_frame.setFrameShadow(QFrame.Raised)
+        title_frame.setStyleSheet(TITLE_FRAME_STYLE)
+        title_layout = QHBoxLayout(title_frame)
+        title_layout.setContentsMargins(3, 3, 3, 3)
+        title = QLabel("Selection Summary")
+        title.setFixedHeight(30)
+        title.setFont(QFont("Rubik UI", SUMMARY_TITLE_FONT_SIZE, QFont.Bold))
+        title_layout.addStretch()
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        title_frame.setFixedSize(
+            QFontMetrics(title.font()).horizontalAdvance(title.text()) + 25, 35
+        )
+
+        frame = QFrame()
+        frame.setObjectName("configurationFrame")
+        frame.setStyleSheet(MAIN_FRAME_STYLE)
+        frame.setFixedWidth(frame_width)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(5)
+        labels = {}
+        values = {}
+        captions = {"interpreter": "Interpreter", "icon": "Icon", "file": "File"}
+        for key in keys:
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(8)
+            label = QLabel(captions[key])
+            label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            label.setFixedWidth(
+                max(
+                    label_width,
+                    label.fontMetrics().horizontalAdvance(label.text()) + 4,
+                )
+            )
+            value = ClickablePathLabel()
+            value.pathActivated.connect(self.ui_handlers.open_summary_path_in_explorer)
+            value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
+            value.setWordWrap(True)
+            value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            value.setTextInteractionFlags(Qt.NoTextInteraction)
+            value.setFocusPolicy(Qt.NoFocus)
+            row.addWidget(label)
+            row.addWidget(value, 1)
+            layout.addLayout(row)
+            labels[key] = label
+            values[key] = value
+        return title_frame, frame, labels, values
+
+    def _update_selection_summaries(self, summaries, selections):
+        for _title, _frame, labels, values in summaries.values():
+            for key, value in values.items():
+                path = selections[key].strip()
+                display = path or ("No icon" if key == "icon" else "Not selected")
+                color = Colors.TEXT_LIGHT
+                label = labels[key]
+                label.setStyleSheet(f"QLabel {{ color: {qcolor_name(color)}; }}")
+                value.setStyleSheet(
+                    f"QLabel {{ color: {qcolor_name(color)}; font-weight: bold; "
+                    f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+                    f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
+                )
+                value.setText(self._summary_display_text(display))
+                if isinstance(value, ClickablePathLabel):
+                    value.set_path(path)
+
+    def _update_python_selection_summaries(self):
+        self._update_selection_summaries(self.python_selection_summaries, {
+            "interpreter": self.python_entry_input.text(),
+            "icon": self.icon_path_input.text(),
+            "file": self.script_path_input.text(),
+        })
+
+    def _update_dotnet_selection_summaries(self):
+        self._update_selection_summaries(self.dotnet_selection_summaries, {
+            "icon": self.dotnet_icon_input.text(),
+            "file": self.dotnet_project_input.text(),
+        })
+
+    def _connect_python_progression(self):
+        for field in (
+            self.python_entry_input,
+            self.script_path_input,
+            self.output_path_input,
+            self.exe_name_input,
+        ):
+            field.textChanged.connect(self._update_python_navigation)
+        self.icon_path_input.textChanged.connect(self._update_icon_continue_button)
+        self._update_icon_continue_button()
+        self._update_python_navigation()
+
+    def _update_icon_continue_button(self, *_args):
+        """Describe the current icon choice before the user advances."""
+        if hasattr(self, "icon_continue_btn"):
+            self.icon_continue_btn.setText(
+                "Continue to file" if self.icon_path_input.text() else "Use no icon and continue"
+            )
+        self._update_python_navigation()
+
+    def _update_python_progression_controls(self, *_args):
+        """Only offer a continuation after the selection needed for it exists."""
+        if not hasattr(self, "interpreter_continue_btn"):
+            return
+        self.interpreter_continue_btn.setVisible(
+            bool(self.python_entry_input.text())
+        )
+        # Choosing no icon is itself a valid choice, so this control remains
+        # available whenever the Icons tab can be reached.
+        self.icon_continue_btn.setVisible(True)
+        self.file_continue_btn.setVisible(
+            bool(self.script_path_input.text())
+        )
+        self.output_continue_btn.setVisible(
+            bool(self.output_path_input.text() and self.exe_name_input.text().strip())
+        )
+
+    def _continue_from_icons(self):
+        """Keep a selected icon, or clear it, then always show File next."""
+        if not self.icon_path_input.text():
+            self.ui_handlers.clear_icon()
+        self._complete_python_step(2)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(3)
+
+    def _continue_to_output(self):
+        if not self.script_path_input.text() or getattr(self, "_loading_state", False):
+            return
+        self._complete_python_step(3)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(4)
+
+    def _continue_to_build(self):
+        if (not self.output_path_input.text() or not self.exe_name_input.text().strip()
+                or getattr(self, "_loading_state", False)):
+            return
+        self._complete_python_step(4)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(5)
+
+    def _continue_to_interpreter(self):
+        """Mark sync as skipped and always show the interpreter step next."""
+        self._complete_python_step(0)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(1)
+
+    def _continue_to_icons(self):
+        """Complete the interpreter step and always show the icon step next."""
+        if not self.python_entry_input.text() or getattr(self, "_loading_state", False):
+            return
+        self._complete_python_step(1)
+        if self.guided_flow_enabled and self.build_mode == "python":
+            self.python_section_nav.setCurrentRow(2)
+
+    def _complete_python_step(self, index):
+        self._completed_python_steps.add(index)
+        next_index = index + 1
+        self._update_python_navigation()
+        if not self._loading_state:
+            self.state_ctrl.save_python_state()
+        if self.guided_flow_enabled and self.build_mode == "python":
+            if self.python_section_nav.currentRow() == index:
+                self.python_section_nav.setCurrentRow(min(next_index, 5))
+
+    def restore_python_guided_workflow(self, saved_steps=()):
+        """Restore a valid saved Python workflow without trapping it at Sync."""
+        if not hasattr(self, "python_section_nav"):
+            return
+
+        python_path = getattr(self, "python_interpreter_path", "").strip()
+        script_path = getattr(self, "script_path", "").strip()
+        output_path = getattr(self, "output_path", "").strip()
+        icon_path = getattr(self, "icon_path", "").strip()
+        exe_name = self.exe_name_input.text().strip()
+        is_file = lambda path: bool(path and os.path.isfile(os.path.normpath(path)))
+        is_directory = lambda path: bool(path and os.path.isdir(os.path.normpath(path)))
+
+        # Saved selections mean Environment Sync has already been intentionally
+        # bypassed or completed. Revalidate every required path before opening Build.
+        has_saved_selection = bool(python_path or script_path or output_path or exe_name)
+        completed = {int(step) for step in saved_steps if isinstance(step, int) and 0 <= step <= 4}
+        if has_saved_selection:
+            completed.add(0)
+        if is_file(python_path):
+            completed.add(1)
+        else:
+            completed.discard(1)
+        if not icon_path or is_file(icon_path):
+            completed.add(2)
+        else:
+            completed.discard(2)
+        if is_file(script_path):
+            completed.add(3)
+        else:
+            completed.discard(3)
+        if is_directory(output_path) and exe_name:
+            completed.add(4)
+        else:
+            completed.discard(4)
+
+        self._completed_python_steps = completed
+        self._update_python_navigation()
+        if self.guided_flow_enabled:
+            if all(step in completed for step in range(5)):
+                self.python_section_nav.setCurrentRow(5)
+            elif 0 not in completed:
+                self.python_section_nav.setCurrentRow(0)
+            elif 1 not in completed:
+                self.python_section_nav.setCurrentRow(1)
+            elif 2 not in completed:
+                self.python_section_nav.setCurrentRow(2)
+            elif 3 not in completed:
+                self.python_section_nav.setCurrentRow(3)
+            else:
+                self.python_section_nav.setCurrentRow(4)
+
+    def _update_python_navigation(self):
+        if not hasattr(self, "python_section_nav"):
+            return
+        if not self.guided_flow_enabled:
+            reachable = 5
+        elif 0 not in self._completed_python_steps:
+            reachable = 0
+        elif not self.python_entry_input.text():
+            reachable = 1
+        elif not (self.icon_path_input.text() or 2 in self._completed_python_steps):
+            reachable = 2
+        elif not self.script_path_input.text():
+            reachable = 3
+        elif not (self.output_path_input.text() and self.exe_name_input.text().strip()):
+            reachable = 4
+        else:
+            reachable = 5
+        for index in range(self.python_section_nav.count()):
+            item = self.python_section_nav.item(index)
+            item.setFlags(
+                item.flags() | Qt.ItemIsEnabled if index <= reachable
+                else item.flags() & ~Qt.ItemIsEnabled
+            )
+        if self.guided_flow_enabled and self.python_section_nav.currentRow() > reachable:
+            self.python_section_nav.setCurrentRow(reachable)
+        self._update_python_progression_controls()
+        self._update_build_summary()
+        self._update_python_selection_summaries()
+
+    def _dotnet_project_is_valid(self):
+        """Return whether the selected C# project can advance the workflow."""
+        project = self.dotnet_project_input.text().strip()
+        return bool(
+            project
+            and project.lower().endswith(".csproj")
+            and os.path.isfile(project)
+            and is_sdk_style_project(project)
+        )
+
+    def _dotnet_output_is_ready(self):
+        """Return whether the output step has all entries required to continue."""
+        output = self.dotnet_output_input.text().strip()
+        return bool(
+            output
+            and os.path.isdir(output)
+            and not validate_executable_name(self.dotnet_name_input.text())
+        )
+
+    def _update_dotnet_progression_controls(self):
+        if not hasattr(self, "dotnet_icon_continue_btn"):
+            return
+        self.dotnet_icon_continue_btn.setText(
+            "Continue to file"
+            if self.dotnet_icon_input.text().strip()
+            else "Use no icon and continue"
+        )
+        self.dotnet_icon_continue_btn.setVisible(True)
+        self.dotnet_file_continue_btn.setVisible(self._dotnet_project_is_valid())
+        self.dotnet_output_continue_btn.setVisible(self._dotnet_output_is_ready())
+
+    def _update_dotnet_navigation(self):
+        """Enable C# sidebar pages only after their prior step is complete."""
+        if not hasattr(self, "dotnet_section_nav"):
+            return
+        if 0 not in self._completed_dotnet_steps:
+            reachable = 0
+        elif not self._dotnet_project_is_valid() or 1 not in self._completed_dotnet_steps:
+            reachable = 1
+        elif not self._dotnet_output_is_ready() or 2 not in self._completed_dotnet_steps:
+            reachable = 2
+        else:
+            reachable = 3
+        for index in range(self.dotnet_section_nav.count()):
+            item = self.dotnet_section_nav.item(index)
+            item.setFlags(
+                item.flags() | Qt.ItemIsEnabled if index <= reachable
+                else item.flags() & ~Qt.ItemIsEnabled
+            )
+        if self.dotnet_section_nav.currentRow() > reachable:
+            self.dotnet_section_nav.setCurrentRow(reachable)
+        self._update_dotnet_progression_controls()
+
+    def _complete_dotnet_step(self, index):
+        self._completed_dotnet_steps.add(index)
+        self._update_dotnet_navigation()
+        if not getattr(self, "_loading_state", False):
+            self.state_ctrl.save_csharp_state()
+
+    def _continue_from_dotnet_icons(self):
+        self._complete_dotnet_step(0)
+        if self.build_mode == "dotnet":
+            self.dotnet_section_nav.setCurrentRow(1)
+
+    def _continue_to_dotnet_output(self):
+        if not self._dotnet_project_is_valid() or getattr(self, "_loading_state", False):
+            return
+        self._complete_dotnet_step(1)
+        if self.build_mode == "dotnet":
+            self.dotnet_section_nav.setCurrentRow(2)
+
+    def _continue_to_dotnet_build(self):
+        if not self._dotnet_output_is_ready() or getattr(self, "_loading_state", False):
+            return
+        self._complete_dotnet_step(2)
+        if self.build_mode == "dotnet":
+            self.dotnet_section_nav.setCurrentRow(3)
+
+    def restore_dotnet_guided_workflow(self, saved_steps=()):
+        """Restore the furthest valid C# step from saved selections."""
+        if not hasattr(self, "dotnet_section_nav"):
+            return
+        completed = {
+            int(step) for step in saved_steps
+            if isinstance(step, int) and 0 <= step <= 2
+        }
+        if self._dotnet_project_is_valid():
+            completed.update((0, 1))
+        else:
+            completed.discard(1)
+            completed.discard(2)
+        if self._dotnet_project_is_valid() and self._dotnet_output_is_ready():
+            completed.add(2)
+        else:
+            completed.discard(2)
+        self._completed_dotnet_steps = completed
+        self._update_dotnet_navigation()
+        if all(step in completed for step in range(3)):
+            self.dotnet_section_nav.setCurrentRow(3)
+
+    def _update_section_navigation_enabled(self):
+        """Keep sidebar tabs locked while either build mode is running."""
+        for name in ("python_section_nav", "dotnet_section_nav"):
+            navigation = getattr(self, name, None)
+            if navigation is not None:
+                navigation.setEnabled(not self.building)
+        self._update_saved_build_setup_controls()
 
     def _install_build_mode_pages(self, root_layout):
         """Move the legacy screen into a Python page and create the .NET page."""
@@ -1312,38 +2993,47 @@ class EXEBuilderApp(QWidget):
         self.dotnet_mode_title.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
         )
-        self.dotnet_build_options_btn = QPushButton("⚙")
-        self.dotnet_build_options_btn.setObjectName("dotnetBuildOptionsButton")
-        self.dotnet_build_options_btn.setAccessibleName("Build options")
-        self.dotnet_build_options_btn.setAccessibleDescription(
-            "Open build options and application preferences."
-        )
-        self.dotnet_build_options_btn.setFixedSize(34, 34)
-        self.dotnet_build_options_btn.setFont(QFont("Segoe UI Symbol", 18, QFont.Bold))
-        self.dotnet_build_options_btn.setStyleSheet(utility_icon_button_style())
-        dotnet_title_spacer = QWidget()
-        dotnet_title_spacer.setFixedSize(34, 34)
         self.dotnet_title_container = QWidget()
         self.dotnet_title_container.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.dotnet_title_container.setFixedHeight(44)
-        self.dotnet_title_container.setFixedWidth(title_frame_minimum_width(
+        self.dotnet_title_container.setFixedWidth(
             QFontMetrics(self.dotnet_mode_title.font()).horizontalAdvance(
                 self.dotnet_mode_title.text()
-            ),
-            self.dotnet_build_options_btn.width(),
-            10,
-        ))
-        dotnet_title_row = QHBoxLayout(self.dotnet_title_container)
-        dotnet_title_row.setContentsMargins(5, 5, 5, 5)
-        dotnet_title_row.setSpacing(0)
-        dotnet_title_row.addWidget(dotnet_title_spacer)
-        dotnet_title_row.addStretch()
-        dotnet_title_row.addWidget(self.dotnet_mode_title)
-        dotnet_title_row.addStretch()
-        dotnet_title_row.addWidget(self.dotnet_build_options_btn)
+            ) + 25
+        )
+        dotnet_title_layout = QHBoxLayout(self.dotnet_title_container)
+        dotnet_title_layout.setContentsMargins(5, 5, 5, 5)
+        dotnet_title_layout.addStretch()
+        dotnet_title_layout.addWidget(self.dotnet_mode_title)
+        dotnet_title_layout.addStretch()
+        dotnet_header = QWidget()
+        dotnet_header.setFixedSize(APP_FIXED_WIDTH, 44)
+        dotnet_header_layout = QHBoxLayout(dotnet_header)
+        dotnet_header_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_header_layout.setSpacing(0)
+        self.dotnet_title_navigation_header = QWidget()
+        self.dotnet_title_navigation_header.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
+        dotnet_title_navigation_layout = QHBoxLayout(
+            self.dotnet_title_navigation_header
+        )
+        dotnet_title_navigation_layout.setContentsMargins(5, 0, 0, 0)
+        dotnet_title_navigation_layout.setSpacing(0)
+        self.dotnet_title_options_slot = QWidget()
+        self.dotnet_title_options_slot.setFixedSize(34, 34)
+        self.dotnet_title_options_layout = QHBoxLayout(self.dotnet_title_options_slot)
+        self.dotnet_title_options_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_title_navigation_layout.addWidget(
+            self.dotnet_title_options_slot, alignment=Qt.AlignLeft | Qt.AlignVCenter
+        )
+        self.dotnet_title_content_header = QWidget()
+        self.dotnet_title_content_header.setFixedWidth(CONTENT_PANE_WIDTH)
+        self.dotnet_title_container.setParent(self.dotnet_title_content_header)
+        dotnet_header_layout.addWidget(self.dotnet_title_navigation_header)
+        dotnet_header_layout.addWidget(self.dotnet_title_content_header)
         self.dotnet_section_title_frames = []
         self.dotnet_configuration_frames = []
-        dotnet_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter)
+        self.dotnet_sections = []
+        dotnet_layout.addWidget(dotnet_header)
 
         # Keep the C# workflow on the same fixed two-column grid as the
         # Python workflow.  This makes both pages share the exact divider,
@@ -1380,6 +3070,14 @@ class EXEBuilderApp(QWidget):
         dotnet_build_frame_row_layout.setContentsMargins(0, 0, 0, 0)
         dotnet_build_frame_row_layout.setSpacing(0)
 
+        self.dotnet_build_options_row = QWidget()
+        self.dotnet_build_options_row.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Fixed
+        )
+        dotnet_build_options_row_layout = QHBoxLayout(self.dotnet_build_options_row)
+        dotnet_build_options_row_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_build_options_row_layout.setSpacing(0)
+
         self.dotnet_build_title_frame = QFrame()
         self.dotnet_build_title_frame.setFrameShape(QFrame.StyledPanel)
         self.dotnet_build_title_frame.setFrameShadow(QFrame.Raised)
@@ -1406,7 +3104,6 @@ class EXEBuilderApp(QWidget):
             self.dotnet_build_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop
         )
         dotnet_layout.addWidget(self.dotnet_build_title_row)
-        dotnet_layout.addWidget(self.dotnet_build_frame_row)
 
         def section(title, column):
             heading = QFrame()
@@ -1430,6 +3127,7 @@ class EXEBuilderApp(QWidget):
             layout.setSpacing(3)
             column.addWidget(heading, alignment=Qt.AlignHCenter)
             column.addWidget(frame, alignment=Qt.AlignHCenter)
+            self.dotnet_sections.append((title, heading, frame))
             return layout
 
         def utility_button(icon_path, icon_size, caption):
@@ -1453,7 +3151,8 @@ class EXEBuilderApp(QWidget):
                 converter_row.addStretch()
                 layout.addLayout(converter_row)
             row = QHBoxLayout()
-            row.setSpacing(5)
+            row.setContentsMargins(*SELECTOR_ROW_MARGINS)
+            row.setSpacing(SELECTOR_ROW_SPACING)
             select = QPushButton(select_text)
             select.setFixedSize(160, 35)
             select.setFont(QFont("Rubik UI", 11, QFont.Bold))
@@ -1471,9 +3170,11 @@ class EXEBuilderApp(QWidget):
             row.addStretch()
             layout.addLayout(row)
             entry = QHBoxLayout()
+            entry.setContentsMargins(*SELECTOR_ROW_MARGINS)
+            entry.setSpacing(PATH_ENTRY_ROW_SPACING)
             field = PathDisplayLineEdit()
             field.setPlaceholderText(placeholder)
-            field.setFixedHeight(30)
+            field.setFixedHeight(field.two_line_height())
             reset = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
             entry.addWidget(field)
             entry.addWidget(reset)
@@ -1496,6 +3197,8 @@ class EXEBuilderApp(QWidget):
 
         output_layout = section("Output Select", right_column)
         output_select_row = QHBoxLayout()
+        output_select_row.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        output_select_row.setSpacing(SELECTOR_ROW_SPACING)
         self.dotnet_output_select_btn = QPushButton("Output Folder")
         self.dotnet_output_select_btn.setFixedSize(160, 35)
         self.dotnet_output_select_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
@@ -1504,6 +3207,7 @@ class EXEBuilderApp(QWidget):
         output_select_row.addWidget(self.dotnet_output_select_btn)
         self.dotnet_date_time_dropdown = QComboBox()
         self.dotnet_date_time_dropdown.setFont(QFont("Rubik UI", 12))
+        self.dotnet_date_time_dropdown.setFixedHeight(35)
         self._populate_datetime_dropdown(self.dotnet_date_time_dropdown)
         self.dotnet_date_time_dropdown.setCurrentIndex(
             self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
@@ -1512,15 +3216,21 @@ class EXEBuilderApp(QWidget):
         output_select_row.addStretch()
         output_layout.addLayout(output_select_row)
         output_entry = QHBoxLayout()
+        output_entry.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        output_entry.setSpacing(PATH_ENTRY_ROW_SPACING)
         self.dotnet_output_input = PathDisplayLineEdit()
         self.dotnet_output_input.setPlaceholderText("No output folder selected.")
-        self.dotnet_output_input.setFixedHeight(30)
+        self.dotnet_output_input.setFixedHeight(
+            self.dotnet_output_input.two_line_height()
+        )
         self.dotnet_output_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
         self.dotnet_output_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_output_to_desktop)
         output_entry.addWidget(self.dotnet_output_input)
         output_entry.addWidget(self.dotnet_output_reset_btn)
         output_layout.addLayout(output_entry)
         name_entry = QHBoxLayout()
+        name_entry.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        name_entry.setSpacing(PATH_ENTRY_ROW_SPACING)
         self.dotnet_name_input = QLineEdit()
         self.dotnet_name_input.setPlaceholderText("Exe has not been named.")
         self.dotnet_name_input.setFixedHeight(30)
@@ -1538,6 +3248,12 @@ class EXEBuilderApp(QWidget):
         panel_layout = QVBoxLayout(panel)
         panel_layout.setContentsMargins(12, 12, 12, 12)
         panel_layout.setSpacing(7)
+
+        build_options = QWidget()
+        build_options.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        build_options_layout = QVBoxLayout(build_options)
+        build_options_layout.setContentsMargins(0, 4, 0, 4)
+        build_options_layout.setSpacing(3)
 
         runtime_row = QHBoxLayout()
         self.dotnet_runtime_label = QLabel("Target runtime")
@@ -1573,28 +3289,22 @@ class EXEBuilderApp(QWidget):
         publish_options_row.addWidget(self.dotnet_single_file)
         publish_options_row.addWidget(self.dotnet_trim)
         publish_options_row.addStretch()
-        panel_layout.addLayout(runtime_row)
-        panel_layout.addLayout(publish_options_row)
-
-        # Size the fixed-height panel from its widest control row so runtime
-        # names and publish-option labels cannot be squeezed or elided.
-        panel_margins = panel_layout.contentsMargins()
-        dotnet_publish_panel_width = max(
-            PAIRED_FRAME_WIDTH,
-            max(
-                runtime_row.minimumSize().width(),
-                publish_options_row.minimumSize().width(),
-            )
-            + panel_margins.left()
-            + panel_margins.right(),
+        build_options_layout.addLayout(runtime_row)
+        build_options_layout.addLayout(publish_options_row)
+        dotnet_build_options_row_layout.addWidget(
+            build_options, alignment=Qt.AlignHCenter | Qt.AlignTop
         )
-        panel.setFixedWidth(dotnet_publish_panel_width)
-        panel.setFixedHeight(BUILD_FRAME_HEIGHT)
+
+        # The bordered build frame contains only build status and actions;
+        # publish settings live directly below the Build Section heading.
+        panel.setFixedWidth(BUILD_ACTION_FRAME_WIDTH)
 
         self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
         self.dotnet_status_label.setReadOnly(True)
-        self.dotnet_status_label.setFixedSize(520, 40)
-        self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_status_label.setFixedSize(420, 75)
+        self.dotnet_status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.dotnet_status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.dotnet_status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.dotnet_status_label.setAlignment(Qt.AlignCenter)
 
         dotnet_status_cursor = self.dotnet_status_label.textCursor()
@@ -1612,14 +3322,21 @@ class EXEBuilderApp(QWidget):
         self.dotnet_open_output_btn = QPushButton("Open Output Folder")
         for button in (self.dotnet_publish_btn, self.dotnet_open_output_btn):
             button.setFixedSize(180, 35)
-            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
             button.setStyleSheet(button_base())
             actions.addWidget(button)
         actions.addStretch()
         panel_layout.addLayout(actions)
+        panel.setFixedHeight(panel.sizeHint().height())
         dotnet_build_frame_row_layout.addWidget(
             panel, alignment=Qt.AlignHCenter | Qt.AlignTop
         )
+        self.dotnet_build_controls = QWidget()
+        dotnet_build_controls_layout = QVBoxLayout(self.dotnet_build_controls)
+        dotnet_build_controls_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_build_controls_layout.setSpacing(16)
+        dotnet_build_controls_layout.addWidget(self.dotnet_build_options_row)
+        dotnet_build_controls_layout.addWidget(self.dotnet_build_frame_row)
         left_column.addStretch()
         right_column.addStretch()
         self._sync_dotnet_center_divider_height()
@@ -1627,32 +3344,19 @@ class EXEBuilderApp(QWidget):
         self.build_mode_stack = QStackedWidget()
         self.build_mode_stack.addWidget(self.python_mode_page)
         self.build_mode_stack.addWidget(self.dotnet_mode_page)
-        mode_row = QWidget()
-        mode_layout = QHBoxLayout(mode_row)
-        mode_layout.setContentsMargins(0, 4, 0, 4)
-        mode_layout.addStretch()
-        self.build_mode_label = QLabel("Build mode:")
-        self.build_mode_label.setStyleSheet(
-            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
-        )
-        self.build_mode_label.setFont(build_mode_button_font())
-        mode_layout.addWidget(self.build_mode_label)
         self.python_mode_btn = QPushButton("Python EXE")
         self.dotnet_mode_btn = QPushButton("C# .NET Publish")
         for button in (self.python_mode_btn, self.dotnet_mode_btn):
             button.setCheckable(True)
-            button.setFixedSize(150, 32)
+            button.setFixedHeight(32)
             button.setFont(build_mode_button_font())
             button.setStyleSheet(button_base())
-            mode_layout.addWidget(button)
-        mode_layout.addStretch()
         self.python_mode_btn.setChecked(True)
         self.python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
         self.dotnet_mode_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
         self._apply_build_mode_button_state("python")
         self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
         self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
-        self.dotnet_build_options_btn.clicked.connect(self._show_build_options)
         for widget in (
             self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
             self.dotnet_name_input,
@@ -1665,8 +3369,122 @@ class EXEBuilderApp(QWidget):
                 lambda checked, selected=widget: self._on_dotnet_publish_option_toggled(selected, checked)
             )
         self._sync_dotnet_publish_options()
-        root_layout.addWidget(mode_row)
+        self._create_dotnet_build_summary()
+        self._create_dotnet_saved_build_setup_controls()
+        self.dotnet_saved_setups_backup_section = (
+            self._create_saved_setups_backup_controls("dotnet")
+        )
+        self._install_dotnet_sidebar(dotnet_layout, panel)
         root_layout.addWidget(self.build_mode_stack)
+
+    def _install_dotnet_sidebar(self, dotnet_layout, build_panel):
+        self.dotnet_section_nav = QListWidget()
+        self.dotnet_section_nav.setObjectName("sectionNavigation")
+        self.dotnet_section_nav.setFixedWidth(185)
+        self.dotnet_section_nav.setSpacing(2)
+        self.dotnet_section_nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.dotnet_section_nav.setStyleSheet(SECTION_NAV_STYLE)
+        self.dotnet_section_stack = QStackedWidget()
+        self.dotnet_navigation_sidebar = QWidget()
+        self.dotnet_navigation_sidebar.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
+        self.dotnet_navigation_sidebar.setStyleSheet("background: #19232d;")
+        dotnet_sidebar_layout = QVBoxLayout(self.dotnet_navigation_sidebar)
+        dotnet_sidebar_layout.setContentsMargins(10, 8, 10, 8)
+        dotnet_sidebar_layout.setSpacing(4)
+        self.dotnet_python_mode_btn = QPushButton("Python EXE")
+        self.dotnet_mode_sidebar_btn = QPushButton("C# .NET Publish")
+        for button in (self.dotnet_python_mode_btn, self.dotnet_mode_sidebar_btn):
+            button.setCheckable(True)
+            button.setFixedHeight(30)
+            button.setFont(build_mode_button_font())
+        self.dotnet_python_mode_btn.setText("Python")
+        self.dotnet_mode_sidebar_btn.setText("C# .NET")
+        self.dotnet_python_mode_btn.clicked.connect(lambda: self.set_build_mode("python"))
+        self.dotnet_mode_sidebar_btn.clicked.connect(lambda: self.set_build_mode("dotnet"))
+        self.dotnet_mode_selector = QWidget()
+        dotnet_mode_selector_layout = QHBoxLayout(self.dotnet_mode_selector)
+        dotnet_mode_selector_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_mode_selector_layout.setSpacing(2)
+        for button in (self.dotnet_python_mode_btn, self.dotnet_mode_sidebar_btn):
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            dotnet_mode_selector_layout.addWidget(button)
+        dotnet_sidebar_layout.addWidget(self.dotnet_mode_selector)
+        sections = list(self.dotnet_sections)
+        sections.append(
+            ("Build", self.dotnet_build_title_frame, self.dotnet_build_controls)
+        )
+        self.dotnet_selection_summaries = {
+            "File Select": self._create_selection_summary(("icon",)),
+            "Output Select": self._create_selection_summary(("icon", "file")),
+        }
+
+        def progression_button(text, callback):
+            button = QPushButton(text)
+            button.setFixedSize(*PROGRESSION_BUTTON_SIZE)
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
+            button.setStyleSheet(button_base())
+            button.clicked.connect(callback)
+            return button
+
+        for label, heading, controls in sections:
+            page = QWidget()
+            layout = QVBoxLayout(page)
+            layout.setContentsMargins(28, 28, 28, 20)
+            layout.setSpacing(16 if label == "Build" else 12)
+            if label in self.dotnet_selection_summaries:
+                summary_title, summary_frame, _labels, _values = self.dotnet_selection_summaries[label]
+                layout.addWidget(summary_title, alignment=Qt.AlignHCenter)
+                layout.addWidget(summary_frame, alignment=Qt.AlignHCenter)
+            if label == "Build":
+                layout.addWidget(
+                    self.dotnet_build_summary_title_frame, alignment=Qt.AlignHCenter
+                )
+                layout.addWidget(
+                    self.dotnet_build_summary_frame, alignment=Qt.AlignHCenter
+                )
+            layout.addWidget(heading, alignment=Qt.AlignHCenter)
+            layout.addWidget(controls, alignment=Qt.AlignHCenter)
+            if label == "Build":
+                layout.addWidget(
+                    self.dotnet_saved_setups_section, alignment=Qt.AlignHCenter
+                )
+                layout.addWidget(
+                    self.dotnet_saved_setups_backup_section,
+                    alignment=Qt.AlignHCenter,
+                )
+            if label == "Icons Select":
+                self.dotnet_icon_continue_btn = progression_button(
+                    "Use no icon and continue", self._continue_from_dotnet_icons
+                )
+                layout.addWidget(self.dotnet_icon_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "File Select":
+                self.dotnet_file_continue_btn = progression_button(
+                    "Continue to output", self._continue_to_dotnet_output
+                )
+                layout.addWidget(self.dotnet_file_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "Output Select":
+                self.dotnet_output_continue_btn = progression_button(
+                    "Continue to build", self._continue_to_dotnet_build
+                )
+                layout.addWidget(self.dotnet_output_continue_btn, alignment=Qt.AlignHCenter)
+            layout.addStretch()
+            self.dotnet_section_stack.addWidget(page)
+            self.dotnet_section_nav.addItem(label.replace(" Select", ""))
+        for row in (self.dotnet_content_row, self.dotnet_build_title_row):
+            dotnet_layout.removeWidget(row)
+            row.hide()
+        shell = QWidget()
+        shell_layout = QHBoxLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+        dotnet_sidebar_layout.addWidget(self.dotnet_section_nav, 1)
+        shell_layout.addWidget(self.dotnet_navigation_sidebar)
+        shell_layout.addWidget(self.dotnet_section_stack, 1)
+        dotnet_layout.addWidget(shell, 1)
+        self.dotnet_section_nav.currentRowChanged.connect(self.dotnet_section_stack.setCurrentIndex)
+        self.dotnet_section_nav.setCurrentRow(0)
+        self._apply_build_mode_button_state(self.build_mode)
+        self._update_dotnet_navigation()
 
     @staticmethod
     def _populate_datetime_dropdown(dropdown):
@@ -1709,20 +3527,54 @@ class EXEBuilderApp(QWidget):
 
     def _apply_build_mode_button_state(self, mode):
         """Refresh build-mode selectors for the displayed mode and build state."""
+        building = getattr(self, "building", False)
         apply_build_mode_button_state(
             self.python_mode_btn,
             self.dotnet_mode_btn,
             mode,
-            getattr(self, "building", False),
+            building,
         )
+        if hasattr(self, "dotnet_python_mode_btn"):
+            apply_build_mode_button_state(
+                self.dotnet_python_mode_btn,
+                self.dotnet_mode_sidebar_btn,
+                mode,
+                building,
+            )
+    def _place_build_options_button(self, mode):
+        """Keep the shared options menu in the active workflow's top header."""
+        header_layout = (
+            self.title_options_layout
+            if mode == "python" else self.dotnet_title_options_layout
+        )
+        for layout in (
+            self.title_options_layout,
+            self.dotnet_title_options_layout,
+        ):
+            layout.removeWidget(self.build_options_btn)
+        header_layout.addWidget(self.build_options_btn)
+        self.build_options_btn.show()
+
+    def _center_mode_headers(self):
+        """Center each visible mode title over its content pane, not its sidebar."""
+        for container, title in (
+            (self.python_title_content_header, self.title_frame),
+            (self.dotnet_title_content_header, self.dotnet_title_container),
+        ):
+            title.move((container.width() - title.width()) // 2, 0)
 
     def set_build_mode(self, mode, save=True):
         if mode not in {"python", "dotnet"} or getattr(self, "building", False):
             return
         self.build_mode = mode
         self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
+        self._place_build_options_button(mode)
         self._apply_build_mode_button_state(mode)
-        self.setFixedSize(*APP_FIXED_SIZE)
+        self.setFixedSize(
+            *(PYTHON_APP_FIXED_SIZE if mode == "python" else DOTNET_APP_FIXED_SIZE)
+        )
+        self._center_mode_headers()
+        QTimer.singleShot(0, self._center_mode_headers)
         if mode == "python":
             self.validation_controller.update_build_button()
             self.validation_controller.update_ui_state()
@@ -1734,17 +3586,25 @@ class EXEBuilderApp(QWidget):
             self.state_ctrl.save_preferences()
 
     def _on_dotnet_settings_changed(self, *_args):
+        self.ui_handlers.disable_run_built_app_for_mass_datetime_selection(
+            self.dotnet_date_time_dropdown.currentData()
+        )
+        self._invalidate_saved_setup_backup_status("dotnet")
+        self._update_dotnet_selection_summaries()
+        self._update_dotnet_build_summary()
+        self._update_dotnet_navigation()
         self.dotnet_publish_controller.refresh_ui()
+        self._update_saved_dotnet_build_setup_controls()
         if not getattr(self, "_loading_state", False):
             self.state_ctrl.save_csharp_state()
 
     def _on_dotnet_publish_option_toggled(self, selected, checked):
-        """Apply the selected .NET publish option, or its required empty state."""
+        """Apply a publish-option choice, allowing an intentionally empty state."""
         self._sync_dotnet_publish_options(selected if checked else None)
         self._on_dotnet_settings_changed()
 
     def _sync_dotnet_publish_options(self, selected=None):
-        """Synchronize one selected publish option or the required empty state."""
+        """Keep publish options mutually exclusive without disabling alternatives."""
         options = (
             self.dotnet_self_contained,
             self.dotnet_single_file,
@@ -1760,9 +3620,8 @@ class EXEBuilderApp(QWidget):
 
         building = getattr(self, "building", False)
         for option in options:
-            enabled = not building and (selected is None or option is selected)
-            option.setEnabled(enabled)
-            if building or not enabled:
+            option.setEnabled(not building)
+            if building:
                 style = build_disabled_checkbox()
             elif selected is None:
                 style = required_selection_checkbox()
@@ -1815,22 +3674,31 @@ class EXEBuilderApp(QWidget):
             return
 
         row = QWidget()
-        row.setFixedHeight(22)
+        row.setFixedHeight(self._env_sync_row_height)
         row_layout = QHBoxLayout(row)
         row_layout.setContentsMargins(0,0,0,0)
         row_layout.setSpacing(4)
 
+        version_width = self._env_sync_status_column_widths[0][1]
+        package_count_width = self._env_sync_status_column_widths[1][1]
+        state_minimum_width = self._env_sync_status_column_widths[2][1]
         column_data = [
-            (version, 125),
-            (package_count, 80),
-            (status, max(275, QFontMetrics(QFont("Rubik UI", 10, QFont.Bold)).horizontalAdvance(str(status)) + 12)),
+            (version, version_width),
+            (package_count, package_count_width),
+            (
+                status,
+                max(
+                    state_minimum_width,
+                    QFontMetrics(self.env_sync_content_font).horizontalAdvance(str(status)) + 12,
+                ),
+            ),
         ]
         row_width = sum(width for _, width in column_data) + row_layout.spacing() * (len(column_data) - 1)
 
         for text, width in column_data:
             label = QLabel(text)
             label.setFixedWidth(width)
-            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            label.setFont(self.env_sync_content_font)
             if not hasattr(self, "env_sync_row_labels"):
                 self.env_sync_row_labels = []
             self.env_sync_row_labels.append(label)
@@ -1848,6 +3716,8 @@ class EXEBuilderApp(QWidget):
         self._sync_center_divider_height()
 
     def _sync_paired_section_geometry(self):
+        if hasattr(self, "python_section_stack"):
+            return
         if not all(
             hasattr(self, attr)
             for attr in (
@@ -1904,8 +3774,6 @@ class EXEBuilderApp(QWidget):
             source.setFixedHeight(frame_height)
             target.setFixedHeight(frame_height)
 
-        self.interpreter_frame.setFixedHeight(self.output_frame.height())
-
         base_height = getattr(
             self,
             "_env_sync_rows_scroll_base_height",
@@ -1927,8 +3795,6 @@ class EXEBuilderApp(QWidget):
 
         self.env_sync_frame.setFixedHeight(self.env_sync_frame.sizeHint().height())
         self.icon_frame.setFixedHeight(self.icon_frame.sizeHint().height())
-        self.interpreter_frame.setFixedHeight(self.output_frame.height())
-
         for widget in (self, self.content_row, self.left_content, self.right_content):
             layout = widget.layout()
             if layout is not None:
@@ -1936,6 +3802,8 @@ class EXEBuilderApp(QWidget):
 
     def _sync_center_divider_height(self):
         """Synchronize both mode dividers from the Python layout geometry."""
+        if hasattr(self, "python_section_stack"):
+            return
         python_attrs = (
             "left_content",
             "right_content",

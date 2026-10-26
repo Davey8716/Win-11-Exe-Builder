@@ -2,21 +2,10 @@
 import os,subprocess,time,webbrowser
 from PySide6.QtCore import QTimer
 from ..build.datetime_build_options import (
-    ISO_MASS_DATETIME_BUILD_SENTINEL,
-    MASS_DATETIME_BUILD_SENTINEL,
     NO_DATETIME_LABEL,
-    UK_MASS_DATETIME_BUILD_SENTINEL,
-    USA_MASS_DATETIME_BUILD_SENTINEL,
+    is_mass_datetime_build_selection,
 )
 from ..ui.ui_highlights import flash_delete_highlight
-
-MASS_DATETIME_BUILD_SENTINELS = {
-    MASS_DATETIME_BUILD_SENTINEL,
-    ISO_MASS_DATETIME_BUILD_SENTINEL,
-    UK_MASS_DATETIME_BUILD_SENTINEL,
-    USA_MASS_DATETIME_BUILD_SENTINEL,
-}
-
 
 def _find_no_datetime_index(dropdown):
     if not hasattr(dropdown, "count") or not hasattr(dropdown, "itemText"):
@@ -166,6 +155,62 @@ class UIHandlers:
 
     def _select_file_in_explorer(self, file_path):
         subprocess.Popen(["explorer.exe", f"/select,{file_path}"])
+
+    def open_summary_path_in_explorer(self, path):
+        """Open a summary path in Explorer and maximize its folder window."""
+        path = str(path or "").replace("\u200b", "").strip()
+        if not path or not os.path.exists(path):
+            return False
+
+        is_folder = os.path.isdir(path)
+        folder_path = path if is_folder else os.path.dirname(path)
+        try:
+            if is_folder:
+                os.startfile(path)
+            else:
+                subprocess.Popen(["explorer.exe", "/select,", path])
+        except OSError:
+            return False
+
+        QTimer.singleShot(
+            150,
+            lambda: self._maximize_explorer_window(folder_path),
+        )
+        return True
+
+    def _maximize_explorer_window(self, folder_path, attempts_remaining=4):
+        """Maximize the Explorer window associated with *folder_path* when ready."""
+        target_path = self._normalize_explorer_path(folder_path)
+        if not target_path:
+            return False
+
+        try:
+            import win32com.client
+            import win32con
+            import win32gui
+
+            windows = win32com.client.Dispatch("Shell.Application").Windows()
+            for index in range(windows.Count):
+                window = windows.Item(index)
+                window_path = self._normalize_explorer_path(
+                    self._get_explorer_window_path(window)
+                )
+                if window_path != target_path:
+                    continue
+                win32gui.ShowWindow(window.HWND, win32con.SW_MAXIMIZE)
+                win32gui.SetForegroundWindow(window.HWND)
+                return True
+        except Exception:
+            return False
+
+        if attempts_remaining > 0:
+            QTimer.singleShot(
+                150,
+                lambda: self._maximize_explorer_window(
+                    folder_path, attempts_remaining - 1
+                ),
+            )
+        return False
 
     def _normalize_explorer_path(self, path):
         if not path:
@@ -407,12 +452,50 @@ class UIHandlers:
 
         app.state_ctrl.save_state()
         app.validator.update_ui_state()   # 🔑 THIS WAS MISSING
+        app.dotnet_publish_controller.refresh_ui()
 
     def on_open_output_dir_toggle(self, state):
         app = self.app
         app.open_output_dir_after_build_enabled = bool(state)
         app.state_ctrl.save_state()
         app.validator.update_ui_state()
+        app.dotnet_publish_controller.refresh_ui()
+
+    def on_run_built_app_toggle(self, state):
+        app = self.app
+        app.run_built_app_after_build_enabled = bool(state)
+        app.state_ctrl.save_state()
+        app.validator.update_ui_state()
+        app.dotnet_publish_controller.refresh_ui()
+
+    def disable_run_built_app_for_mass_datetime_selection(self, selection):
+        """Disable the global launcher when one build creates several EXEs."""
+        if not is_mass_datetime_build_selection(selection):
+            return False
+
+        app = self.app
+        checkbox = getattr(app, "run_built_app_after_build", None)
+        if checkbox is not None:
+            block_signals = getattr(checkbox, "blockSignals", None)
+            if block_signals is None:
+                checkbox.setChecked(False)
+            else:
+                previous_signals = block_signals(True)
+                try:
+                    checkbox.setChecked(False)
+                finally:
+                    block_signals(previous_signals)
+
+        app.run_built_app_after_build_enabled = False
+        if hasattr(app, "state_ctrl"):
+            app.state_ctrl.save_state()
+        if hasattr(app, "validator"):
+            app.validator.validation_status_message()
+            app.validator.update_ui_state()
+        publish_controller = getattr(app, "dotnet_publish_controller", None)
+        if publish_controller is not None:
+            publish_controller.refresh_ui()
+        return True
 
     def on_suppress_exit_dialogue_toggle(self, state):
         app = self.app
@@ -431,6 +514,7 @@ class UIHandlers:
 
         app.state_ctrl.save_state()
         app.validator.update_ui_state()   
+        app.dotnet_publish_controller.refresh_ui()
         
     def on_script_path_change(self, text):
         app = self.app
@@ -478,8 +562,9 @@ class UIHandlers:
 
         data = app.date_time_dropdown.currentData()
 
-        if data in MASS_DATETIME_BUILD_SENTINELS:
+        if is_mass_datetime_build_selection(data):
             app.mass_datetime_build_selected = True
+            self.disable_run_built_app_for_mass_datetime_selection(data)
             if not hasattr(app, "_mass_datetime_restore_state"):
                 app._mass_datetime_restore_state = {
                     "append_datetime": getattr(app, "append_datetime", False),

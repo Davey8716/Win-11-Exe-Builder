@@ -7,12 +7,20 @@ from .styles import TOOLTIP_STYLE
 
 
 class PathHover(QObject):
-    def __init__(self, widget, delay=350, help_text="", help_enabled_getter=None):
+    def __init__(
+        self,
+        widget,
+        delay=350,
+        help_text="",
+        help_enabled_getter=None,
+        normalize_path=True,
+    ):
         super().__init__(widget)
         self.widget = widget
         self.delay = delay
         self.help_text = help_text
         self.help_enabled_getter = help_enabled_getter
+        self.normalize_path = normalize_path
         self.tip_window = None
 
         self.timer = QTimer(self)
@@ -49,6 +57,7 @@ class PathHover(QObject):
             raw_text,
             self.help_text,
             self._should_include_help_text(),
+            normalize_path=self.normalize_path,
         )
         if not tooltip_text:
             return
@@ -83,32 +92,29 @@ class PathHover(QObject):
 
 
 def attach_path_hovers(app):
+    from .tooltips import PYTHON_SUMMARY_HELP_TEXT
+
     tooltips_enabled = lambda: getattr(app, "tooltips_enabled", True)
 
     app._path_hovers = [
         PathHover(
             app.python_entry_input,
-            help_text=(
-                "Displays the full path to the Python interpreter.\n"
-                "That will be used for building EXEs.\n"
-                "This is read only.\n"
-                "Once a path has been set the navigation is locked to where pyton interpreters are.\n"
-            ),
+            help_text=PYTHON_SUMMARY_HELP_TEXT["interpreter"],
             help_enabled_getter=tooltips_enabled,
         ),
         PathHover(
             app.icon_path_input,
-            help_text="File path to Icon if used.",
+            help_text=PYTHON_SUMMARY_HELP_TEXT["icon"],
             help_enabled_getter=tooltips_enabled,
         ),
         PathHover(
             app.script_path_input,
-            help_text="File path to python script folder and file.",
+            help_text=PYTHON_SUMMARY_HELP_TEXT["file"],
             help_enabled_getter=tooltips_enabled,
         ),
         PathHover(
             app.output_path_input,
-            help_text="File path to the EXE output folder.",
+            help_text=PYTHON_SUMMARY_HELP_TEXT["output"],
             help_enabled_getter=tooltips_enabled,
         ),
     ]

@@ -32,6 +32,12 @@ Both modes provide controlled PySide6 workflows for selection, validation, outpu
 * Provide global build options for opening the output directory, minimizing or closing after a build, exit confirmation, and tooltips
 * Environment Sync for scanning and matching package sets across local Python installs
 
+## Side tab workflow
+
+The Python builder uses side tabs in this order: **Environment Sync → Interpreter → Icons → File → Output → Build**. Each completed selection opens the next tab. The Interpreter and File tabs include continue buttons, while Environment Sync and the icon are optional and can be skipped. Output advances when an output folder and executable name are set. Earlier tabs remain available so you can revise a selection. C# publishing uses side tabs for Icons, File, Output, and Build.
+
+Selection summaries on later tabs show the earlier choices: Python Icons shows the interpreter, File adds the icon, and Output adds the Python file. In C# mode, File shows the icon and Output shows the icon and project file. The Python Build Summary remains the final review of all build inputs.
+
 ---
 
 ## C#/.NET Publish Mode
@@ -51,7 +57,9 @@ size, but applications that rely on reflection or dynamic loading may require
 additional project configuration. C# publishing runs `dotnet clean` first so
 an icon embedded by an earlier build is not reused from .NET build outputs.
 The output folder has an explicit **Open
-Output Folder** action as well as the existing post-build option.
+Output Folder** action as well as the existing post-build option. Build options
+also include **Run Built App**, which starts the exact executable that was just
+created after a successful Python or C# build.
 
 When an icon is selected, the builder also copies it beside the published EXE
 as `_exe_builder_tray_icon.ico`, including for single-file output. A C# app can

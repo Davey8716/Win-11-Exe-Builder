@@ -36,6 +36,7 @@ from ..ui.styles import (
     filled_button,
     line_edit_style,
     qcolor_name,
+    sidebar_menu_button_style,
     status_text_style,
     utility_icon_button_disabled_style,
     utility_icon_button_style,
@@ -295,7 +296,7 @@ class DotnetPublishController(QObject):
         return os.path.join(values["output"], name)
 
     def _set_status(self, text):
-        """Show a .NET publish status message with centered paragraph text."""
+        """Show a .NET publish status message with the appropriate alignment."""
         status_label = self.app.dotnet_status_label
         status_label.setText(text)
         if not hasattr(status_label, "textCursor"):
@@ -307,6 +308,42 @@ class DotnetPublishController(QObject):
         cursor.mergeBlockFormat(text_format)
         cursor.clearSelection()
         status_label.setTextCursor(cursor)
+
+    def _ready_publish_status(self):
+        """Describe selected global post-build actions in the C# Build section."""
+        app = self.app
+        status = "Ready to publish."
+        opens_output = bool(
+            getattr(app, "open_output_dir_after_build", None)
+            and app.open_output_dir_after_build.isChecked()
+        )
+        minimizes = bool(
+            getattr(app, "minimize_after_build", None)
+            and app.minimize_after_build.isChecked()
+        )
+        closes = bool(
+            getattr(app, "close_after_build", None)
+            and app.close_after_build.isChecked()
+        )
+        if opens_output:
+            status += "\nThe output folder will open after building."
+        runs_built_app = bool(
+            getattr(app, "run_built_app_after_build", None)
+            and app.run_built_app_after_build.isChecked()
+        )
+        if runs_built_app:
+            status += "\nThe built app will then run."
+        if minimizes:
+            status += (
+                "\nThe app will then minimize."
+                if opens_output else "\nThis app will minimize after building."
+            )
+        elif closes:
+            status += (
+                "\nThis app will then close."
+                if opens_output else "\nThe app will close after building."
+            )
+        return status
 
     def has_publish_output(self):
         """Return whether the current target contains its published Windows EXE."""
@@ -468,10 +505,18 @@ class DotnetPublishController(QObject):
         if not hasattr(self.app, "dotnet_publish_btn"):
             return
         building = getattr(self.app, "building", False)
+        if hasattr(self.app, "_update_section_navigation_enabled"):
+            self.app._update_section_navigation_enabled()
+        if hasattr(self.app, "_update_dotnet_navigation"):
+            self.app._update_dotnet_navigation()
         if hasattr(self.app, "_apply_build_mode_button_state"):
             self.app._apply_build_mode_button_state(
                 getattr(self.app, "build_mode", "dotnet")
             )
+        if hasattr(self.app, "_update_saved_dotnet_build_setup_controls"):
+            self.app._update_saved_dotnet_build_setup_controls()
+        if hasattr(self.app, "_update_dotnet_build_summary"):
+            self.app._update_dotnet_build_summary()
         values = self.values()
         project_ok = bool(
             values["project"]
@@ -535,18 +580,15 @@ class DotnetPublishController(QObject):
         self.app.dotnet_open_output_btn.setStyleSheet(
             button_base() if publish_output_available and not building else build_disabled_button()
         )
-        # Build options are shared application preferences.  The Python flow
-        # refreshes them through ValidationController; the isolated .NET
-        # publish flow owns its own refresh, so lock both cogs here as well.
-        for name in ("build_options_btn", "dotnet_build_options_btn"):
-            button = getattr(self.app, name, None)
-            if button is None:
-                continue
+        # Build options are shared application preferences. The C# flow owns
+        # its refresh, so lock the shared sidebar menu during publishing.
+        button = getattr(self.app, "build_options_btn", None)
+        if button is not None:
             if hasattr(button, "setEnabled"):
                 button.setEnabled(not building)
             if hasattr(button, "setStyleSheet"):
                 button.setStyleSheet(
-                    build_disabled_button() if building else utility_icon_button_style()
+                    sidebar_menu_button_style(disabled=building)
                 )
         for field in (
             self.app.dotnet_project_input,
@@ -719,7 +761,7 @@ class DotnetPublishController(QObject):
                 f"QLabel {{ color: {qcolor_name(Colors.BUILD_DISABLED_TEXT if building else Colors.TEXT_LIGHT)}; }}"
             )
         if not building:
-            self._set_status("Ready to publish." if not error else error)
+            self._set_status(self._ready_publish_status() if not error else error)
 
     def publish(self):
         if getattr(self.app, "building", False):

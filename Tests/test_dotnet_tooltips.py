@@ -19,13 +19,16 @@ def test_dotnet_tooltips_cover_all_publish_controls_and_paths(monkeypatch):
     monkeypatch.setattr(tooltips, "PathHover", FakePathHover)
 
     tooltip_names = (
-        "dotnet_build_options_btn", "dotnet_project_select_btn", "dotnet_recent_projects", "dotnet_project_delete_btn",
+        "dotnet_project_select_btn", "dotnet_recent_projects", "dotnet_project_delete_btn",
         "dotnet_project_delete_all_btn", "dotnet_project_reset_btn", "dotnet_icon_select_btn",
         "dotnet_ico_convert_btn", "dotnet_recent_icons", "dotnet_icon_delete_btn", "dotnet_icon_delete_all_btn",
         "dotnet_icon_reset_btn", "dotnet_output_select_btn", "dotnet_output_reset_btn",
         "dotnet_name_input", "dotnet_name_reset_btn", "dotnet_runtime_combo",
         "dotnet_self_contained", "dotnet_single_file", "dotnet_trim", "dotnet_status_label",
         "dotnet_publish_btn", "dotnet_open_output_btn", "dotnet_mode_btn",
+        "dotnet_save_build_setup_btn", "export_dotnet_build_setups_btn",
+        "import_dotnet_build_setups_btn", "dotnet_delete_build_setup_btn",
+        "saved_dotnet_build_setup_dropdown",
     )
     path_names = ("dotnet_project_input", "dotnet_icon_input", "dotnet_output_input")
     app = SimpleNamespace(tooltips_enabled=True)
@@ -39,3 +42,149 @@ def test_dotnet_tooltips_cover_all_publish_controls_and_paths(monkeypatch):
     assert all(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
     app.tooltips_enabled = False
     assert not any(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
+
+
+def test_python_saved_setup_controls_have_tooltips(monkeypatch):
+    registered_tooltips = []
+
+    class FakeTooltip:
+        def __init__(self, widget, text, **_kwargs):
+            registered_tooltips.append((widget, text))
+
+    monkeypatch.setattr(tooltips, "QtTooltip", FakeTooltip)
+    app = SimpleNamespace(
+        saved_build_setup_dropdown="saved",
+        save_build_setup_btn="save",
+        export_python_build_setups_btn="export",
+        import_python_build_setups_btn="import",
+        delete_build_setup_btn="delete",
+    )
+
+    tooltips.attach_saved_setup_tooltips(app, "python")
+
+    assert {widget for widget, _text in registered_tooltips} == {
+        "save", "export", "import", "delete", "saved"
+    }
+
+
+def test_saved_setup_entry_and_delete_menu_hovers_use_qt_tooltips(monkeypatch):
+    registered_tooltips = []
+
+    class FakeTooltip:
+        def __init__(self, widget, text, **kwargs):
+            registered_tooltips.append((widget, text, kwargs))
+
+    class FakeViewport:
+        def setMouseTracking(self, _enabled):
+            pass
+
+    class FakeView:
+        def __init__(self):
+            self._viewport = FakeViewport()
+
+        def viewport(self):
+            return self._viewport
+
+    class FakeDropdown:
+        def __init__(self):
+            self._view = FakeView()
+
+        def view(self):
+            return self._view
+
+    class FakeMenu:
+        def setMouseTracking(self, _enabled):
+            pass
+
+    monkeypatch.setattr(tooltips, "QtTooltip", FakeTooltip)
+    dropdown = FakeDropdown()
+    menu = FakeMenu()
+    selected_action = object()
+    all_action = object()
+    app = SimpleNamespace(
+        saved_build_setup_dropdown=dropdown,
+        save_build_setup_btn="save",
+        export_python_build_setups_btn="export",
+        import_python_build_setups_btn="import",
+        delete_build_setup_btn="delete",
+        delete_build_setup_menu=menu,
+        delete_selected_build_setup_action=selected_action,
+        delete_all_build_setups_action=all_action,
+    )
+
+    tooltips.attach_saved_setup_tooltips(app, "python")
+
+    hover_widgets = {widget for widget, _text, _kwargs in registered_tooltips}
+    assert dropdown.view().viewport() in hover_widgets
+    assert menu in hover_widgets
+
+
+def test_summary_hovers_reuse_source_field_guidance(monkeypatch):
+    registered_path_hovers = []
+
+    class FakePathHover:
+        def __init__(self, widget, **kwargs):
+            registered_path_hovers.append((widget, kwargs))
+
+    monkeypatch.setattr(tooltips, "PathHover", FakePathHover)
+    app = SimpleNamespace(
+        tooltips_enabled=True,
+        build_summary_values={key: f"python-{key}" for key in tooltips.PYTHON_SUMMARY_HELP_TEXT},
+        dotnet_build_summary_values={key: f"dotnet-{key}" for key in tooltips.DOTNET_SUMMARY_HELP_TEXT},
+        python_selection_summaries={
+            "Icons": (None, None, None, {"interpreter": "selection-interpreter"}),
+            "File": (None, None, None, {"interpreter": "selection-file-interpreter", "icon": "selection-icon"}),
+        },
+        dotnet_selection_summaries={
+            "File Select": (None, None, None, {"icon": "selection-dotnet-icon"}),
+            "Output Select": (None, None, None, {"icon": "selection-output-icon", "file": "selection-project"}),
+        },
+    )
+
+    tooltips.attach_summary_hovers(app)
+
+    registered_by_widget = dict(registered_path_hovers)
+    assert registered_by_widget["python-name"]["help_text"] == tooltips.PYTHON_SUMMARY_HELP_TEXT["name"]
+    assert registered_by_widget["dotnet-runtime"]["help_text"] == tooltips.DOTNET_SUMMARY_HELP_TEXT["runtime"]
+    assert registered_by_widget["selection-project"]["help_text"] == tooltips.DOTNET_SUMMARY_HELP_TEXT["project"]
+    assert all(not kwargs["normalize_path"] for _widget, kwargs in registered_path_hovers)
+    assert all(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
+    app.tooltips_enabled = False
+    assert not any(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
+
+
+def test_sidebar_tooltip_uses_the_hovered_section(monkeypatch):
+    captured = {}
+
+    class FakeViewport:
+        def setMouseTracking(self, enabled):
+            captured["mouse_tracking"] = enabled
+
+        def mapFromGlobal(self, position):
+            return position
+
+    class FakeNav:
+        def __init__(self):
+            self.view = FakeViewport()
+
+        def viewport(self):
+            return self.view
+
+        def itemAt(self, position):
+            if position == "section":
+                return SimpleNamespace(text=lambda: "Output")
+            return None
+
+    class FakeTooltip:
+        def __init__(self, widget, text, **kwargs):
+            captured.update(widget=widget, text=text, kwargs=kwargs)
+
+    monkeypatch.setattr(tooltips, "QtTooltip", FakeTooltip)
+    monkeypatch.setattr(tooltips, "QCursor", SimpleNamespace(pos=lambda: "section"))
+    nav = FakeNav()
+    tooltips.attach_section_nav_tooltips(nav, {"Output": "Choose the output folder."})
+
+    assert captured["widget"] is nav.view
+    assert captured["mouse_tracking"] is True
+    assert captured["kwargs"]["position_at_cursor"] is True
+    assert captured["text"]() == "Choose the output folder."

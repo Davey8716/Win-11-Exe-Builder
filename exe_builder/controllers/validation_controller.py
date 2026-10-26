@@ -1,7 +1,8 @@
 import os
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtGui import QIcon, QTextBlockFormat, QTextCursor
 from PySide6.QtWidgets import QCheckBox
+from ..build.datetime_build_options import is_mass_datetime_build_selection
 from ..ui.styles import (
     APPEND_PY_VERSION_STYLE,
     BUILD_DISABLED_TITLE_FRAME_STYLE,
@@ -29,6 +30,7 @@ from ..ui.styles import (
     filled_button,
     line_edit_style,
     qcolor_name,
+    sidebar_menu_button_style,
     status_text_style,
     TITLE_FRAME_STYLE,
     UTILITY_ICON_BUTTON_SIZE,
@@ -42,6 +44,37 @@ class ValidationController:
         app = EXEBuilderApp instance
         """
         self.app = app
+        self._existing_output_warning_context = None
+        self._existing_output_warning_visible = False
+        self._existing_output_warning_token = 0
+
+    def _run_built_app_is_available(self):
+        """Return whether the global launcher is valid for current output choices."""
+        for field in ("date_time_dropdown", "dotnet_date_time_dropdown"):
+            dropdown = getattr(self.app, field, None)
+            if dropdown is not None and is_mass_datetime_build_selection(
+                dropdown.currentData()
+            ):
+                return False
+        return True
+
+    def _cancel_existing_output_warning(self):
+        """Prevent a pending output warning from restoring a stale ready status."""
+        self._existing_output_warning_token += 1
+        self._existing_output_warning_visible = False
+
+    def _restore_ready_status_after_existing_output_warning(self, token, context):
+        if (
+            token != self._existing_output_warning_token
+            or context != self._existing_output_warning_context
+            or not self._existing_output_warning_visible
+            or getattr(self.app, "building", False)
+            or getattr(self.app, "_status_lock", False)
+        ):
+            return
+
+        self._existing_output_warning_visible = False
+        self.update_ui_state()
             
     def set_build_error(self, message: str):
         self.app.build_error = message
@@ -115,10 +148,7 @@ class ValidationController:
 
         state["is_ready"] = is_ready
 
-        if not is_ready:
-            self.app.status_label.setFixedSize(250,60)
-        else:
-            self.app.status_label.setFixedSize(250,60)
+        self.app.status_label.setFixedSize(420, 75)
 
         # Track previous state
         self.app._was_build_ready = is_ready
@@ -177,6 +207,9 @@ class ValidationController:
     def update_ui_state(self):
         app = self.app
         building = getattr(app, "building", False)
+
+        if hasattr(app, "_update_section_navigation_enabled"):
+            app._update_section_navigation_enabled()
 
         if hasattr(app, "_apply_build_mode_button_state"):
             app._apply_build_mode_button_state(getattr(app, "build_mode", "python"))
@@ -307,6 +340,9 @@ class ValidationController:
         def set_btn(btn, enabled, color=None):
             btn.setEnabled(enabled)
 
+            if btn is getattr(app, "build_options_btn", None):
+                btn.setStyleSheet(sidebar_menu_button_style(disabled=not enabled))
+                return
             if not enabled:
                 if isinstance(btn, QCheckBox):
                     btn.setStyleSheet(build_disabled_checkbox())
@@ -389,9 +425,7 @@ class ValidationController:
         )
                         
         # Tooltips
-        for name in ("build_options_btn", "dotnet_build_options_btn"):
-            if hasattr(app, name):
-                set_btn(getattr(app, name), not building)
+        set_btn(app.build_options_btn, not building)
         set_btn(app.tooltips_checkbox, not building)
         if hasattr(app, "suppress_exit_dialogue"):
             set_btn(app.suppress_exit_dialogue, not building)
@@ -401,6 +435,12 @@ class ValidationController:
         if is_desktop:
             app.open_output_dir_after_build.setStyleSheet(
                 build_disabled_checkbox_without_checkmark()
+            )
+        run_built_app = getattr(app, "run_built_app_after_build", None)
+        if run_built_app is not None:
+            set_btn(
+                run_built_app,
+                not building and self._run_built_app_is_available(),
             )
         # 🔑 mutual exclusion + build lock
         min_checked = app.minimize_after_build.isChecked()
@@ -540,6 +580,18 @@ class ValidationController:
         # -------------------------------
         # STATUS ONLY (lock applies here ONLY)
         # -------------------------------
+        output_warning_context = (
+            os.path.normcase(outdir),
+            os.path.normcase(os.path.abspath(script)) if script else "",
+            exe_name.casefold(),
+        )
+
+        if building or not is_ready:
+            self._cancel_existing_output_warning()
+        elif not output_available:
+            self._cancel_existing_output_warning()
+            self._existing_output_warning_context = None
+
         if getattr(app, "_status_lock", False):
             return
 
@@ -547,12 +599,62 @@ class ValidationController:
             status_text = "Building..."
 
         elif is_ready:
-            status_text = "Ready to build."
+            if (
+                output_available
+                and output_warning_context != self._existing_output_warning_context
+            ):
+                self._existing_output_warning_context = output_warning_context
+                self._existing_output_warning_visible = True
+                self._existing_output_warning_token += 1
+                warning_token = self._existing_output_warning_token
+                status_text = (
+                    "A build already exists here. Build again to overwrite it, "
+                    "or choose another output folder."
+                )
+                QTimer.singleShot(
+                    5000,
+                    lambda: self._restore_ready_status_after_existing_output_warning(
+                        warning_token,
+                        output_warning_context,
+                    ),
+                )
+            elif output_available and self._existing_output_warning_visible:
+                status_text = (
+                    "A build already exists here. Build again to overwrite it, "
+                    "or choose another output folder."
+                )
+            else:
+                status_text = "Ready to build."
+                opens_output = app.open_output_dir_after_build.isChecked()
+                if opens_output:
+                    status_text += "\nThe output folder will open after building."
+                runs_built_app = getattr(app, "run_built_app_after_build", None)
+                if runs_built_app is not None and runs_built_app.isChecked():
+                    status_text += "\nThe built app will then run."
+                if app.minimize_after_build.isChecked():
+                    status_text += (
+                        "\nThe app will then minimize."
+                        if opens_output else "\nThis app will minimize after building."
+                    )
+                elif app.close_after_build.isChecked():
+                    status_text += (
+                        "\nThis app will then close."
+                        if opens_output else "\nThe app will close after building."
+                    )
         else:
             status_text = "Missing required inputs."
 
         app.status_label.setText(status_text)
-        app.status_label.setAlignment(Qt.AlignCenter)
+        if hasattr(app.status_label, "textCursor"):
+            cursor = app.status_label.textCursor()
+            cursor.select(QTextCursor.Document)
+            text_format = QTextBlockFormat()
+            text_format.setAlignment(Qt.AlignCenter)
+            cursor.mergeBlockFormat(text_format)
+            cursor.clearSelection()
+            app.status_label.setTextCursor(cursor)
+        else:
+            app.status_label.setAlignment(Qt.AlignCenter)
 
         if building:
             color = Colors.BLACK
