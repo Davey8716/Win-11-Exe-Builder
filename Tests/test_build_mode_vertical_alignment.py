@@ -170,6 +170,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             <= interpreter_summary_label.width()
         )
         assert window.build_summary_title.font().pointSize() == 16
+        assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_title_frame.styleSheet()
         assert all(
             label.font().pointSize() == 12
             for label in window.build_summary_labels.values()
@@ -202,10 +203,21 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
                 assert value.font().pointSize() == 12
                 assert value.wordWrap()
                 assert value.height() >= value.fontMetrics().lineSpacing() * 2
+                assert qcolor_name(Colors.TEXT_LIGHT) in value.styleSheet()
+            assert qcolor_name(Colors.TEXT_LIGHT) in title.styleSheet()
+            assert all(qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet() for label in labels.values())
         assert window.python_selection_summaries["Icons"][3]["interpreter"].text() == "Not selected"
         assert window.python_selection_summaries["File"][3]["icon"].text() == "No icon"
         assert window.build_summary_values["interpreter"].font().bold()
-        assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["interpreter"].styleSheet()
+        assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["interpreter"].styleSheet()
+        assert all(
+            qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet()
+            for label in window.build_summary_labels.values()
+        )
+        assert all(
+            qcolor_name(Colors.TEXT_LIGHT) in value.styleSheet()
+            for value in window.build_summary_values.values()
+        )
         assert window.build_summary_values["interpreter"].wordWrap()
         assert window.build_summary_values["interpreter"].height() >= (
             window.build_summary_values["interpreter"].fontMetrics().lineSpacing() * 2
@@ -267,8 +279,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.icon_path_input.setText("C:/icons/app.ico")
         assert bool(window.python_section_nav.item(3).flags() & Qt.ItemIsEnabled)
         assert window.build_summary_values["icon"].text().replace("\u200b", "") == "C:/icons/app.ico"
-        assert qcolor_name(Colors.SUCCESS) in window.build_summary_labels["icon"].styleSheet()
-        assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["icon"].styleSheet()
+        assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_labels["icon"].styleSheet()
+        assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["icon"].styleSheet()
         assert window.python_selection_summaries["File"][3]["icon"].text().replace("\u200b", "") == "C:/icons/app.ico"
         assert window.python_selection_summaries["Output"][3]["icon"].toolTip() == "C:/icons/app.ico"
         window.script_path_input.setText("C:/project/main.py")
@@ -360,6 +372,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             label.width() >= 85 for label in window.dotnet_build_summary_labels.values()
         )
         assert window.dotnet_build_summary_title.font().pointSize() == 16
+        assert qcolor_name(Colors.TEXT_LIGHT) in window.dotnet_build_summary_title_frame.styleSheet()
         assert all(
             label.font().pointSize() == 12
             for label in window.dotnet_build_summary_labels.values()
@@ -391,6 +404,17 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             for value in values.values():
                 assert value.font().pointSize() == 12
                 assert value.height() >= value.fontMetrics().lineSpacing() * 2
+                assert qcolor_name(Colors.TEXT_LIGHT) in value.styleSheet()
+            assert qcolor_name(Colors.TEXT_LIGHT) in title.styleSheet()
+            assert all(qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet() for label in labels.values())
+        assert all(
+            qcolor_name(Colors.TEXT_LIGHT) in label.styleSheet()
+            for label in window.dotnet_build_summary_labels.values()
+        )
+        assert all(
+            qcolor_name(Colors.TEXT_LIGHT) in value.styleSheet()
+            for value in window.dotnet_build_summary_values.values()
+        )
         window.dotnet_icon_input.setText("C:/icons/dotnet.ico")
         assert window.dotnet_selection_summaries["File Select"][3]["icon"].text().replace("\u200b", "") == "C:/icons/dotnet.ico"
         assert window.dotnet_selection_summaries["Output Select"][3]["icon"].text().replace("\u200b", "") == "C:/icons/dotnet.ico"

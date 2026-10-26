@@ -1675,7 +1675,7 @@ class EXEBuilderApp(QWidget):
             value.setTextInteractionFlags(Qt.NoTextInteraction)
             value.setFocusPolicy(Qt.NoFocus)
             value.setToolTip("")
-            text_color = Colors.TEXT_LIGHT if key == "icon" else Colors.SUCCESS
+            text_color = Colors.TEXT_LIGHT
             label.setStyleSheet(f"QLabel {{ color: {qcolor_name(text_color)}; }}")
             value.setStyleSheet(
                 f"QLabel {{ color: {qcolor_name(text_color)}; font-weight: bold; "
@@ -1714,16 +1714,6 @@ class EXEBuilderApp(QWidget):
             widget = self.build_summary_values[key]
             widget.setText(self._summary_display_text(text))
             widget.setToolTip(text)
-            if key == "icon":
-                text_color = Colors.SUCCESS if self.icon_path_input.text() else Colors.TEXT_LIGHT
-                self.build_summary_labels[key].setStyleSheet(
-                    f"QLabel {{ color: {qcolor_name(text_color)}; }}"
-                )
-                widget.setStyleSheet(
-                    f"QLabel {{ color: {qcolor_name(text_color)}; font-weight: bold; "
-                    f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
-                    f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
-                )
         self._update_saved_build_setup_controls()
 
     def _python_datetime_summary_text(self):
@@ -2188,8 +2178,7 @@ class EXEBuilderApp(QWidget):
             "datetime": self.dotnet_date_time_dropdown.currentText(),
         }
         for key, text in values.items():
-            is_optional_icon = key == "icon" and not self.dotnet_icon_input.text()
-            color = Colors.TEXT_LIGHT if is_optional_icon else Colors.SUCCESS
+            color = Colors.TEXT_LIGHT
             self.dotnet_build_summary_labels[key].setStyleSheet(
                 f"QLabel {{ color: {qcolor_name(color)}; }}"
             )
@@ -2664,7 +2653,7 @@ class EXEBuilderApp(QWidget):
             for key, value in values.items():
                 path = selections[key].strip()
                 display = path or ("No icon" if key == "icon" else "Not selected")
-                color = Colors.SUCCESS if path else Colors.TEXT_LIGHT
+                color = Colors.TEXT_LIGHT
                 label = labels[key]
                 label.setStyleSheet(f"QLabel {{ color: {qcolor_name(color)}; }}")
                 value.setStyleSheet(
