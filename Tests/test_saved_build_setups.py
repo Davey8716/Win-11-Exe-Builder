@@ -39,7 +39,7 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         saved_setups_section = window.save_build_setup_btn.parentWidget()
         assert saved_setups_section.parentWidget() is build_page
         assert window.saved_build_setup_dropdown.parentWidget() is saved_setups_section
-        assert window.saved_build_setup_dropdown.width() == 314
+        assert window.saved_build_setup_dropdown.width() == 324
         assert window.saved_build_setup_dropdown.height() == 28
         assert not window.saved_build_setup_dropdown.model().item(0).isEnabled()
         assert window.delete_build_setup_btn.parentWidget() is saved_setups_section
@@ -61,6 +61,7 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
             saved_setups_section
         )
         assert saved_setups_section.width() == window.build_summary_frame.width()
+        assert window.build_summary_frame.width() == 585
         assert window.python_saved_setups_backup_section.parentWidget() is build_page
         assert window.python_saved_setups_backup_section.layout().spacing() == 16
         assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(
@@ -239,7 +240,7 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert build_layout.indexOf(window.dotnet_build_controls) < build_layout.indexOf(
             saved_setups_section
         )
-        assert window.dotnet_build_summary_frame.width() == window.build_summary_frame.width()
+        assert window.dotnet_build_summary_frame.width() == 575
         assert saved_setups_section.width() == window.dotnet_build_summary_frame.width()
         assert window.dotnet_saved_setups_backup_section.parentWidget() is build_page
         assert window.dotnet_saved_setups_backup_section.layout().spacing() == 16

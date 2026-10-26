@@ -47,7 +47,7 @@ def test_dotnet_build_section_is_centered_below_the_selection_grid():
 
 
 def test_application_uses_mode_specific_fixed_heights():
-    assert "PYTHON_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 840)" in MAIN_SOURCE
+    assert "PYTHON_APP_FIXED_SIZE = (PYTHON_APP_FIXED_WIDTH, 840)" in MAIN_SOURCE
     assert "DOTNET_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 866)" in MAIN_SOURCE
 
 

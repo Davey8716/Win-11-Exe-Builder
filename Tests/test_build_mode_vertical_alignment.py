@@ -74,7 +74,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.show()
         window.set_build_mode("python", save=False)
         app.processEvents()
-        assert window.size().width() == 850
+        assert window.size().width() == 860
         assert window.size().height() == 840
         python_title_center = window.title_label.mapTo(
             window, QPoint(window.title_label.width() // 2, 0)
@@ -150,6 +150,26 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         build_page = window.python_section_stack.widget(5)
         assert window.build_summary_title_frame.parentWidget() is build_page
         assert window.build_summary_title.parentWidget() is window.build_summary_title_frame
+        assert window.build_summary_frame.width() == 585
+        assert all(
+            label.width() >= 96 for label in window.build_summary_labels.values()
+        )
+        interpreter_summary_label = window.build_summary_labels["interpreter"]
+        assert (
+            interpreter_summary_label.fontMetrics().horizontalAdvance(
+                interpreter_summary_label.text()
+            )
+            <= interpreter_summary_label.width()
+        )
+        assert window.build_summary_title.font().pointSize() == 16
+        assert all(
+            label.font().pointSize() == 12
+            for label in window.build_summary_labels.values()
+        )
+        assert all(
+            value.font().pointSize() == 12
+            for value in window.build_summary_values.values()
+        )
         for index, keys in ((2, {"interpreter"}), (3, {"interpreter", "icon"}),
                             (4, {"interpreter", "icon", "file"})):
             title, frame, labels, values = window.python_selection_summaries[
@@ -158,7 +178,20 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             assert title.parentWidget() is window.python_section_stack.widget(index)
             assert frame.parentWidget() is window.python_section_stack.widget(index)
             assert set(labels) == set(values) == keys
+            assert frame.width() == 585
+            assert all(label.width() >= 96 for label in labels.values())
+            if "interpreter" in labels:
+                interpreter_label = labels["interpreter"]
+                assert (
+                    interpreter_label.fontMetrics().horizontalAdvance(
+                        interpreter_label.text()
+                    )
+                    <= interpreter_label.width()
+                )
+            assert title.layout().itemAt(1).widget().font().pointSize() == 16
+            assert all(label.font().pointSize() == 12 for label in labels.values())
             for value in values.values():
+                assert value.font().pointSize() == 12
                 assert value.wordWrap()
                 assert value.height() >= value.fontMetrics().lineSpacing() * 2
         assert window.python_selection_summaries["Icons"][3]["interpreter"].text() == "Not selected"
@@ -297,6 +330,27 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.dotnet_selection_summaries["File Select"][0].parentWidget() is window.dotnet_section_stack.widget(1)
         assert window.dotnet_selection_summaries["Output Select"][0].parentWidget() is window.dotnet_section_stack.widget(2)
         assert window.dotnet_build_title_frame.parentWidget() is window.dotnet_section_stack.widget(3)
+        assert window.dotnet_build_summary_frame.width() == 575
+        assert all(
+            label.width() == 85 for label in window.dotnet_build_summary_labels.values()
+        )
+        assert window.dotnet_build_summary_title.font().pointSize() == 16
+        assert all(
+            label.font().pointSize() == 12
+            for label in window.dotnet_build_summary_labels.values()
+        )
+        assert all(
+            value.font().pointSize() == 12
+            for value in window.dotnet_build_summary_values.values()
+        )
+        for title, frame, labels, values in window.dotnet_selection_summaries.values():
+            assert title.layout().itemAt(1).widget().font().pointSize() == 16
+            assert frame.width() == 575
+            assert all(label.width() == 85 for label in labels.values())
+            assert all(label.font().pointSize() == 12 for label in labels.values())
+            for value in values.values():
+                assert value.font().pointSize() == 12
+                assert value.height() >= value.fontMetrics().lineSpacing() * 2
         window.dotnet_icon_input.setText("C:/icons/dotnet.ico")
         assert window.dotnet_selection_summaries["File Select"][3]["icon"].text().replace("\u200b", "") == "C:/icons/dotnet.ico"
         assert window.dotnet_selection_summaries["Output Select"][3]["icon"].text().replace("\u200b", "") == "C:/icons/dotnet.ico"
@@ -307,7 +361,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.dotnet_selection_summaries["Output Select"][3]["icon"].text() == "No icon"
         window.set_build_mode("python", save=False)
         app.processEvents()
-        assert window.size().width() == 850
+        assert window.size().width() == 860
         assert window.size().height() == 840
         assert window.python_section_stack.currentIndex() == 4
 

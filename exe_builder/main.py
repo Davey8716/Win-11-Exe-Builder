@@ -88,19 +88,32 @@ from exe_builder.ui.styles import (
 )
 
 APP_FIXED_WIDTH = 850
-PYTHON_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 840)
+PYTHON_APP_FIXED_WIDTH = APP_FIXED_WIDTH + 10
+PYTHON_APP_FIXED_SIZE = (PYTHON_APP_FIXED_WIDTH, 840)
 DOTNET_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 866)
 NAVIGATION_SIDEBAR_WIDTH = 205
 CONTENT_PANE_WIDTH = APP_FIXED_WIDTH - NAVIGATION_SIDEBAR_WIDTH
+PYTHON_CONTENT_PANE_WIDTH = PYTHON_APP_FIXED_WIDTH - NAVIGATION_SIDEBAR_WIDTH
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
+PYTHON_SUMMARY_FRAME_WIDTH = PAIRED_FRAME_WIDTH + 10
+SUMMARY_LABEL_WIDTH = 85
+PYTHON_SUMMARY_LABEL_WIDTH = 96
+SUMMARY_TITLE_FONT_SIZE = 16
+SUMMARY_CONTENT_FONT_SIZE = 12
 SAVED_SETUP_CONTROL_HEIGHT = 28
 SAVED_SETUP_SAVE_BUTTON_WIDTH = 135
 SAVED_SETUP_DELETE_BUTTON_WIDTH = 110
 SAVED_SETUP_CONTROL_SPACING = 8
 SAVED_SETUP_DROPDOWN_WIDTH = (
     PAIRED_FRAME_WIDTH
+    - SAVED_SETUP_SAVE_BUTTON_WIDTH
+    - SAVED_SETUP_DELETE_BUTTON_WIDTH
+    - (SAVED_SETUP_CONTROL_SPACING * 2)
+)
+PYTHON_SAVED_SETUP_DROPDOWN_WIDTH = (
+    PYTHON_SUMMARY_FRAME_WIDTH
     - SAVED_SETUP_SAVE_BUTTON_WIDTH
     - SAVED_SETUP_DELETE_BUTTON_WIDTH
     - (SAVED_SETUP_CONTROL_SPACING * 2)
@@ -356,7 +369,7 @@ class EXEBuilderApp(QWidget):
 
         title_row = QWidget()
         title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        title_row.setFixedSize(APP_FIXED_WIDTH, 44)
+        title_row.setFixedSize(PYTHON_APP_FIXED_WIDTH, 44)
         title_row_layout = QHBoxLayout(title_row)
         title_row_layout.setContentsMargins(0, 0, 0, 0)
         title_row_layout.setSpacing(0)
@@ -373,7 +386,7 @@ class EXEBuilderApp(QWidget):
             self.title_options_slot, alignment=Qt.AlignLeft | Qt.AlignVCenter
         )
         self.python_title_content_header = QWidget()
-        self.python_title_content_header.setFixedWidth(CONTENT_PANE_WIDTH)
+        self.python_title_content_header.setFixedWidth(PYTHON_CONTENT_PANE_WIDTH)
         self.title_frame.setParent(self.python_title_content_header)
         title_row_layout.addWidget(self.python_title_navigation_header)
         title_row_layout.addWidget(self.python_title_content_header)
@@ -1410,9 +1423,21 @@ class EXEBuilderApp(QWidget):
         )
         self._create_build_summary()
         self.python_selection_summaries = {
-            "Icons": self._create_selection_summary(("interpreter",)),
-            "File": self._create_selection_summary(("interpreter", "icon")),
-            "Output": self._create_selection_summary(("interpreter", "icon", "file")),
+            "Icons": self._create_selection_summary(
+                ("interpreter",),
+                PYTHON_SUMMARY_FRAME_WIDTH,
+                PYTHON_SUMMARY_LABEL_WIDTH,
+            ),
+            "File": self._create_selection_summary(
+                ("interpreter", "icon"),
+                PYTHON_SUMMARY_FRAME_WIDTH,
+                PYTHON_SUMMARY_LABEL_WIDTH,
+            ),
+            "Output": self._create_selection_summary(
+                ("interpreter", "icon", "file"),
+                PYTHON_SUMMARY_FRAME_WIDTH,
+                PYTHON_SUMMARY_LABEL_WIDTH,
+            ),
         }
 
         def progression_button(text, callback):
@@ -1439,7 +1464,7 @@ class EXEBuilderApp(QWidget):
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Build":
                 saved_setups_section = QWidget()
-                saved_setups_section.setFixedWidth(PAIRED_FRAME_WIDTH)
+                saved_setups_section.setFixedWidth(PYTHON_SUMMARY_FRAME_WIDTH)
                 saved_setups_layout = QVBoxLayout(saved_setups_section)
                 saved_setups_layout.setContentsMargins(0, 0, 0, 0)
                 saved_setups_layout.setSpacing(16)
@@ -1544,7 +1569,9 @@ class EXEBuilderApp(QWidget):
         summary_title_layout.setContentsMargins(3, 3, 3, 3)
         self.build_summary_title = QLabel("Build Summary")
         self.build_summary_title.setFixedHeight(30)
-        self.build_summary_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        self.build_summary_title.setFont(
+            QFont("Rubik UI", SUMMARY_TITLE_FONT_SIZE, QFont.Bold)
+        )
         self.build_summary_title.setAlignment(Qt.AlignVCenter)
         summary_title_layout.addStretch()
         summary_title_layout.addWidget(self.build_summary_title)
@@ -1559,7 +1586,7 @@ class EXEBuilderApp(QWidget):
         self.build_summary_frame = QFrame()
         self.build_summary_frame.setObjectName("configurationFrame")
         self.build_summary_frame.setStyleSheet(MAIN_FRAME_STYLE)
-        self.build_summary_frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+        self.build_summary_frame.setFixedWidth(PYTHON_SUMMARY_FRAME_WIDTH)
         summary_layout = QVBoxLayout(self.build_summary_frame)
         summary_layout.setContentsMargins(12, 10, 12, 10)
         summary_layout.setSpacing(5)
@@ -1568,7 +1595,7 @@ class EXEBuilderApp(QWidget):
         self.saved_build_setup_dropdown.addItem("Saved build setups")
         self.saved_build_setup_dropdown.setAccessibleName("Saved build setups")
         self.saved_build_setup_dropdown.setFixedSize(
-            SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+            PYTHON_SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
         )
         self.saved_build_setup_dropdown.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.saved_build_setup_dropdown.setStyleSheet(SAVED_SETUP_COMBO_BOX_STYLE)
@@ -1629,10 +1656,15 @@ class EXEBuilderApp(QWidget):
             row.setContentsMargins(0, 0, 0, 0)
             row.setSpacing(8)
             label = QLabel(label_text)
-            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
-            label.setFixedWidth(85)
+            label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            label.setFixedWidth(
+                max(
+                    PYTHON_SUMMARY_LABEL_WIDTH,
+                    label.fontMetrics().horizontalAdvance(label.text()) + 4,
+                )
+            )
             value = QLabel()
-            value.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
             value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
             value.setWordWrap(True)
             value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -1779,7 +1811,9 @@ class EXEBuilderApp(QWidget):
     def _create_saved_setups_backup_controls(self, mode):
         """Create portable saved-setup import and export controls for a mode."""
         section = QWidget()
-        section.setFixedWidth(PAIRED_FRAME_WIDTH)
+        section.setFixedWidth(
+            PYTHON_SUMMARY_FRAME_WIDTH if mode == "python" else PAIRED_FRAME_WIDTH
+        )
         layout = QVBoxLayout(section)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
@@ -2059,7 +2093,9 @@ class EXEBuilderApp(QWidget):
         title_layout.setContentsMargins(3, 3, 3, 3)
         self.dotnet_build_summary_title = QLabel("Build Summary")
         self.dotnet_build_summary_title.setFixedHeight(30)
-        self.dotnet_build_summary_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        self.dotnet_build_summary_title.setFont(
+            QFont("Rubik UI", SUMMARY_TITLE_FONT_SIZE, QFont.Bold)
+        )
         self.dotnet_build_summary_title.setAlignment(Qt.AlignVCenter)
         title_layout.addStretch()
         title_layout.addWidget(self.dotnet_build_summary_title)
@@ -2091,10 +2127,10 @@ class EXEBuilderApp(QWidget):
             row.setContentsMargins(0, 0, 0, 0)
             row.setSpacing(8)
             label = QLabel(label_text)
-            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
-            label.setFixedWidth(85)
+            label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            label.setFixedWidth(SUMMARY_LABEL_WIDTH)
             value = QLabel()
-            value.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
             value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
             value.setWordWrap(True)
             value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -2530,7 +2566,12 @@ class EXEBuilderApp(QWidget):
         dialog.exec()
         return dialog.clickedButton() == yes_button
 
-    def _create_selection_summary(self, keys):
+    def _create_selection_summary(
+        self,
+        keys,
+        frame_width=PAIRED_FRAME_WIDTH,
+        label_width=SUMMARY_LABEL_WIDTH,
+    ):
         """Create a compact, read-only recap for selections on earlier pages."""
         title_frame = QFrame()
         title_frame.setFrameShape(QFrame.StyledPanel)
@@ -2540,7 +2581,7 @@ class EXEBuilderApp(QWidget):
         title_layout.setContentsMargins(3, 3, 3, 3)
         title = QLabel("Selection Summary")
         title.setFixedHeight(30)
-        title.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        title.setFont(QFont("Rubik UI", SUMMARY_TITLE_FONT_SIZE, QFont.Bold))
         title_layout.addStretch()
         title_layout.addWidget(title)
         title_layout.addStretch()
@@ -2551,7 +2592,7 @@ class EXEBuilderApp(QWidget):
         frame = QFrame()
         frame.setObjectName("configurationFrame")
         frame.setStyleSheet(MAIN_FRAME_STYLE)
-        frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+        frame.setFixedWidth(frame_width)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(5)
@@ -2563,10 +2604,15 @@ class EXEBuilderApp(QWidget):
             row.setContentsMargins(0, 0, 0, 0)
             row.setSpacing(8)
             label = QLabel(captions[key])
-            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
-            label.setFixedWidth(85)
+            label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            label.setFixedWidth(
+                max(
+                    label_width,
+                    label.fontMetrics().horizontalAdvance(label.text()) + 4,
+                )
+            )
             value = QLabel()
-            value.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
             value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
             value.setWordWrap(True)
             value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
