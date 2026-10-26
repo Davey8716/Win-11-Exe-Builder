@@ -638,7 +638,7 @@ class ValidationController:
                     )
                 elif app.close_after_build.isChecked():
                     status_text += (
-                        "\nThe app will then close."
+                        "\nThis app will then close."
                         if opens_output else "\nThe app will close after building."
                     )
         else:

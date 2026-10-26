@@ -353,7 +353,7 @@ def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path
     controller.update_ui_state()
     assert app.status_label.text == (
         "Ready to build.\nThe output folder will open after building."
-        "\nThe app will then close."
+        "\nThis app will then close."
     )
     assert app.status_label.alignment == validation_controller.Qt.AlignCenter
 

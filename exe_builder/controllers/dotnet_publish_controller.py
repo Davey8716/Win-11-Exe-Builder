@@ -340,7 +340,7 @@ class DotnetPublishController(QObject):
             )
         elif closes:
             status += (
-                "\nThe app will then close."
+                "\nThis app will then close."
                 if opens_output else "\nThe app will close after building."
             )
         return status

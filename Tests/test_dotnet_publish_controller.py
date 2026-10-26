@@ -807,7 +807,7 @@ def test_ready_dotnet_status_lists_selected_post_build_actions(tmp_path):
 
     assert controller.app.dotnet_status_label.toPlainText() == (
         "Ready to publish.\nThe output folder will open after building."
-        "\nThe app will then close."
+        "\nThis app will then close."
     )
     assert (
         controller.app.dotnet_status_label.document().firstBlock().blockFormat().alignment()

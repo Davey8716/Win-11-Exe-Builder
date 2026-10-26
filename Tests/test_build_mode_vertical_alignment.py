@@ -55,7 +55,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         )
         ready_message = (
             "Ready to build.\nThe output folder will open after building."
-            "\nThe app will then close."
+            "\nThis app will then close."
         )
         window.status_label.setPlainText(ready_message)
         app.processEvents()
