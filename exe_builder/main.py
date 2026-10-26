@@ -95,6 +95,16 @@ CONTENT_PANE_WIDTH = APP_FIXED_WIDTH - NAVIGATION_SIDEBAR_WIDTH
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
+SAVED_SETUP_CONTROL_HEIGHT = 28
+SAVED_SETUP_SAVE_BUTTON_WIDTH = 135
+SAVED_SETUP_DELETE_BUTTON_WIDTH = 110
+SAVED_SETUP_CONTROL_SPACING = 8
+SAVED_SETUP_DROPDOWN_WIDTH = (
+    PAIRED_FRAME_WIDTH
+    - SAVED_SETUP_SAVE_BUTTON_WIDTH
+    - SAVED_SETUP_DELETE_BUTTON_WIDTH
+    - (SAVED_SETUP_CONTROL_SPACING * 2)
+)
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
 BUILD_ACTION_FRAME_WIDTH = 450
@@ -122,7 +132,8 @@ SAVED_SETUP_DELETE_MENU_STYLE = f"""
         color: {qcolor_name(Colors.TEXT_LIGHT)};
         border: 2px solid {qcolor_name(Colors.BLACK)};
         border-radius: 4px;
-        padding: 2px 10px 2px 2px;
+        /* Keep the label visually centred in the main button area, clear of its menu arrow. */
+        padding: 2px 20px 2px 10px;
     }}
     QToolButton:hover {{ background-color: {qcolor_name(Colors.SURFACE_SELECTED_HOVER)}; }}
     QToolButton::menu-button {{
@@ -1418,9 +1429,9 @@ class EXEBuilderApp(QWidget):
                 saved_setups_layout.addWidget(self.saved_setups_label)
                 saved_setups_controls = QHBoxLayout()
                 saved_setups_controls.setContentsMargins(0, 0, 0, 0)
-                saved_setups_controls.setSpacing(8)
+                saved_setups_controls.setSpacing(SAVED_SETUP_CONTROL_SPACING)
                 saved_setups_controls.addWidget(self.save_build_setup_btn)
-                saved_setups_controls.addWidget(self.saved_build_setup_dropdown)
+                saved_setups_controls.addWidget(self.saved_build_setup_dropdown, 1)
                 saved_setups_controls.addWidget(self.delete_build_setup_btn)
                 saved_setups_layout.addLayout(saved_setups_controls)
                 layout.addWidget(saved_setups_section, alignment=Qt.AlignHCenter)
@@ -1536,7 +1547,9 @@ class EXEBuilderApp(QWidget):
         self.saved_build_setup_dropdown.setToolTip(
             "Choose a saved setup to fill the build fields, then click Build EXE."
         )
-        self.saved_build_setup_dropdown.setFixedWidth(300)
+        self.saved_build_setup_dropdown.setFixedSize(
+            SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
         self.saved_build_setup_dropdown.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.saved_build_setup_dropdown.setStyleSheet(SAVED_SETUP_COMBO_BOX_STYLE)
         self.saved_build_setup_dropdown.view().setFont(QFont("Rubik UI", 12, QFont.Bold))
@@ -1546,7 +1559,9 @@ class EXEBuilderApp(QWidget):
         self.save_build_setup_btn = QPushButton("Save setup")
         self.save_build_setup_btn.setAccessibleName("Save current build setup")
         self.save_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
-        self.save_build_setup_btn.setFixedSize(135, 28)
+        self.save_build_setup_btn.setFixedSize(
+            SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
         self.save_build_setup_btn.setStyleSheet(
             button_base()
             + "QPushButton { padding: 2px 12px; }"
@@ -1558,7 +1573,9 @@ class EXEBuilderApp(QWidget):
         self.delete_build_setup_btn.setText("Delete")
         self.delete_build_setup_btn.setAccessibleName("Delete saved build setup")
         self.delete_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
-        self.delete_build_setup_btn.setFixedSize(85, 28)
+        self.delete_build_setup_btn.setFixedSize(
+            SAVED_SETUP_DELETE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
         self.delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
         self.delete_build_setup_menu = QMenu(self.delete_build_setup_btn)
         self.delete_build_setup_menu.setFont(QFont("Rubik UI", 12, QFont.Bold))
@@ -1943,11 +1960,13 @@ class EXEBuilderApp(QWidget):
 
         controls = QHBoxLayout()
         controls.setContentsMargins(0, 0, 0, 0)
-        controls.setSpacing(8)
+        controls.setSpacing(SAVED_SETUP_CONTROL_SPACING)
         self.dotnet_save_build_setup_btn = QPushButton("Save setup")
         self.dotnet_save_build_setup_btn.setAccessibleName("Save current C# build setup")
         self.dotnet_save_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
-        self.dotnet_save_build_setup_btn.setFixedSize(135, 28)
+        self.dotnet_save_build_setup_btn.setFixedSize(
+            SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
         self.dotnet_save_build_setup_btn.setStyleSheet(
             button_base()
             + "QPushButton { padding: 2px 12px; }"
@@ -1962,7 +1981,9 @@ class EXEBuilderApp(QWidget):
         self.saved_dotnet_build_setup_dropdown.setToolTip(
             "Choose a saved setup to fill the publish fields, then click Publish."
         )
-        self.saved_dotnet_build_setup_dropdown.setFixedWidth(300)
+        self.saved_dotnet_build_setup_dropdown.setFixedSize(
+            SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
         self.saved_dotnet_build_setup_dropdown.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.saved_dotnet_build_setup_dropdown.setStyleSheet(SAVED_SETUP_COMBO_BOX_STYLE)
         self.saved_dotnet_build_setup_dropdown.view().setFont(
@@ -1976,7 +1997,9 @@ class EXEBuilderApp(QWidget):
         self.dotnet_delete_build_setup_btn.setText("Delete")
         self.dotnet_delete_build_setup_btn.setAccessibleName("Delete saved C# build setup")
         self.dotnet_delete_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
-        self.dotnet_delete_build_setup_btn.setFixedSize(85, 28)
+        self.dotnet_delete_build_setup_btn.setFixedSize(
+            SAVED_SETUP_DELETE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
+        )
         self.dotnet_delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
         self.dotnet_delete_build_setup_menu = QMenu(self.dotnet_delete_build_setup_btn)
         self.dotnet_delete_build_setup_menu.setFont(QFont("Rubik UI", 12, QFont.Bold))
@@ -1999,7 +2022,7 @@ class EXEBuilderApp(QWidget):
         )
 
         controls.addWidget(self.dotnet_save_build_setup_btn)
-        controls.addWidget(self.saved_dotnet_build_setup_dropdown)
+        controls.addWidget(self.saved_dotnet_build_setup_dropdown, 1)
         controls.addWidget(self.dotnet_delete_build_setup_btn)
         layout.addLayout(controls)
         self._update_saved_dotnet_build_setup_controls()
