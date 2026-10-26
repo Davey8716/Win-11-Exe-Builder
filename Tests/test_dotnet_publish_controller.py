@@ -795,6 +795,26 @@ def test_dotnet_status_text_stays_centered_when_replaced(tmp_path):
     assert not controller.app.dotnet_status_label.textCursor().hasSelection()
 
 
+def test_ready_dotnet_status_lists_selected_post_build_actions(tmp_path):
+    QApplication.instance() or QApplication([])
+    controller, _ = make_controller(tmp_path)
+    controller.app.dotnet_status_label = QTextEdit()
+    controller.app.open_output_dir_after_build = DummyCheck(True)
+    controller.app.minimize_after_build = DummyCheck(False)
+    controller.app.close_after_build = DummyCheck(True)
+
+    controller.refresh_ui()
+
+    assert controller.app.dotnet_status_label.toPlainText() == (
+        "Ready to publish.\nThe output folder will open after building."
+        "\nThe app will then close."
+    )
+    assert (
+        controller.app.dotnet_status_label.document().firstBlock().blockFormat().alignment()
+        == Qt.AlignCenter
+    )
+
+
 def test_refresh_styles_dotnet_paths_like_python_validation(tmp_path):
     controller, project = make_controller(tmp_path)
     icon = tmp_path / "tool.ico"

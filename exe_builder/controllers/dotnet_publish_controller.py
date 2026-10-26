@@ -296,7 +296,7 @@ class DotnetPublishController(QObject):
         return os.path.join(values["output"], name)
 
     def _set_status(self, text):
-        """Show a .NET publish status message with centered paragraph text."""
+        """Show a .NET publish status message with the appropriate alignment."""
         status_label = self.app.dotnet_status_label
         status_label.setText(text)
         if not hasattr(status_label, "textCursor"):
@@ -308,6 +308,36 @@ class DotnetPublishController(QObject):
         cursor.mergeBlockFormat(text_format)
         cursor.clearSelection()
         status_label.setTextCursor(cursor)
+
+    def _ready_publish_status(self):
+        """Describe selected global post-build actions in the C# Build section."""
+        app = self.app
+        status = "Ready to publish."
+        opens_output = bool(
+            getattr(app, "open_output_dir_after_build", None)
+            and app.open_output_dir_after_build.isChecked()
+        )
+        minimizes = bool(
+            getattr(app, "minimize_after_build", None)
+            and app.minimize_after_build.isChecked()
+        )
+        closes = bool(
+            getattr(app, "close_after_build", None)
+            and app.close_after_build.isChecked()
+        )
+        if opens_output:
+            status += "\nThe output folder will open after building."
+        if minimizes:
+            status += (
+                "\nThe app will then minimize."
+                if opens_output else "\nThe app will minimize after building."
+            )
+        elif closes:
+            status += (
+                "\nThe app will then close."
+                if opens_output else "\nThe app will close after building."
+            )
+        return status
 
     def has_publish_output(self):
         """Return whether the current target contains its published Windows EXE."""
@@ -721,7 +751,7 @@ class DotnetPublishController(QObject):
                 f"QLabel {{ color: {qcolor_name(Colors.BUILD_DISABLED_TEXT if building else Colors.TEXT_LIGHT)}; }}"
             )
         if not building:
-            self._set_status("Ready to publish." if not error else error)
+            self._set_status(self._ready_publish_status() if not error else error)
 
     def publish(self):
         if getattr(self.app, "building", False):

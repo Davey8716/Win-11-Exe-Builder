@@ -92,6 +92,7 @@ PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
 BUILD_FRAME_HEIGHT = 170
+DOTNET_BUILD_FRAME_HEIGHT = 215
 DOTNET_BUILD_FRAME_WIDTH = 450
 PROGRESSION_BUTTON_SIZE = (280, 42)
 SECTION_NAV_STYLE = (
@@ -2417,11 +2418,13 @@ class EXEBuilderApp(QWidget):
         # Keep the C# build section compact while retaining room for both
         # publish-action buttons and the centered option rows.
         panel.setFixedWidth(DOTNET_BUILD_FRAME_WIDTH)
-        panel.setFixedHeight(BUILD_FRAME_HEIGHT)
+        panel.setFixedHeight(DOTNET_BUILD_FRAME_HEIGHT)
 
         self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
         self.dotnet_status_label.setReadOnly(True)
-        self.dotnet_status_label.setFixedSize(420, 40)
+        self.dotnet_status_label.setFixedSize(420, 75)
+        self.dotnet_status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.dotnet_status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
         self.dotnet_status_label.setAlignment(Qt.AlignCenter)
 

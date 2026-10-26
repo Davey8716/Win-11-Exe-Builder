@@ -101,6 +101,46 @@ class DummyPathInput:
         self.cursor_position = position
 
 
+class DummyCheckbox:
+    def __init__(self, checked=False):
+        self.checked = checked
+
+    def setChecked(self, value):
+        self.checked = value
+
+
+def test_post_build_option_toggles_refresh_the_dotnet_ready_status():
+    refreshes = []
+    validator = DummyValidator()
+    app = SimpleNamespace(
+        minimize_after_build=DummyCheckbox(),
+        open_output_dir_after_build=DummyCheckbox(),
+        close_after_build=DummyCheckbox(),
+        state_ctrl=DummyStateController(),
+        validator=validator,
+        dotnet_publish_controller=SimpleNamespace(
+            refresh_ui=lambda: refreshes.append("refresh")
+        ),
+    )
+    handler = UIHandlers(app)
+
+    handler.on_minimize_toggle(1)
+    assert app.minimize_after_build_enabled is True
+    assert app.close_after_build_enabled is False
+    assert app.close_after_build.checked is False
+
+    handler.on_open_output_dir_toggle(1)
+    assert app.open_output_dir_after_build_enabled is True
+
+    handler.on_close_toggle(1)
+    assert app.close_after_build_enabled is True
+    assert app.minimize_after_build_enabled is False
+    assert app.minimize_after_build.checked is False
+
+    assert validator.ui_updated is True
+    assert refreshes == ["refresh", "refresh", "refresh"]
+
+
 def test_mass_datetime_selection_saves_sentinel_and_keeps_restore_state():
     state_ctrl = DummyStateController()
     validator = DummyValidator()

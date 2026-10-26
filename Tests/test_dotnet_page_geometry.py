@@ -66,7 +66,9 @@ def test_dotnet_build_controls_are_ordered_from_runtime_to_actions():
     assert MAIN_SOURCE.index(runtime_row) < MAIN_SOURCE.index(options_row)
     assert MAIN_SOURCE.index(options_row) < MAIN_SOURCE.index(status)
     assert MAIN_SOURCE.index(status) < MAIN_SOURCE.index(actions, MAIN_SOURCE.index(status))
-    assert "self.dotnet_status_label.setFixedSize(420, 40)" in MAIN_SOURCE
+    assert "self.dotnet_status_label.setFixedSize(420, 75)" in MAIN_SOURCE
+    assert "self.dotnet_status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)" in MAIN_SOURCE
+    assert "self.dotnet_status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)" in MAIN_SOURCE
 
 
 def test_dotnet_runtime_and_publish_options_rows_are_centered():
