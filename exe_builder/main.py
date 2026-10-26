@@ -1408,7 +1408,7 @@ class EXEBuilderApp(QWidget):
                 saved_setups_layout.setContentsMargins(0, 0, 0, 0)
                 saved_setups_layout.setSpacing(16)
                 self.saved_setups_label = QLabel("Saved setups")
-                self.saved_setups_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+                self.saved_setups_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
                 self.saved_setups_label.setAlignment(Qt.AlignCenter)
                 self.saved_setups_label.setStyleSheet(
                     f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
@@ -1743,7 +1743,7 @@ class EXEBuilderApp(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
         label = QLabel("Setups backup")
-        label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        label.setFont(QFont("Rubik UI", 12, QFont.Bold))
         label.setAlignment(Qt.AlignCenter)
         label.setStyleSheet(f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}")
         layout.addWidget(label)
@@ -1931,7 +1931,7 @@ class EXEBuilderApp(QWidget):
         layout.setSpacing(16)
 
         self.dotnet_saved_setups_label = QLabel("Saved setups")
-        self.dotnet_saved_setups_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_saved_setups_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.dotnet_saved_setups_label.setAlignment(Qt.AlignCenter)
         self.dotnet_saved_setups_label.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
