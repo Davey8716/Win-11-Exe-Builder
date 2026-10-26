@@ -162,6 +162,10 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert all(
             label.width() >= 96 for label in window.build_summary_labels.values()
         )
+        assert (
+            window.build_summary_labels["datetime"].width()
+            == window.build_summary_labels["python_version"].width()
+        )
         interpreter_summary_label = window.build_summary_labels["interpreter"]
         assert (
             interpreter_summary_label.fontMetrics().horizontalAdvance(

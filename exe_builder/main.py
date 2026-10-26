@@ -1666,9 +1666,13 @@ class EXEBuilderApp(QWidget):
             row.setSpacing(8)
             label = QLabel(label_text)
             label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
+            metadata_label_width = label.fontMetrics().horizontalAdvance(
+                "Python version appended"
+            ) + 4
             label.setFixedWidth(
                 max(
                     PYTHON_SUMMARY_LABEL_WIDTH,
+                    metadata_label_width if key in {"python_version", "datetime"} else 0,
                     label.fontMetrics().horizontalAdvance(label.text()) + 4,
                 )
             )
