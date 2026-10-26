@@ -1,5 +1,5 @@
 import os
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QIcon, QTextBlockFormat, QTextCursor
 from PySide6.QtWidgets import QCheckBox
 from ..ui.styles import (
@@ -43,6 +43,27 @@ class ValidationController:
         app = EXEBuilderApp instance
         """
         self.app = app
+        self._existing_output_warning_context = None
+        self._existing_output_warning_visible = False
+        self._existing_output_warning_token = 0
+
+    def _cancel_existing_output_warning(self):
+        """Prevent a pending output warning from restoring a stale ready status."""
+        self._existing_output_warning_token += 1
+        self._existing_output_warning_visible = False
+
+    def _restore_ready_status_after_existing_output_warning(self, token, context):
+        if (
+            token != self._existing_output_warning_token
+            or context != self._existing_output_warning_context
+            or not self._existing_output_warning_visible
+            or getattr(self.app, "building", False)
+            or getattr(self.app, "_status_lock", False)
+        ):
+            return
+
+        self._existing_output_warning_visible = False
+        self.update_ui_state()
             
     def set_build_error(self, message: str):
         self.app.build_error = message
@@ -545,6 +566,18 @@ class ValidationController:
         # -------------------------------
         # STATUS ONLY (lock applies here ONLY)
         # -------------------------------
+        output_warning_context = (
+            os.path.normcase(outdir),
+            os.path.normcase(os.path.abspath(script)) if script else "",
+            exe_name.casefold(),
+        )
+
+        if building or not is_ready:
+            self._cancel_existing_output_warning()
+        elif not output_available:
+            self._cancel_existing_output_warning()
+            self._existing_output_warning_context = None
+
         if getattr(app, "_status_lock", False):
             return
 
@@ -552,7 +585,26 @@ class ValidationController:
             status_text = "Building..."
 
         elif is_ready:
-            if output_available:
+            if (
+                output_available
+                and output_warning_context != self._existing_output_warning_context
+            ):
+                self._existing_output_warning_context = output_warning_context
+                self._existing_output_warning_visible = True
+                self._existing_output_warning_token += 1
+                warning_token = self._existing_output_warning_token
+                status_text = (
+                    "A build already exists here. Build again to overwrite it, "
+                    "or choose another output folder."
+                )
+                QTimer.singleShot(
+                    5000,
+                    lambda: self._restore_ready_status_after_existing_output_warning(
+                        warning_token,
+                        output_warning_context,
+                    ),
+                )
+            elif output_available and self._existing_output_warning_visible:
                 status_text = (
                     "A build already exists here. Build again to overwrite it, "
                     "or choose another output folder."

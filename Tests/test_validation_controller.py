@@ -252,6 +252,12 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
 
 def test_python_open_output_button_matches_dotnet_availability_styling(monkeypatch, tmp_path):
     monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    scheduled = []
+    monkeypatch.setattr(
+        validation_controller.QTimer,
+        "singleShot",
+        lambda delay_ms, callback: scheduled.append((delay_ms, callback)),
+    )
     app = make_app(tmp_path, exe_name="main")
     app.build_controller = SimpleNamespace(has_python_output=lambda: True)
 
@@ -265,12 +271,39 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
         "or choose another output folder."
     )
     assert app.status_label.size == (420, 75)
+    assert len(scheduled) == 1
+    assert scheduled[0][0] == 5000
+
+    scheduled[0][1]()
+    assert app.status_label.text == "Ready to build."
 
     app.building = True
     controller.update_ui_state()
 
     assert app.python_open_output_btn.enabled is False
     assert qcolor_name(Colors.BUILD_DISABLED_BG) in app.python_open_output_btn.stylesheet
+
+
+def test_existing_output_warning_callback_cannot_replace_a_newer_status(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    scheduled = []
+    monkeypatch.setattr(
+        validation_controller.QTimer,
+        "singleShot",
+        lambda delay_ms, callback: scheduled.append((delay_ms, callback)),
+    )
+    app = make_app(tmp_path, exe_name="main")
+    app.build_controller = SimpleNamespace(has_python_output=lambda: True)
+    controller = ValidationController(app)
+
+    controller.update_ui_state()
+    callback = scheduled[0][1]
+
+    app.building = True
+    controller.update_ui_state()
+    callback()
+
+    assert app.status_label.text == "Building..."
 
 
 def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path):
