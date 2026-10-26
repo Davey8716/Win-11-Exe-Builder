@@ -30,6 +30,23 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
     window = EXEBuilderApp()
 
     try:
+        def horizontal_gap(left, right):
+            left_edge = left.mapTo(window, QPoint(left.width(), 0)).x()
+            right_edge = right.mapTo(window, QPoint(0, 0)).x()
+            return right_edge - left_edge
+
+        def assert_selector_row(*widgets):
+            assert all(widget.height() == 35 for widget in widgets)
+            assert [
+                horizontal_gap(left, right) for left, right in zip(widgets, widgets[1:])
+            ] == [4] * (len(widgets) - 1)
+
+        def assert_path_row(field, reset):
+            assert horizontal_gap(field, reset) == 3
+            field_center = field.mapTo(window, QPoint(0, field.height() // 2)).y()
+            reset_center = reset.mapTo(window, QPoint(0, reset.height() // 2)).y()
+            assert abs(field_center - reset_center) <= 1
+
         window.show()
         window.set_build_mode("python", save=False)
         app.processEvents()
@@ -52,6 +69,45 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             window.output_path_input,
         ):
             assert field.height() >= field.fontMetrics().lineSpacing() * 2
+        assert window.interpreter_frame.height() < window.output_frame.height()
+        assert window.output_frame.height() < 200
+        for index, widgets in (
+            (1, (window.interpreter_btn, window.select_interpreter,
+                 window.python_delete_interpreter, window.python_delete_all_interpreter)),
+            (2, (window.icon_btn, window.select_recent_icons,
+                 window.delete_recent_icons, window.delete_all_icons)),
+            (3, (window.folder_btn, window.recent_folder_dropdown,
+                 window.delete_recent_folder, window.delete_all_folders)),
+            (4, (window.output_btn, window.date_time_dropdown)),
+        ):
+            window.python_section_stack.setCurrentIndex(index)
+            app.processEvents()
+            assert_selector_row(*widgets)
+        for index, field, reset in (
+            (1, window.python_entry_input, window.interpreter_refresh_btn),
+            (2, window.icon_path_input, window.icon_clear_btn),
+            (3, window.script_path_input, window.script_clear_btn),
+            (4, window.output_path_input, window.output_refresh_btn),
+        ):
+            window.python_section_stack.setCurrentIndex(index)
+            app.processEvents()
+            assert_path_row(field, reset)
+        window.python_section_stack.setCurrentIndex(4)
+        app.processEvents()
+        output_bottom = window.output_frame.mapTo(
+            window, QPoint(0, window.output_frame.height())
+        ).y()
+        for widget in (
+            window.appened_py_version,
+            window.output_btn,
+            window.date_time_dropdown,
+            window.output_path_input,
+            window.output_refresh_btn,
+            window.exe_name_input,
+            window.refresh_btn,
+        ):
+            assert widget.mapTo(window, QPoint(0, widget.height())).y() <= output_bottom
+        window.python_section_stack.setCurrentIndex(0)
         build_page = window.python_section_stack.widget(5)
         assert window.build_summary_title_frame.parentWidget() is build_page
         assert window.build_summary_title.parentWidget() is window.build_summary_title_frame
@@ -163,6 +219,25 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             window.dotnet_output_input,
         ):
             assert field.height() >= field.fontMetrics().lineSpacing() * 2
+        for index, widgets in (
+            (0, (window.dotnet_icon_select_btn, window.dotnet_recent_icons,
+                 window.dotnet_icon_delete_btn, window.dotnet_icon_delete_all_btn)),
+            (1, (window.dotnet_project_select_btn, window.dotnet_recent_projects,
+                 window.dotnet_project_delete_btn, window.dotnet_project_delete_all_btn)),
+            (2, (window.dotnet_output_select_btn, window.dotnet_date_time_dropdown)),
+        ):
+            window.dotnet_section_stack.setCurrentIndex(index)
+            app.processEvents()
+            assert_selector_row(*widgets)
+        for index, field, reset in (
+            (0, window.dotnet_icon_input, window.dotnet_icon_reset_btn),
+            (1, window.dotnet_project_input, window.dotnet_project_reset_btn),
+            (2, window.dotnet_output_input, window.dotnet_output_reset_btn),
+        ):
+            window.dotnet_section_stack.setCurrentIndex(index)
+            app.processEvents()
+            assert_path_row(field, reset)
+        window.dotnet_section_stack.setCurrentIndex(0)
         dotnet_title_center = window.dotnet_mode_title.mapTo(
             window, QPoint(window.dotnet_mode_title.width() // 2, 0)
         ).x()

@@ -95,6 +95,10 @@ BUILD_FRAME_HEIGHT = 170
 DOTNET_BUILD_FRAME_HEIGHT = 215
 DOTNET_BUILD_FRAME_WIDTH = 450
 PROGRESSION_BUTTON_SIZE = (280, 42)
+SELECTOR_ROW_MARGINS = (1, 1, 1, 1)
+SELECTOR_ROW_SPACING = 4
+PATH_ENTRY_ROW_SPACING = 3
+SELECTOR_SECTION_ROW_SPACING = 3
 SECTION_NAV_STYLE = (
     "QListWidget { background: #19232d; border: 0; padding: 4px 0; "
     "color: #ecf3fa; font: bold 10pt 'Rubik UI'; } "
@@ -544,8 +548,8 @@ class EXEBuilderApp(QWidget):
         apps_row.setFixedHeight(37)
         apps_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         apps_layout = QHBoxLayout(apps_row)
-        apps_layout.setContentsMargins(1,1,1,1)
-        apps_layout.setSpacing(4)
+        apps_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        apps_layout.setSpacing(SELECTOR_ROW_SPACING)
 
         self.open_python_site_btn = QPushButton("Python.org")
         apps_layout.addWidget(self.open_python_site_btn)
@@ -558,15 +562,15 @@ class EXEBuilderApp(QWidget):
         interpreter_container = QWidget()
         interpreter_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         interpreter_layout = QVBoxLayout(interpreter_container)
-        interpreter_layout.setContentsMargins(0,0,0,0)
-        interpreter_layout.setSpacing(3)
+        interpreter_layout.setContentsMargins(0, 0, 0, 0)
+        interpreter_layout.setSpacing(SELECTOR_SECTION_ROW_SPACING)
 
         interpreter_btn_row = QWidget()
         interpreter_btn_row.setFixedHeight(37)
         interpreter_btn_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         interpreter_btn_layout = QHBoxLayout(interpreter_btn_row)
-        interpreter_btn_layout.setContentsMargins(1,1,1,1)
-        interpreter_btn_layout.setSpacing(4)
+        interpreter_btn_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        interpreter_btn_layout.setSpacing(SELECTOR_ROW_SPACING)
         self.interpreter_btn = QPushButton("Py Interpreter")
     
         self.select_interpreter = QComboBox()
@@ -610,8 +614,8 @@ class EXEBuilderApp(QWidget):
         interpreter_entry_row.setFixedHeight(52)
         interpreter_entry_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         interpreter_entry_layout = QHBoxLayout(interpreter_entry_row)
-        interpreter_entry_layout.setContentsMargins(1,1,1,1)
-        interpreter_entry_layout.setSpacing(3)
+        interpreter_entry_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        interpreter_entry_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.python_entry_input = PathDisplayLineEdit()
         self.python_entry_input.setPlaceholderText("No python entry is selected.")
@@ -657,20 +661,20 @@ class EXEBuilderApp(QWidget):
         self.icon_frame.setFrameShadow(QFrame.Raised)
 
         icon_frame_layout = QVBoxLayout(self.icon_frame)
-        icon_frame_layout.setContentsMargins(1,1,1,1)
-        icon_frame_layout.setSpacing(1)
+        icon_frame_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_frame_layout.setSpacing(SELECTOR_SECTION_ROW_SPACING)
 
         icon_block = QWidget()
         icon_block_layout = QVBoxLayout(icon_block)
-        icon_block_layout.setContentsMargins(1,1,1,1)
-        icon_block_layout.setSpacing(1)
+        icon_block_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_block_layout.setSpacing(SELECTOR_SECTION_ROW_SPACING)
 
         # -------- Row 1: Select Icon + Recent Dropdown + Delete --------
 
         icon_row1 = QWidget()
         icon_row1_layout = QHBoxLayout(icon_row1)
-        icon_row1_layout.setContentsMargins(1,1,1,1)
-        icon_row1_layout.setSpacing(1)
+        icon_row1_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_row1_layout.setSpacing(SELECTOR_ROW_SPACING)
 
         self.icon_btn = QPushButton("Select ICO optional")
 
@@ -699,8 +703,8 @@ class EXEBuilderApp(QWidget):
 
         icon_row2 = QWidget()
         icon_row2_layout = QHBoxLayout(icon_row2)
-        icon_row2_layout.setContentsMargins(1,1,1,1)
-        icon_row2_layout.setSpacing(5)
+        icon_row2_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_row2_layout.setSpacing(SELECTOR_ROW_SPACING)
 
         self.ico_convert_btn = QPushButton("Open ICO Convert")
         icon_row1_layout.addWidget(self.ico_convert_btn)
@@ -718,8 +722,8 @@ class EXEBuilderApp(QWidget):
 
         icon_entry_row = QWidget()
         icon_entry_layout = QHBoxLayout(icon_entry_row)
-        icon_entry_layout.setContentsMargins(1,1,1,1)
-        icon_entry_layout.setSpacing(5)
+        icon_entry_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        icon_entry_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.icon_path_input = PathDisplayLineEdit()
         self.icon_path_input.setPlaceholderText("icon_path_input")
@@ -789,8 +793,8 @@ class EXEBuilderApp(QWidget):
         self.delete_all_folders.setIconSize(QSize(*DELETE_ALL_BUTTON_ICON_SIZE))
    
         folder_row = QHBoxLayout()
-        folder_row.setContentsMargins(0, 0, 0, 0)
-        folder_row.setSpacing(5)
+        folder_row.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        folder_row.setSpacing(SELECTOR_ROW_SPACING)
 
         python_layout.addLayout(folder_row)
 
@@ -811,7 +815,8 @@ class EXEBuilderApp(QWidget):
         self.script_clear_btn = QPushButton("")
         script_layout.addWidget(self.script_clear_btn)
 
-        script_layout.setContentsMargins(1,1,1,1)
+        script_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        script_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
         python_layout.addWidget(script_row)
         self.main_layout.addWidget(self.python_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
         self.main_layout.addWidget(python_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
@@ -872,15 +877,15 @@ class EXEBuilderApp(QWidget):
         self._populate_datetime_dropdown(self.date_time_dropdown)
 
         row1 = QHBoxLayout()
-        row1.setContentsMargins(1,1,1,1)
-        row1.setSpacing(4)
+        row1.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        row1.setSpacing(SELECTOR_ROW_SPACING)
 
         row1.addWidget(self.appened_py_version)
         row1.addStretch()
 
         row2 = QHBoxLayout()
-        row2.setContentsMargins(1,1,1,1)
-        row2.setSpacing(4)
+        row2.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        row2.setSpacing(SELECTOR_ROW_SPACING)
         row2.addWidget(self.output_btn)
         row2.addWidget(self.date_time_dropdown)
         row2.addStretch()
@@ -894,8 +899,8 @@ class EXEBuilderApp(QWidget):
 
         output_entry_row = QWidget()
         output_entry_layout = QHBoxLayout(output_entry_row)
-        output_entry_layout.setContentsMargins(1,1,1,1)
-        output_entry_layout.setSpacing(3)
+        output_entry_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        output_entry_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.output_path_input = PathDisplayLineEdit()
         self.output_path_input.setPlaceholderText("No output path selected.")
@@ -911,8 +916,8 @@ class EXEBuilderApp(QWidget):
 
         exe_row = QWidget()
         exe_layout = QHBoxLayout(exe_row)
-        exe_layout.setContentsMargins(1,1,1,1)
-        exe_layout.setSpacing(3)
+        exe_layout.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        exe_layout.setSpacing(PATH_ENTRY_ROW_SPACING)
 
         self.exe_name_input = QLineEdit()
         self.exe_name_input.setPlaceholderText("Exe has not been named.")
@@ -1004,8 +1009,10 @@ class EXEBuilderApp(QWidget):
             PAIRED_FRAME_WIDTH,
             self.output_btn.sizeHint().width() + self.date_time_dropdown.width() + 40,
         )
-        self.output_frame.setFixedSize(output_frame_width, 200)
-        self.interpreter_frame.setFixedSize(output_frame_width, self.output_frame.height())
+        self.output_frame.setFixedWidth(output_frame_width)
+        self.interpreter_frame.setFixedSize(
+            output_frame_width, self.interpreter_frame.sizeHint().height()
+        )
         build_frame_width = (
             build_actions.minimumSize().width()
             + (2 * build_action_edge_padding)
@@ -1233,6 +1240,9 @@ class EXEBuilderApp(QWidget):
 
         for btn in buttons:
             btn.setStyleSheet(button_base())
+
+        output_layout.activate()
+        self.output_frame.setFixedHeight(self.output_frame.sizeHint().height())
                     
         for widget in [
             self.recent_folder_dropdown,
@@ -2296,7 +2306,8 @@ class EXEBuilderApp(QWidget):
                 converter_row.addStretch()
                 layout.addLayout(converter_row)
             row = QHBoxLayout()
-            row.setSpacing(5)
+            row.setContentsMargins(*SELECTOR_ROW_MARGINS)
+            row.setSpacing(SELECTOR_ROW_SPACING)
             select = QPushButton(select_text)
             select.setFixedSize(160, 35)
             select.setFont(QFont("Rubik UI", 11, QFont.Bold))
@@ -2314,6 +2325,8 @@ class EXEBuilderApp(QWidget):
             row.addStretch()
             layout.addLayout(row)
             entry = QHBoxLayout()
+            entry.setContentsMargins(*SELECTOR_ROW_MARGINS)
+            entry.setSpacing(PATH_ENTRY_ROW_SPACING)
             field = PathDisplayLineEdit()
             field.setPlaceholderText(placeholder)
             field.setFixedHeight(field.two_line_height())
@@ -2339,6 +2352,8 @@ class EXEBuilderApp(QWidget):
 
         output_layout = section("Output Select", right_column)
         output_select_row = QHBoxLayout()
+        output_select_row.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        output_select_row.setSpacing(SELECTOR_ROW_SPACING)
         self.dotnet_output_select_btn = QPushButton("Output Folder")
         self.dotnet_output_select_btn.setFixedSize(160, 35)
         self.dotnet_output_select_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
@@ -2347,6 +2362,7 @@ class EXEBuilderApp(QWidget):
         output_select_row.addWidget(self.dotnet_output_select_btn)
         self.dotnet_date_time_dropdown = QComboBox()
         self.dotnet_date_time_dropdown.setFont(QFont("Rubik UI", 12))
+        self.dotnet_date_time_dropdown.setFixedHeight(35)
         self._populate_datetime_dropdown(self.dotnet_date_time_dropdown)
         self.dotnet_date_time_dropdown.setCurrentIndex(
             self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
@@ -2355,6 +2371,8 @@ class EXEBuilderApp(QWidget):
         output_select_row.addStretch()
         output_layout.addLayout(output_select_row)
         output_entry = QHBoxLayout()
+        output_entry.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        output_entry.setSpacing(PATH_ENTRY_ROW_SPACING)
         self.dotnet_output_input = PathDisplayLineEdit()
         self.dotnet_output_input.setPlaceholderText("No output folder selected.")
         self.dotnet_output_input.setFixedHeight(
@@ -2366,6 +2384,8 @@ class EXEBuilderApp(QWidget):
         output_entry.addWidget(self.dotnet_output_reset_btn)
         output_layout.addLayout(output_entry)
         name_entry = QHBoxLayout()
+        name_entry.setContentsMargins(*SELECTOR_ROW_MARGINS)
+        name_entry.setSpacing(PATH_ENTRY_ROW_SPACING)
         self.dotnet_name_input = QLineEdit()
         self.dotnet_name_input.setPlaceholderText("Exe has not been named.")
         self.dotnet_name_input.setFixedHeight(30)
@@ -2846,8 +2866,6 @@ class EXEBuilderApp(QWidget):
             source.setFixedHeight(frame_height)
             target.setFixedHeight(frame_height)
 
-        self.interpreter_frame.setFixedHeight(self.output_frame.height())
-
         base_height = getattr(
             self,
             "_env_sync_rows_scroll_base_height",
@@ -2869,8 +2887,6 @@ class EXEBuilderApp(QWidget):
 
         self.env_sync_frame.setFixedHeight(self.env_sync_frame.sizeHint().height())
         self.icon_frame.setFixedHeight(self.icon_frame.sizeHint().height())
-        self.interpreter_frame.setFixedHeight(self.output_frame.height())
-
         for widget in (self, self.content_row, self.left_content, self.right_content):
             layout = widget.layout()
             if layout is not None:
