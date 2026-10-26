@@ -1544,9 +1544,6 @@ class EXEBuilderApp(QWidget):
         self.saved_build_setup_dropdown = QComboBox()
         self.saved_build_setup_dropdown.addItem("Saved build setups")
         self.saved_build_setup_dropdown.setAccessibleName("Saved build setups")
-        self.saved_build_setup_dropdown.setToolTip(
-            "Choose a saved setup to fill the build fields, then click Build EXE."
-        )
         self.saved_build_setup_dropdown.setFixedSize(
             SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
         )
@@ -1562,12 +1559,7 @@ class EXEBuilderApp(QWidget):
         self.save_build_setup_btn.setFixedSize(
             SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
         )
-        self.save_build_setup_btn.setStyleSheet(
-            button_base()
-            + "QPushButton { padding: 2px 12px; }"
-            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
-              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
-        )
+        self.save_build_setup_btn.setStyleSheet(button_base())
         self.save_build_setup_btn.clicked.connect(self._save_current_build_setup)
         self.delete_build_setup_btn = QToolButton()
         self.delete_build_setup_btn.setText("Delete")
@@ -1584,6 +1576,12 @@ class EXEBuilderApp(QWidget):
         )
         self.delete_all_build_setups_action = self.delete_build_setup_menu.addAction(
             "Delete all"
+        )
+        self.delete_selected_build_setup_action.setToolTip(
+            "Delete the currently selected saved Python build setup."
+        )
+        self.delete_all_build_setups_action.setToolTip(
+            "Delete every saved Python build setup."
         )
         self.delete_selected_build_setup_action.triggered.connect(
             self._delete_selected_build_setup
@@ -1781,11 +1779,6 @@ class EXEBuilderApp(QWidget):
         controls.addStretch()
         export_btn.clicked.connect(lambda: self._export_saved_build_setups(mode))
         import_btn.clicked.connect(lambda: self._import_saved_build_setups(mode))
-        drop_hint = (
-            f"Drop a {mode} saved-setups JSON backup here to import it."
-        )
-        section.setToolTip(drop_hint)
-        import_btn.setToolTip(drop_hint)
         layout.addLayout(controls)
         setattr(self, f"export_{mode}_build_setups_btn", export_btn)
         setattr(self, f"import_{mode}_build_setups_btn", import_btn)
@@ -1975,20 +1968,12 @@ class EXEBuilderApp(QWidget):
         self.dotnet_save_build_setup_btn.setFixedSize(
             SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
         )
-        self.dotnet_save_build_setup_btn.setStyleSheet(
-            button_base()
-            + "QPushButton { padding: 2px 12px; }"
-            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
-              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
-        )
+        self.dotnet_save_build_setup_btn.setStyleSheet(button_base())
         self.dotnet_save_build_setup_btn.clicked.connect(self._save_current_dotnet_build_setup)
 
         self.saved_dotnet_build_setup_dropdown = QComboBox()
         self.saved_dotnet_build_setup_dropdown.addItem("Saved build setups")
         self.saved_dotnet_build_setup_dropdown.setAccessibleName("Saved C# build setups")
-        self.saved_dotnet_build_setup_dropdown.setToolTip(
-            "Choose a saved setup to fill the publish fields, then click Publish."
-        )
         self.saved_dotnet_build_setup_dropdown.setFixedSize(
             SAVED_SETUP_DROPDOWN_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
         )
@@ -2016,6 +2001,12 @@ class EXEBuilderApp(QWidget):
         )
         self.dotnet_delete_all_build_setups_action = (
             self.dotnet_delete_build_setup_menu.addAction("Delete all")
+        )
+        self.dotnet_delete_selected_build_setup_action.setToolTip(
+            "Delete the currently selected saved C# publish setup."
+        )
+        self.dotnet_delete_all_build_setups_action.setToolTip(
+            "Delete every saved C# publish setup."
         )
         self.dotnet_delete_selected_build_setup_action.triggered.connect(
             self._delete_selected_dotnet_build_setup

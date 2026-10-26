@@ -26,6 +26,9 @@ def test_dotnet_tooltips_cover_all_publish_controls_and_paths(monkeypatch):
         "dotnet_name_input", "dotnet_name_reset_btn", "dotnet_runtime_combo",
         "dotnet_self_contained", "dotnet_single_file", "dotnet_trim", "dotnet_status_label",
         "dotnet_publish_btn", "dotnet_open_output_btn", "dotnet_mode_btn",
+        "dotnet_save_build_setup_btn", "export_dotnet_build_setups_btn",
+        "import_dotnet_build_setups_btn", "dotnet_delete_build_setup_btn",
+        "saved_dotnet_build_setup_dropdown",
     )
     path_names = ("dotnet_project_input", "dotnet_icon_input", "dotnet_output_input")
     app = SimpleNamespace(tooltips_enabled=True)
@@ -39,6 +42,29 @@ def test_dotnet_tooltips_cover_all_publish_controls_and_paths(monkeypatch):
     assert all(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
     app.tooltips_enabled = False
     assert not any(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
+
+
+def test_python_saved_setup_controls_have_tooltips(monkeypatch):
+    registered_tooltips = []
+
+    class FakeTooltip:
+        def __init__(self, widget, text, **_kwargs):
+            registered_tooltips.append((widget, text))
+
+    monkeypatch.setattr(tooltips, "QtTooltip", FakeTooltip)
+    app = SimpleNamespace(
+        saved_build_setup_dropdown="saved",
+        save_build_setup_btn="save",
+        export_python_build_setups_btn="export",
+        import_python_build_setups_btn="import",
+        delete_build_setup_btn="delete",
+    )
+
+    tooltips.attach_saved_setup_tooltips(app, "python")
+
+    assert {widget for widget, _text in registered_tooltips} == {
+        "save", "export", "import", "delete", "saved"
+    }
 
 
 def test_sidebar_tooltip_uses_the_hovered_section(monkeypatch):

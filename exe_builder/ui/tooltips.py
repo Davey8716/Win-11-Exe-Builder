@@ -470,7 +470,56 @@ def attach_tooltips(app):
         "Available only when that folder contains its generated EXE."
     )
 
+    attach_saved_setup_tooltips(app, "python")
     attach_dotnet_tooltips(app)
+
+
+def attach_saved_setup_tooltips(app, mode):
+    """Register help for saved-setup controls in a build mode."""
+
+    if mode == "python":
+        tooltip_text = {
+            "saved_build_setup_dropdown": (
+                "Choose a saved setup to fill the build fields, then click Build EXE."
+            ),
+            "save_build_setup_btn": (
+                "Save the current Python build settings as a setup you can restore later."
+            ),
+            "export_python_build_setups_btn": (
+                "Export saved Python build setups to a JSON backup file."
+            ),
+            "import_python_build_setups_btn": (
+                "Import saved Python build setups from a JSON backup file. "
+                "Imported setups are added to your current list."
+            ),
+            "delete_build_setup_btn": (
+                "Delete the selected saved Python build setup. Use the arrow to delete "
+                "all saved Python build setups."
+            ),
+        }
+    else:
+        tooltip_text = {
+            "saved_dotnet_build_setup_dropdown": (
+                "Choose a saved setup to fill the publish fields, then click Publish."
+            ),
+            "dotnet_save_build_setup_btn": (
+                "Save the current C# publish settings as a setup you can restore later."
+            ),
+            "export_dotnet_build_setups_btn": (
+                "Export saved C# publish setups to a JSON backup file."
+            ),
+            "import_dotnet_build_setups_btn": (
+                "Import saved C# publish setups from a JSON backup file. "
+                "Imported setups are added to your current list."
+            ),
+            "dotnet_delete_build_setup_btn": (
+                "Delete the selected saved C# publish setup. Use the arrow to delete all "
+                "saved C# publish setups."
+            ),
+        }
+
+    for name, text in tooltip_text.items():
+        QtTooltip(getattr(app, name), text)
 
 
 def attach_dotnet_tooltips(app):
@@ -516,6 +565,8 @@ def attach_dotnet_tooltips(app):
 
     for name, text in tooltip_text.items():
         QtTooltip(getattr(app, name), text)
+
+    attach_saved_setup_tooltips(app, "dotnet")
 
     tooltips_enabled = lambda: getattr(app, "tooltips_enabled", True)
     app._dotnet_path_hovers = [
