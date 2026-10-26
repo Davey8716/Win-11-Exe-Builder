@@ -1830,10 +1830,10 @@ class EXEBuilderApp(QWidget):
         else:
             self.dotnet_publish_controller.refresh_ui()
 
-    def _schedule_saved_setup_backup_status_reset(self, mode, message):
+    def _schedule_saved_setup_backup_status_reset(self, mode, message, delay_ms=3000):
         token = self._saved_setup_backup_status_tokens[mode]
         QTimer.singleShot(
-            3000,
+            delay_ms,
             lambda: self._restore_saved_setup_backup_status(mode, message, token),
         )
 
@@ -1890,9 +1890,9 @@ class EXEBuilderApp(QWidget):
             )
             return
         if payload.get("version") != 1 or payload.get("builder") != mode:
-            self._set_saved_setup_backup_status(
-                mode, "That backup is for a different builder.", Colors.ERROR
-            )
+            message = "That backup is for a different builder."
+            self._set_saved_setup_backup_status(mode, message, Colors.ERROR)
+            self._schedule_saved_setup_backup_status_reset(mode, message, 5000)
             return
         imported = payload.get("saved_setups")
         if not isinstance(imported, list):
@@ -1915,11 +1915,9 @@ class EXEBuilderApp(QWidget):
         added = sum(1 for setup in imported if setup not in existing)
         self._replace_saved_setup_collection(mode, merged[:50])
         if not added:
-            self._set_saved_setup_backup_status(
-                mode,
-                "Imported 0 saved setups — no new valid setups were found.",
-                Colors.ERROR,
-            )
+            message = "Imported 0 saved setups — no new valid setups were found."
+            self._set_saved_setup_backup_status(mode, message, Colors.ERROR)
+            self._schedule_saved_setup_backup_status_reset(mode, message, 5000)
             return
         message = f"Imported {added} saved setup{'s' if added != 1 else ''}."
         self._set_saved_setup_backup_status(mode, message, Colors.SUCCESS)

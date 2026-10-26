@@ -401,6 +401,9 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
         window._import_saved_build_setups("dotnet")
         assert "Imported 0 saved setups" in window.dotnet_status_label.toPlainText()
         assert qcolor_name(Colors.ERROR) in window.dotnet_status_label.styleSheet()
+        assert scheduled_resets[-1][0] == 5000
+        scheduled_resets[-1][1]()
+        assert dotnet_refreshes == [True, True]
 
         monkeypatch.setattr(
             QFileDialog, "getOpenFileName", lambda *_args: (str(python_backup), "")
@@ -409,6 +412,9 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
         assert window.saved_dotnet_build_setups == [dotnet_setup]
         assert "different builder" in window.dotnet_status_label.toPlainText()
         assert qcolor_name(Colors.ERROR) in window.dotnet_status_label.styleSheet()
+        assert scheduled_resets[-1][0] == 5000
+        scheduled_resets[-1][1]()
+        assert dotnet_refreshes == [True, True, True]
     finally:
         window._is_closing = True
         window.close()
