@@ -1,4 +1,5 @@
 import sys
+import json
 import os
 import ctypes
 import threading
@@ -1402,6 +1403,13 @@ class EXEBuilderApp(QWidget):
                 saved_setups_controls.addWidget(self.delete_build_setup_btn)
                 saved_setups_layout.addLayout(saved_setups_controls)
                 layout.addWidget(saved_setups_section, alignment=Qt.AlignHCenter)
+                self.python_saved_setups_backup_section = (
+                    self._create_saved_setups_backup_controls("python")
+                )
+                layout.addWidget(
+                    self.python_saved_setups_backup_section,
+                    alignment=Qt.AlignHCenter,
+                )
             layout.addWidget(title, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Environment Sync":
@@ -1672,6 +1680,10 @@ class EXEBuilderApp(QWidget):
         self.delete_build_setup_btn.setEnabled(
             not busy and self.saved_build_setup_dropdown.currentIndex() > 0
         )
+        for name in ("export_python_build_setups_btn", "import_python_build_setups_btn"):
+            button = getattr(self, name, None)
+            if button is not None:
+                button.setEnabled(not busy)
 
     def _sync_saved_build_setup_selection(self, current_setup):
         """Reflect the configuration currently displayed in the build summary."""
@@ -1688,6 +1700,150 @@ class EXEBuilderApp(QWidget):
             previous = dropdown.blockSignals(True)
             dropdown.setCurrentIndex(matching_index)
             dropdown.blockSignals(previous)
+
+    def _create_saved_setups_backup_controls(self, mode):
+        """Create portable saved-setup import and export controls for a mode."""
+        section = QWidget()
+        section.setFixedWidth(PAIRED_FRAME_WIDTH)
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        label = QLabel("Setups backup")
+        label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        label.setAlignment(Qt.AlignCenter)
+        label.setStyleSheet(f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}")
+        layout.addWidget(label)
+        controls = QHBoxLayout()
+        controls.setContentsMargins(0, 0, 0, 0)
+        controls.setSpacing(8)
+        controls.addStretch()
+        export_btn = QPushButton("Export setups")
+        import_btn = QPushButton("Import setups")
+        for button in (export_btn, import_btn):
+            button.setFixedSize(160, 28)
+            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            button.setStyleSheet(button_base() + "QPushButton { padding: 2px 12px; }")
+            controls.addWidget(button)
+        controls.addStretch()
+        export_btn.clicked.connect(lambda: self._export_saved_build_setups(mode))
+        import_btn.clicked.connect(lambda: self._import_saved_build_setups(mode))
+        layout.addLayout(controls)
+        setattr(self, f"export_{mode}_build_setups_btn", export_btn)
+        setattr(self, f"import_{mode}_build_setups_btn", import_btn)
+        return section
+
+    @staticmethod
+    def _portable_saved_setup_is_valid(mode, setup):
+        if not isinstance(setup, dict):
+            return False
+        if mode == "python":
+            return (
+                all(isinstance(setup.get(key), str) for key in
+                    ("interpreter", "icon", "script", "output", "name"))
+                and isinstance(setup.get("append_py_version"), bool)
+                and (setup.get("datetime_format") is None
+                     or isinstance(setup.get("datetime_format"), str))
+            )
+        option_keys = ("self_contained", "single_file", "trim")
+        return (
+            all(isinstance(setup.get(key), str) for key in
+                ("project", "output", "icon", "name", "runtime"))
+            and all(isinstance(setup.get(key), bool) for key in option_keys)
+            and sum(setup[key] for key in option_keys) == 1
+            and (setup.get("datetime_format") is None
+                 or isinstance(setup.get("datetime_format"), str))
+        )
+
+    def _saved_setup_collection(self, mode):
+        if mode == "python":
+            return self.saved_build_setups
+        return self.saved_dotnet_build_setups
+
+    def _replace_saved_setup_collection(self, mode, setups):
+        if mode == "python":
+            self.saved_build_setups = setups
+            self._populate_saved_build_setups()
+            self.state_ctrl.save_python_state()
+        else:
+            self.saved_dotnet_build_setups = setups
+            self._populate_saved_dotnet_build_setups()
+            self.state_ctrl.save_csharp_state()
+
+    def _set_saved_setup_backup_status(self, mode, message):
+        if mode == "python":
+            self.status_label.setText(message)
+        else:
+            self.dotnet_publish_controller._set_status(message)
+
+    def _export_saved_build_setups(self, mode):
+        title = "Export Python Saved Setups" if mode == "python" else "Export C# Saved Setups"
+        default_name = f"{mode}_exe_builder_saved_setups.json"
+        path, _ = QFileDialog.getSaveFileName(
+            self, title, os.path.join(os.path.expanduser("~"), default_name),
+            "JSON Files (*.json)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".json"):
+            path += ".json"
+        setups = [
+            setup for setup in self._saved_setup_collection(mode)
+            if self._portable_saved_setup_is_valid(mode, setup)
+        ]
+        payload = {
+            "format": "win11-exe-builder-saved-setups",
+            "version": 1,
+            "builder": mode,
+            "saved_setups": setups,
+        }
+        try:
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, indent=4)
+        except OSError as exc:
+            self._set_saved_setup_backup_status(mode, f"Could not export saved setups: {exc}")
+            return
+        self._set_saved_setup_backup_status(
+            mode, f"Exported {len(setups)} saved setup{'s' if len(setups) != 1 else ''}."
+        )
+
+    def _import_saved_build_setups(self, mode):
+        title = "Import Python Saved Setups" if mode == "python" else "Import C# Saved Setups"
+        path, _ = QFileDialog.getOpenFileName(self, title, "", "JSON Files (*.json)")
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            self._set_saved_setup_backup_status(mode, f"Could not import saved setups: {exc}")
+            return
+        if not isinstance(payload, dict) or payload.get("format") != "win11-exe-builder-saved-setups":
+            self._set_saved_setup_backup_status(mode, "That file is not a saved-setups backup.")
+            return
+        if payload.get("version") != 1 or payload.get("builder") != mode:
+            self._set_saved_setup_backup_status(mode, "That backup is for a different builder.")
+            return
+        imported = payload.get("saved_setups")
+        if not isinstance(imported, list):
+            self._set_saved_setup_backup_status(mode, "That backup has no valid saved setups.")
+            return
+        imported = [
+            setup for setup in imported
+            if self._portable_saved_setup_is_valid(mode, setup)
+        ]
+        existing = [
+            setup for setup in self._saved_setup_collection(mode)
+            if self._portable_saved_setup_is_valid(mode, setup)
+        ]
+        merged = []
+        for setup in [*imported, *existing]:
+            if setup not in merged:
+                merged.append(setup)
+        added = sum(1 for setup in imported if setup not in existing)
+        self._replace_saved_setup_collection(mode, merged[:50])
+        self._set_saved_setup_backup_status(
+            mode, f"Imported {added} saved setup{'s' if added != 1 else ''}."
+        )
 
     def _create_dotnet_saved_build_setup_controls(self):
         """Create the C# counterpart of the Python saved-setups controls."""
@@ -1960,6 +2116,10 @@ class EXEBuilderApp(QWidget):
             not self.building
             and self.saved_dotnet_build_setup_dropdown.currentIndex() > 0
         )
+        for name in ("export_dotnet_build_setups_btn", "import_dotnet_build_setups_btn"):
+            button = getattr(self, name, None)
+            if button is not None:
+                button.setEnabled(not self.building)
 
     def _sync_saved_dotnet_build_setup_selection(self, current_setup):
         """Reflect the configuration currently displayed in the C# build summary."""
@@ -2908,6 +3068,9 @@ class EXEBuilderApp(QWidget):
         self._sync_dotnet_publish_options()
         self._create_dotnet_build_summary()
         self._create_dotnet_saved_build_setup_controls()
+        self.dotnet_saved_setups_backup_section = (
+            self._create_saved_setups_backup_controls("dotnet")
+        )
         self._install_dotnet_sidebar(dotnet_layout, panel)
         root_layout.addWidget(self.build_mode_stack)
 
@@ -2976,6 +3139,10 @@ class EXEBuilderApp(QWidget):
                 )
                 layout.addWidget(
                     self.dotnet_saved_setups_section, alignment=Qt.AlignHCenter
+                )
+                layout.addWidget(
+                    self.dotnet_saved_setups_backup_section,
+                    alignment=Qt.AlignHCenter,
                 )
             layout.addWidget(heading, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)

@@ -53,6 +53,13 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert build_layout.indexOf(window.build_summary_frame) < build_layout.indexOf(saved_setups_section)
         assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(window.build_title.parentWidget())
         assert saved_setups_section.width() == window.build_summary_frame.width()
+        assert window.python_saved_setups_backup_section.parentWidget() is build_page
+        assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(
+            window.python_saved_setups_backup_section
+        )
+        assert build_layout.indexOf(window.python_saved_setups_backup_section) < build_layout.indexOf(
+            window.build_title.parentWidget()
+        )
         assert window.save_build_setup_btn.font().bold()
         assert window.save_build_setup_btn.width() == 135
         assert window.save_build_setup_btn.height() == 28
@@ -185,6 +192,13 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         )
         assert window.dotnet_build_summary_frame.width() == window.build_summary_frame.width()
         assert saved_setups_section.width() == window.dotnet_build_summary_frame.width()
+        assert window.dotnet_saved_setups_backup_section.parentWidget() is build_page
+        assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(
+            window.dotnet_saved_setups_backup_section
+        )
+        assert build_layout.indexOf(window.dotnet_saved_setups_backup_section) < build_layout.indexOf(
+            window.dotnet_build_title_frame
+        )
         assert not window.dotnet_save_build_setup_btn.isEnabled()
         assert not window.dotnet_delete_build_setup_btn.isEnabled()
 
@@ -264,3 +278,87 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
     finally:
         reopened._is_closing = True
         reopened.close()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="The app uses Windows APIs")
+def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, tmp_path):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+
+    from PySide6.QtWidgets import QApplication, QFileDialog
+    from exe_builder.controllers.activation_controller import ActivationController
+
+    monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
+    monkeypatch.setattr(ctypes, "GetLastError", lambda: 0)
+    from exe_builder.main import EXEBuilderApp
+
+    python_setup = {
+        "interpreter": "C:/Python/python.exe",
+        "icon": "C:/Icons/tool.ico",
+        "script": "C:/Project/tool.py",
+        "output": "C:/Builds/Tool",
+        "name": "Tool",
+        "datetime_format": None,
+        "append_py_version": False,
+    }
+    dotnet_setup = {
+        "project": "C:/Project/Tool.csproj",
+        "icon": "C:/Icons/tool.ico",
+        "output": "C:/Builds/Tool",
+        "name": "Tool",
+        "runtime": "win-x64",
+        "datetime_format": None,
+        "self_contained": True,
+        "single_file": False,
+        "trim": False,
+    }
+    python_backup = tmp_path / "python-setups.json"
+    dotnet_backup = tmp_path / "dotnet-setups.json"
+    app = QApplication.instance() or QApplication([])
+    window = EXEBuilderApp()
+    try:
+        monkeypatch.setattr(
+            QFileDialog, "getSaveFileName", lambda *_args: (str(python_backup), "")
+        )
+        window.saved_build_setups = [python_setup]
+        window._export_saved_build_setups("python")
+        payload = json.loads(python_backup.read_text(encoding="utf-8"))
+        assert payload == {
+            "format": "win11-exe-builder-saved-setups",
+            "version": 1,
+            "builder": "python",
+            "saved_setups": [python_setup],
+        }
+
+        window.saved_build_setups = []
+        monkeypatch.setattr(
+            QFileDialog, "getOpenFileName", lambda *_args: (str(python_backup), "")
+        )
+        window._import_saved_build_setups("python")
+        assert window.saved_build_setups == [python_setup]
+
+        monkeypatch.setattr(
+            QFileDialog, "getSaveFileName", lambda *_args: (str(dotnet_backup), "")
+        )
+        window.saved_dotnet_build_setups = [dotnet_setup]
+        window._export_saved_build_setups("dotnet")
+        payload = json.loads(dotnet_backup.read_text(encoding="utf-8"))
+        assert payload["builder"] == "dotnet"
+        assert payload["saved_setups"] == [dotnet_setup]
+
+        window.saved_dotnet_build_setups = []
+        monkeypatch.setattr(
+            QFileDialog, "getOpenFileName", lambda *_args: (str(dotnet_backup), "")
+        )
+        window._import_saved_build_setups("dotnet")
+        assert window.saved_dotnet_build_setups == [dotnet_setup]
+
+        monkeypatch.setattr(
+            QFileDialog, "getOpenFileName", lambda *_args: (str(python_backup), "")
+        )
+        window._import_saved_build_setups("dotnet")
+        assert window.saved_dotnet_build_setups == [dotnet_setup]
+        assert "different builder" in window.dotnet_status_label.toPlainText()
+    finally:
+        window._is_closing = True
+        window.close()
