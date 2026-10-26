@@ -4,6 +4,41 @@ from PySide6.QtGui import Qt, QCursor
 from .path_hover import PathHover
 from .styles import TOOLTIP_STYLE
 
+
+PYTHON_SUMMARY_HELP_TEXT = {
+    "interpreter": (
+        "Displays the full path to the Python interpreter.\n"
+        "That will be used for building EXEs.\n"
+        "This is read only.\n"
+        "Once a path has been set the navigation is locked to where pyton interpreters are.\n"
+    ),
+    "icon": "File path to Icon if used.",
+    "file": "File path to python script folder and file.",
+    "output": "File path to the EXE output folder.",
+    "name": "Name of the generated EXE folder and file.\nDo not include .exe.",
+    "python_version": "Append the python version to the file name.",
+    "datetime": (
+        "Select a date/time format to append to the file name.\n"
+        "Formats without minutes will overwrite builds from the same day.\n"
+        "Formats including minutes usually produce a unique file per build.\n"
+        "As most builds take longer than a minute.\nIf a name is reused, wait briefly before rebuilding."
+    ),
+}
+
+DOTNET_SUMMARY_HELP_TEXT = {
+    "project": "File path to the selected SDK-style C# project file.",
+    "icon": "File path to the optional application icon used for this publish.",
+    "output": "File path to the folder that will receive the C# publish output.",
+    "name": "Set the published executable name. Do not include .exe.",
+    "runtime": "Choose the Windows architecture for the published application.",
+    "datetime": PYTHON_SUMMARY_HELP_TEXT["datetime"],
+}
+
+DOTNET_SELECTION_SUMMARY_HELP_TEXT = {
+    "icon": DOTNET_SUMMARY_HELP_TEXT["icon"],
+    "file": DOTNET_SUMMARY_HELP_TEXT["project"],
+}
+
 # -------------------------------------------------------------
 #  Simple tooltip class for Qt widgets (qt_material compatible)
 # -------------------------------------------------------------
@@ -424,34 +459,21 @@ def attach_tooltips(app):
     # Output / EXE name
     # -----------------------------
 
-    QtTooltip(
-        app.appened_py_version,
-        "Append the python version to the file name."
-    )
+    QtTooltip(app.appened_py_version, PYTHON_SUMMARY_HELP_TEXT["python_version"])
 
     QtTooltip(
         app.output_btn,
         "The file path to the folder the EXE is to be built in."
     )
 
-    QtTooltip(
-        app.date_time_dropdown,
-        "Select a date/time format to append to the file name." 
-        "\nFormats without minutes will overwrite builds from the same day." 
-        "\nFormats including minutes usually produce a unique file per build." 
-        "\nAs most builds take longer than a minute.\nIf a name is reused, wait briefly before rebuilding."
-    )
+    QtTooltip(app.date_time_dropdown, PYTHON_SUMMARY_HELP_TEXT["datetime"])
 
     QtTooltip(
         app.output_refresh_btn,
         "Reset output folder to Desktop."
     )
 
-    QtTooltip(
-        app.exe_name_input,
-        "Name of the generated EXE folder and file.\n"
-        "Do not include .exe."
-    )
+    QtTooltip(app.exe_name_input, PYTHON_SUMMARY_HELP_TEXT["name"])
 
     QtTooltip(
         app.refresh_btn,
@@ -472,6 +494,34 @@ def attach_tooltips(app):
 
     attach_saved_setup_tooltips(app, "python")
     attach_dotnet_tooltips(app)
+    attach_summary_hovers(app)
+
+
+def attach_summary_hovers(app):
+    """Attach value-plus-guidance hovers to every read-only summary value."""
+    tooltips_enabled = lambda: getattr(app, "tooltips_enabled", True)
+    summaries = (
+        (app.build_summary_values, PYTHON_SUMMARY_HELP_TEXT),
+        (app.dotnet_build_summary_values, DOTNET_SUMMARY_HELP_TEXT),
+    )
+    summaries += tuple(
+        (values, PYTHON_SUMMARY_HELP_TEXT)
+        for _title, _frame, _labels, values in app.python_selection_summaries.values()
+    )
+    summaries += tuple(
+        (values, DOTNET_SELECTION_SUMMARY_HELP_TEXT)
+        for _title, _frame, _labels, values in app.dotnet_selection_summaries.values()
+    )
+    app._summary_hovers = [
+        PathHover(
+            widget,
+            help_text=help_text[key],
+            help_enabled_getter=tooltips_enabled,
+            normalize_path=False,
+        )
+        for values, help_text in summaries
+        for key, widget in values.items()
+    ]
 
 
 def attach_saved_setup_tooltips(app, mode):
@@ -539,9 +589,9 @@ def attach_dotnet_tooltips(app):
         "dotnet_icon_reset_btn": "Clear the optional application icon for the next publish.",
         "dotnet_output_select_btn": "Choose the folder where the Release publish output will be created.",
         "dotnet_output_reset_btn": "Reset the publish output folder to Desktop.",
-        "dotnet_name_input": "Set the published executable name. Do not include .exe.",
+        "dotnet_name_input": DOTNET_SUMMARY_HELP_TEXT["name"],
         "dotnet_name_reset_btn": "Reset the executable name to match the selected C# project.",
-        "dotnet_runtime_combo": "Choose the Windows architecture for the published application.",
+        "dotnet_runtime_combo": DOTNET_SUMMARY_HELP_TEXT["runtime"],
         "dotnet_self_contained": (
             "Include the .NET runtime in the publish output. This runs without a separate "
             ".NET install but increases output size."
@@ -572,17 +622,17 @@ def attach_dotnet_tooltips(app):
     app._dotnet_path_hovers = [
         PathHover(
             app.dotnet_project_input,
-            help_text="File path to the selected SDK-style C# project file.",
+            help_text=DOTNET_SUMMARY_HELP_TEXT["project"],
             help_enabled_getter=tooltips_enabled,
         ),
         PathHover(
             app.dotnet_icon_input,
-            help_text="File path to the optional application icon used for this publish.",
+            help_text=DOTNET_SUMMARY_HELP_TEXT["icon"],
             help_enabled_getter=tooltips_enabled,
         ),
         PathHover(
             app.dotnet_output_input,
-            help_text="File path to the folder that will receive the C# publish output.",
+            help_text=DOTNET_SUMMARY_HELP_TEXT["output"],
             help_enabled_getter=tooltips_enabled,
         ),
     ]

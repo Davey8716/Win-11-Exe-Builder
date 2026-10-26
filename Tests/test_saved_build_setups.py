@@ -308,11 +308,11 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert window.dotnet_date_time_dropdown.currentData() == "%d-%m-%Y"
         assert window.dotnet_single_file.isChecked()
         assert not window.dotnet_self_contained.isChecked()
-        assert window.dotnet_build_summary_values["project"].toolTip() == str(project)
-        assert window.dotnet_build_summary_values["icon"].toolTip() == str(icon)
-        assert window.dotnet_build_summary_values["output"].toolTip() == str(output)
-        assert window.dotnet_build_summary_values["name"].toolTip() == "Reader"
-        assert window.dotnet_build_summary_values["runtime"].toolTip() == "Windows ARM64"
+        assert window.dotnet_build_summary_values["project"].toolTip() == ""
+        assert window.dotnet_build_summary_values["icon"].toolTip() == ""
+        assert window.dotnet_build_summary_values["output"].toolTip() == ""
+        assert window.dotnet_build_summary_values["name"].toolTip() == ""
+        assert window.dotnet_build_summary_values["runtime"].toolTip() == ""
         assert window.dotnet_section_nav.currentRow() == 3
         assert not window.building
         assert window.dotnet_publish_btn.text() == "Publish"

@@ -282,7 +282,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_labels["icon"].styleSheet()
         assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["icon"].styleSheet()
         assert window.python_selection_summaries["File"][3]["icon"].text().replace("\u200b", "") == "C:/icons/app.ico"
-        assert window.python_selection_summaries["Output"][3]["icon"].toolTip() == "C:/icons/app.ico"
+        assert window.python_selection_summaries["Output"][3]["icon"].toolTip() == ""
         window.script_path_input.setText("C:/project/main.py")
         assert bool(window.python_section_nav.item(4).flags() & Qt.ItemIsEnabled)
         assert window.build_summary_values["file"].text().replace("\u200b", "") == "C:/project/main.py"
@@ -661,11 +661,11 @@ def test_ready_saved_python_workflow_opens_build_tab(monkeypatch, tmp_path):
         window.show()
         app.processEvents()
         assert window.python_section_stack.currentIndex() == 5
-        assert window.python_selection_summaries["Icons"][3]["interpreter"].toolTip() == str(interpreter)
-        assert window.python_selection_summaries["File"][3]["icon"].toolTip() == str(icon)
-        assert window.python_selection_summaries["Output"][3]["file"].toolTip() == str(script)
-        assert window.dotnet_selection_summaries["File Select"][3]["icon"].toolTip() == str(icon)
-        assert window.dotnet_selection_summaries["Output Select"][3]["file"].toolTip() == str(project)
+        assert window.python_selection_summaries["Icons"][3]["interpreter"].toolTip() == ""
+        assert window.python_selection_summaries["File"][3]["icon"].toolTip() == ""
+        assert window.python_selection_summaries["Output"][3]["file"].toolTip() == ""
+        assert window.dotnet_selection_summaries["File Select"][3]["icon"].toolTip() == ""
+        assert window.dotnet_selection_summaries["Output Select"][3]["file"].toolTip() == ""
         assert all(
             bool(window.python_section_nav.item(index).flags() & Qt.ItemIsEnabled)
             for index in range(6)

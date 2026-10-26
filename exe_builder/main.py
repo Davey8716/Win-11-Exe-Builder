@@ -1684,7 +1684,6 @@ class EXEBuilderApp(QWidget):
             value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             value.setTextInteractionFlags(Qt.NoTextInteraction)
             value.setFocusPolicy(Qt.NoFocus)
-            value.setToolTip("")
             text_color = Colors.TEXT_LIGHT
             label.setStyleSheet(f"QLabel {{ color: {qcolor_name(text_color)}; }}")
             value.setStyleSheet(
@@ -1723,7 +1722,6 @@ class EXEBuilderApp(QWidget):
         for key, text in values.items():
             widget = self.build_summary_values[key]
             widget.setText(self._summary_display_text(text))
-            widget.setToolTip(text)
         self._update_saved_build_setup_controls()
 
     def _python_datetime_summary_text(self):
@@ -2199,7 +2197,6 @@ class EXEBuilderApp(QWidget):
                 f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
             )
             widget.setText(self._summary_display_text(text))
-            widget.setToolTip(text)
 
     def _current_dotnet_build_setup(self):
         values = self.dotnet_publish_controller.values()
@@ -2672,7 +2669,6 @@ class EXEBuilderApp(QWidget):
                     f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
                 )
                 value.setText(self._summary_display_text(display))
-                value.setToolTip(display)
 
     def _update_python_selection_summaries(self):
         self._update_selection_summaries(self.python_selection_summaries, {

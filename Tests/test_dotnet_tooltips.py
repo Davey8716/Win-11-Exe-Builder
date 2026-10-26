@@ -67,6 +67,40 @@ def test_python_saved_setup_controls_have_tooltips(monkeypatch):
     }
 
 
+def test_summary_hovers_reuse_source_field_guidance(monkeypatch):
+    registered_path_hovers = []
+
+    class FakePathHover:
+        def __init__(self, widget, **kwargs):
+            registered_path_hovers.append((widget, kwargs))
+
+    monkeypatch.setattr(tooltips, "PathHover", FakePathHover)
+    app = SimpleNamespace(
+        tooltips_enabled=True,
+        build_summary_values={key: f"python-{key}" for key in tooltips.PYTHON_SUMMARY_HELP_TEXT},
+        dotnet_build_summary_values={key: f"dotnet-{key}" for key in tooltips.DOTNET_SUMMARY_HELP_TEXT},
+        python_selection_summaries={
+            "Icons": (None, None, None, {"interpreter": "selection-interpreter"}),
+            "File": (None, None, None, {"interpreter": "selection-file-interpreter", "icon": "selection-icon"}),
+        },
+        dotnet_selection_summaries={
+            "File Select": (None, None, None, {"icon": "selection-dotnet-icon"}),
+            "Output Select": (None, None, None, {"icon": "selection-output-icon", "file": "selection-project"}),
+        },
+    )
+
+    tooltips.attach_summary_hovers(app)
+
+    registered_by_widget = dict(registered_path_hovers)
+    assert registered_by_widget["python-name"]["help_text"] == tooltips.PYTHON_SUMMARY_HELP_TEXT["name"]
+    assert registered_by_widget["dotnet-runtime"]["help_text"] == tooltips.DOTNET_SUMMARY_HELP_TEXT["runtime"]
+    assert registered_by_widget["selection-project"]["help_text"] == tooltips.DOTNET_SUMMARY_HELP_TEXT["project"]
+    assert all(not kwargs["normalize_path"] for _widget, kwargs in registered_path_hovers)
+    assert all(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
+    app.tooltips_enabled = False
+    assert not any(kwargs["help_enabled_getter"]() for _widget, kwargs in registered_path_hovers)
+
+
 def test_sidebar_tooltip_uses_the_hovered_section(monkeypatch):
     captured = {}
 
