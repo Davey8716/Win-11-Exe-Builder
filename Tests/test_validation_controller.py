@@ -295,7 +295,7 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
         "A build already exists here. Build again to overwrite it, "
         "or choose another output folder."
     )
-    assert app.status_label.size == (420, 95)
+    assert app.status_label.size == (420, 75)
     assert len(scheduled) == 1
     assert scheduled[0][0] == 5000
 

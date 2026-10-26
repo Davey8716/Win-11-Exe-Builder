@@ -1826,7 +1826,7 @@ class BuildController(QObject):
             f"Building... {elapsed}s elapsed\napprox {remaining}s remaining"
         )
 
-        self.app.status_label.setFixedSize(420, 95)
+        self.app.status_label.setFixedSize(420, 75)
 
         QTimer.singleShot(1, self.update_eta_loop)
 

@@ -1035,7 +1035,7 @@ class EXEBuilderApp(QWidget):
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
-        self.status_label.setFixedSize(420, 95)
+        self.status_label.setFixedSize(420, 75)
         self.status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))

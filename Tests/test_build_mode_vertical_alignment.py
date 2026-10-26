@@ -43,15 +43,12 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert close_font.pointSize() == 13
         assert close_font.bold()
         assert window.status_label.size().width() == 420
-        assert window.status_label.size().height() == 95
-        assert window.status_label.parentWidget().height() == 165
+        assert window.status_label.size().height() == 75
+        assert window.status_label.parentWidget().height() == 145
         assert window.status_label.parentWidget().width() == 450
         assert window.dotnet_status_label.size().height() == 75
-        assert window.status_label.parentWidget().width() == (
-            window.dotnet_status_label.parentWidget().width()
-        )
-        assert window.status_label.parentWidget().height() > (
-            window.dotnet_status_label.parentWidget().height()
+        assert window.status_label.parentWidget().size() == (
+            window.dotnet_status_label.parentWidget().size()
         )
         ready_message = (
             "Ready to build.\nThe output folder will open after building."
@@ -60,7 +57,10 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.status_label.setPlainText(ready_message)
         app.processEvents()
         assert window.status_label.toPlainText() == ready_message
-        assert window.status_label.verticalScrollBar().maximum() == 0
+        assert window.status_label.verticalScrollBarPolicy() == Qt.ScrollBarAlwaysOff
+        assert window.status_label.horizontalScrollBarPolicy() == Qt.ScrollBarAlwaysOff
+        assert window.dotnet_status_label.verticalScrollBarPolicy() == Qt.ScrollBarAlwaysOff
+        assert window.dotnet_status_label.horizontalScrollBarPolicy() == Qt.ScrollBarAlwaysOff
 
         def horizontal_gap(left, right):
             left_edge = left.mapTo(window, QPoint(left.width(), 0)).x()
