@@ -597,3 +597,84 @@ def test_force_app_data_folder_on_top_activates_matching_window(monkeypatch, tmp
     assert "activate" in events
     assert ("position", 123, fake_win32con.HWND_TOPMOST, 7) in events
     assert ("position", 123, fake_win32con.HWND_NOTOPMOST, 7) in events
+
+
+def test_open_summary_path_opens_files_or_folders_and_schedules_maximize(monkeypatch, tmp_path):
+    file_directory = tmp_path / "Folder With Spaces"
+    file_directory.mkdir()
+    file_path = file_directory / "tool.py"
+    file_path.write_text("print('ok')", encoding="utf-8")
+    commands = []
+    opened_folders = []
+    scheduled = []
+    monkeypatch.setattr(
+        ui_handlers.subprocess, "Popen", lambda command: commands.append(command)
+    )
+    monkeypatch.setattr(
+        ui_handlers.os, "startfile", lambda path: opened_folders.append(path), raising=False
+    )
+    monkeypatch.setattr(
+        ui_handlers.QTimer,
+        "singleShot",
+        lambda delay, callback: scheduled.append((delay, callback)),
+    )
+    handler = UIHandlers(SimpleNamespace())
+    maximized_folders = []
+    monkeypatch.setattr(
+        handler,
+        "_maximize_explorer_window",
+        lambda folder_path: maximized_folders.append(folder_path),
+    )
+
+    assert handler.open_summary_path_in_explorer(str(file_path)) is True
+    assert commands == [["explorer.exe", "/select,", str(file_path)]]
+    assert scheduled[0][0] == 150
+    scheduled[0][1]()
+    assert maximized_folders == [str(file_directory)]
+
+    assert handler.open_summary_path_in_explorer(str(tmp_path)) is True
+    assert opened_folders == [str(tmp_path)]
+    assert len(commands) == 1
+    assert scheduled[1][0] == 150
+    scheduled[1][1]()
+    assert maximized_folders == [str(file_directory), str(tmp_path)]
+
+    assert handler.open_summary_path_in_explorer(str(tmp_path / "missing")) is False
+    assert len(commands) == 1
+    assert opened_folders == [str(tmp_path)]
+
+
+def test_maximize_explorer_window_for_summary_path(monkeypatch, tmp_path):
+    events = []
+    folder_path = str(tmp_path)
+    documents_window = SimpleNamespace(
+        HWND=123,
+        Document=SimpleNamespace(
+            Folder=SimpleNamespace(Self=SimpleNamespace(Path=str(tmp_path / "Documents")))
+        ),
+    )
+    target_window = SimpleNamespace(
+        HWND=246,
+        Document=SimpleNamespace(Folder=SimpleNamespace(Self=SimpleNamespace(Path=folder_path))),
+    )
+    fake_windows = SimpleNamespace(
+        Count=2,
+        Item=lambda index: (documents_window, target_window)[index],
+    )
+    fake_client = SimpleNamespace(Dispatch=lambda name: SimpleNamespace(Windows=lambda: fake_windows))
+    fake_win32com = SimpleNamespace(client=fake_client)
+    fake_win32con = SimpleNamespace(SW_MAXIMIZE=3)
+    fake_win32gui = SimpleNamespace(
+        ShowWindow=lambda hwnd, command: events.append(("maximize", hwnd, command)),
+        SetForegroundWindow=lambda hwnd: events.append(("foreground", hwnd)),
+    )
+    monkeypatch.setitem(sys.modules, "win32com", fake_win32com)
+    monkeypatch.setitem(sys.modules, "win32com.client", fake_client)
+    monkeypatch.setitem(sys.modules, "win32con", fake_win32con)
+    monkeypatch.setitem(sys.modules, "win32gui", fake_win32gui)
+
+    assert UIHandlers(SimpleNamespace())._maximize_explorer_window(folder_path) is True
+    assert events == [
+        ("maximize", 246, fake_win32con.SW_MAXIMIZE),
+        ("foreground", 246),
+    ]

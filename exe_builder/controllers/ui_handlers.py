@@ -156,6 +156,62 @@ class UIHandlers:
     def _select_file_in_explorer(self, file_path):
         subprocess.Popen(["explorer.exe", f"/select,{file_path}"])
 
+    def open_summary_path_in_explorer(self, path):
+        """Open a summary path in Explorer and maximize its folder window."""
+        path = str(path or "").replace("\u200b", "").strip()
+        if not path or not os.path.exists(path):
+            return False
+
+        is_folder = os.path.isdir(path)
+        folder_path = path if is_folder else os.path.dirname(path)
+        try:
+            if is_folder:
+                os.startfile(path)
+            else:
+                subprocess.Popen(["explorer.exe", "/select,", path])
+        except OSError:
+            return False
+
+        QTimer.singleShot(
+            150,
+            lambda: self._maximize_explorer_window(folder_path),
+        )
+        return True
+
+    def _maximize_explorer_window(self, folder_path, attempts_remaining=4):
+        """Maximize the Explorer window associated with *folder_path* when ready."""
+        target_path = self._normalize_explorer_path(folder_path)
+        if not target_path:
+            return False
+
+        try:
+            import win32com.client
+            import win32con
+            import win32gui
+
+            windows = win32com.client.Dispatch("Shell.Application").Windows()
+            for index in range(windows.Count):
+                window = windows.Item(index)
+                window_path = self._normalize_explorer_path(
+                    self._get_explorer_window_path(window)
+                )
+                if window_path != target_path:
+                    continue
+                win32gui.ShowWindow(window.HWND, win32con.SW_MAXIMIZE)
+                win32gui.SetForegroundWindow(window.HWND)
+                return True
+        except Exception:
+            return False
+
+        if attempts_remaining > 0:
+            QTimer.singleShot(
+                150,
+                lambda: self._maximize_explorer_window(
+                    folder_path, attempts_remaining - 1
+                ),
+            )
+        return False
+
     def _normalize_explorer_path(self, path):
         if not path:
             return ""

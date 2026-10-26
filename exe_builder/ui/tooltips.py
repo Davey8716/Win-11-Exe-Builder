@@ -9,12 +9,13 @@ PYTHON_SUMMARY_HELP_TEXT = {
     "interpreter": (
         "Displays the full path to the Python interpreter.\n"
         "That will be used for building EXEs.\n"
+        "Click a valid path to open it in Windows Explorer.\n"
         "This is read only.\n"
         "Once a path has been set the navigation is locked to where pyton interpreters are.\n"
     ),
-    "icon": "File path to Icon if used.",
-    "file": "File path to python script folder and file.",
-    "output": "File path to the EXE output folder.",
+    "icon": "File path to Icon if used. Click a valid path to open it in Windows Explorer.",
+    "file": "File path to python script folder and file. Click a valid path to open it in Windows Explorer.",
+    "output": "File path to the EXE output folder. Click a valid path to open it in Windows Explorer.",
     "name": "Name of the generated EXE folder and file.\nDo not include .exe.",
     "python_version": "Append the python version to the file name.",
     "datetime": (

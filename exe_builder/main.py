@@ -29,6 +29,7 @@ from exe_builder.build.datetime_build_options import (
 )
 from exe_builder.controllers.environment_sync_controller import EnvironmentSyncController
 from exe_builder.ui.path_hover import attach_path_hovers
+from exe_builder.ui.clickable_path_label import ClickablePathLabel
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout,QGridLayout,QComboBox,QTextEdit,QListView,QListWidget,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog,QMenu,QToolButton
@@ -1677,7 +1678,13 @@ class EXEBuilderApp(QWidget):
                     label.fontMetrics().horizontalAdvance(label.text()) + 4,
                 )
             )
-            value = QLabel()
+            value = (
+                ClickablePathLabel()
+                if key in {"interpreter", "icon", "file", "output"}
+                else QLabel()
+            )
+            if isinstance(value, ClickablePathLabel):
+                value.pathActivated.connect(self.ui_handlers.open_summary_path_in_explorer)
             value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
             value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
             value.setWordWrap(True)
@@ -1722,6 +1729,8 @@ class EXEBuilderApp(QWidget):
         for key, text in values.items():
             widget = self.build_summary_values[key]
             widget.setText(self._summary_display_text(text))
+            if isinstance(widget, ClickablePathLabel):
+                widget.set_path(text)
         self._update_saved_build_setup_controls()
 
     def _python_datetime_summary_text(self):
@@ -2160,7 +2169,13 @@ class EXEBuilderApp(QWidget):
                     label.fontMetrics().horizontalAdvance(label.text()) + 4,
                 )
             )
-            value = QLabel()
+            value = (
+                ClickablePathLabel()
+                if key in {"project", "icon", "output"}
+                else QLabel()
+            )
+            if isinstance(value, ClickablePathLabel):
+                value.pathActivated.connect(self.ui_handlers.open_summary_path_in_explorer)
             value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
             value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
             value.setWordWrap(True)
@@ -2197,6 +2212,8 @@ class EXEBuilderApp(QWidget):
                 f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
             )
             widget.setText(self._summary_display_text(text))
+            if isinstance(widget, ClickablePathLabel):
+                widget.set_path(text)
 
     def _current_dotnet_build_setup(self):
         values = self.dotnet_publish_controller.values()
@@ -2641,7 +2658,8 @@ class EXEBuilderApp(QWidget):
                     label.fontMetrics().horizontalAdvance(label.text()) + 4,
                 )
             )
-            value = QLabel()
+            value = ClickablePathLabel()
+            value.pathActivated.connect(self.ui_handlers.open_summary_path_in_explorer)
             value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
             value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
             value.setWordWrap(True)
@@ -2669,6 +2687,8 @@ class EXEBuilderApp(QWidget):
                     f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
                 )
                 value.setText(self._summary_display_text(display))
+                if isinstance(value, ClickablePathLabel):
+                    value.set_path(path)
 
     def _update_python_selection_summaries(self):
         self._update_selection_summaries(self.python_selection_summaries, {
