@@ -87,9 +87,11 @@ from exe_builder.ui.styles import (
     utility_icon_button_style,
 )
 
-APP_FIXED_SIZE = (850, 925)
+APP_FIXED_WIDTH = 850
+PYTHON_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 840)
+DOTNET_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 866)
 NAVIGATION_SIDEBAR_WIDTH = 205
-CONTENT_PANE_WIDTH = APP_FIXED_SIZE[0] - NAVIGATION_SIDEBAR_WIDTH
+CONTENT_PANE_WIDTH = APP_FIXED_WIDTH - NAVIGATION_SIDEBAR_WIDTH
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
@@ -208,7 +210,7 @@ class EXEBuilderApp(QWidget):
         self.last_build_seconds = 45
         self.last_build_counter = 0
         
-        self.setFixedSize(*APP_FIXED_SIZE)
+        self.setFixedSize(*PYTHON_APP_FIXED_SIZE)
         self.setWindowTitle(" ")
         self.setContentsMargins(0,0,0,0)
         
@@ -334,7 +336,7 @@ class EXEBuilderApp(QWidget):
 
         title_row = QWidget()
         title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        title_row.setFixedSize(APP_FIXED_SIZE[0], 44)
+        title_row.setFixedSize(APP_FIXED_WIDTH, 44)
         title_row_layout = QHBoxLayout(title_row)
         title_row_layout.setContentsMargins(0, 0, 0, 0)
         title_row_layout.setSpacing(0)
@@ -2865,7 +2867,7 @@ class EXEBuilderApp(QWidget):
         dotnet_title_layout.addWidget(self.dotnet_mode_title)
         dotnet_title_layout.addStretch()
         dotnet_header = QWidget()
-        dotnet_header.setFixedSize(APP_FIXED_SIZE[0], 44)
+        dotnet_header.setFixedSize(APP_FIXED_WIDTH, 44)
         dotnet_header_layout = QHBoxLayout(dotnet_header)
         dotnet_header_layout.setContentsMargins(0, 0, 0, 0)
         dotnet_header_layout.setSpacing(0)
@@ -3427,7 +3429,9 @@ class EXEBuilderApp(QWidget):
         self.build_mode_stack.setCurrentIndex(0 if mode == "python" else 1)
         self._place_build_options_button(mode)
         self._apply_build_mode_button_state(mode)
-        self.setFixedSize(*APP_FIXED_SIZE)
+        self.setFixedSize(
+            *(PYTHON_APP_FIXED_SIZE if mode == "python" else DOTNET_APP_FIXED_SIZE)
+        )
         self._center_mode_headers()
         QTimer.singleShot(0, self._center_mode_headers)
         if mode == "python":

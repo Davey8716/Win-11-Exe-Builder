@@ -66,6 +66,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.show()
         window.set_build_mode("python", save=False)
         app.processEvents()
+        assert window.size().width() == 850
+        assert window.size().height() == 840
         python_title_center = window.title_label.mapTo(
             window, QPoint(window.title_label.width() // 2, 0)
         ).x()
@@ -232,6 +234,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
 
         window.set_build_mode("dotnet", save=False)
         app.processEvents()
+        assert window.size().width() == 850
+        assert window.size().height() == 866
         for field in (
             window.dotnet_icon_input,
             window.dotnet_project_input,
@@ -285,6 +289,8 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.dotnet_selection_summaries["Output Select"][3]["icon"].text() == "No icon"
         window.set_build_mode("python", save=False)
         app.processEvents()
+        assert window.size().width() == 850
+        assert window.size().height() == 840
         assert window.python_section_stack.currentIndex() == 4
 
         window.build_cancellation = BuildCancellation(window, window)
