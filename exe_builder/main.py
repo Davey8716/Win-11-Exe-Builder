@@ -1025,7 +1025,7 @@ class EXEBuilderApp(QWidget):
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
-        self.status_label.setFixedSize(420, 75)
+        self.status_label.setFixedSize(420, 95)
         self.status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
@@ -1350,6 +1350,8 @@ class EXEBuilderApp(QWidget):
 
         self.date_time_dropdown.currentIndexChanged.connect(self.ui_handlers.on_datetime_format_changed)
         self.appened_py_version.toggled.connect(self.ui_handlers.on_append_py_version_toggle)
+        self.date_time_dropdown.currentIndexChanged.connect(self._update_build_summary)
+        self.appened_py_version.toggled.connect(self._update_build_summary)
         # A saved setup contains all of these values.  Refresh independently of
         # summary/navigation updates so Save setup is disabled exactly when the
         # displayed values already match a saved setup.
@@ -1651,6 +1653,8 @@ class EXEBuilderApp(QWidget):
             ("file", "File"),
             ("output", "Output"),
             ("name", "EXE name"),
+            ("python_version", "Python version appended"),
+            ("datetime", "Date/time appended"),
         ):
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
@@ -1699,6 +1703,12 @@ class EXEBuilderApp(QWidget):
             "file": self.script_path_input.text() or "Not selected",
             "output": self.output_path_input.text() or "Not selected",
             "name": self.exe_name_input.text().strip() or "Not named",
+            "python_version": (
+                self.build_controller._get_python_version_suffix()
+                if self.appened_py_version.isChecked()
+                else "Not appended"
+            ),
+            "datetime": self._python_datetime_summary_text(),
         }
         for key, text in values.items():
             widget = self.build_summary_values[key]
@@ -1715,6 +1725,23 @@ class EXEBuilderApp(QWidget):
                     f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
                 )
         self._update_saved_build_setup_controls()
+
+    def _python_datetime_summary_text(self):
+        """Return the selected Python naming suffix, or its batch-selection label."""
+        selection = self.date_time_dropdown.currentData()
+        if selection in {
+            MASS_DATETIME_BUILD_SENTINEL,
+            ISO_MASS_DATETIME_BUILD_SENTINEL,
+            UK_MASS_DATETIME_BUILD_SENTINEL,
+            USA_MASS_DATETIME_BUILD_SENTINEL,
+        }:
+            return self.date_time_dropdown.currentText()
+        if not getattr(self, "append_datetime", False):
+            return "Not appended"
+
+        region = self.build_controller._get_datetime_region_identifier()
+        timestamp = self.build_controller._get_datetime_timestamp_suffix()
+        return "_".join(part for part in (region, timestamp) if part) or "Not appended"
 
     def _current_build_setup(self):
         return {
@@ -2122,13 +2149,19 @@ class EXEBuilderApp(QWidget):
             ("output", "Output"),
             ("name", "EXE name"),
             ("runtime", "Runtime"),
+            ("datetime", "Date/time append type"),
         ):
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
             row.setSpacing(8)
             label = QLabel(label_text)
             label.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
-            label.setFixedWidth(SUMMARY_LABEL_WIDTH)
+            label.setFixedWidth(
+                max(
+                    SUMMARY_LABEL_WIDTH,
+                    label.fontMetrics().horizontalAdvance(label.text()) + 4,
+                )
+            )
             value = QLabel()
             value.setFont(QFont("Rubik UI", SUMMARY_CONTENT_FONT_SIZE, QFont.Bold))
             value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
@@ -2152,6 +2185,7 @@ class EXEBuilderApp(QWidget):
             "output": self.dotnet_output_input.text() or "Not selected",
             "name": self.dotnet_name_input.text().strip() or "Not named",
             "runtime": self.dotnet_runtime_combo.currentText() or "Not selected",
+            "datetime": self.dotnet_date_time_dropdown.currentText(),
         }
         for key, text in values.items():
             is_optional_icon = key == "icon" and not self.dotnet_icon_input.text()

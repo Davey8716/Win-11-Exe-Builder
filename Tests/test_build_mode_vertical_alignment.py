@@ -43,16 +43,24 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert close_font.pointSize() == 13
         assert close_font.bold()
         assert window.status_label.size().width() == 420
-        assert window.status_label.size().height() == 75
-        assert window.status_label.parentWidget().height() == 145
+        assert window.status_label.size().height() == 95
+        assert window.status_label.parentWidget().height() == 165
         assert window.status_label.parentWidget().width() == 450
-        assert window.status_label.size() == window.dotnet_status_label.size()
+        assert window.dotnet_status_label.size().height() == 75
         assert window.status_label.parentWidget().width() == (
             window.dotnet_status_label.parentWidget().width()
         )
-        assert window.status_label.parentWidget().height() == (
+        assert window.status_label.parentWidget().height() > (
             window.dotnet_status_label.parentWidget().height()
         )
+        ready_message = (
+            "Ready to build.\nThe output folder will open after building."
+            "\nThe app will then close."
+        )
+        window.status_label.setPlainText(ready_message)
+        app.processEvents()
+        assert window.status_label.toPlainText() == ready_message
+        assert window.status_label.verticalScrollBar().maximum() == 0
 
         def horizontal_gap(left, right):
             left_edge = left.mapTo(window, QPoint(left.width(), 0)).x()
@@ -206,6 +214,23 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.build_summary_values["interpreter"].focusPolicy() == Qt.NoFocus
         assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["icon"].styleSheet()
         assert window.build_summary_values["icon"].text() == "(No icon needed to build)"
+        assert window.build_summary_values["python_version"].text() == "Not appended"
+        assert window.build_summary_values["datetime"].text() == "Not appended"
+        window.python_interpreter_path = r"C:\Python314\python.exe"
+        window.appened_py_version.setChecked(True)
+        assert window.build_summary_values["python_version"].text() == "py3.14"
+        window.build_controller._get_datetime_timestamp_suffix = lambda: "2026-05-19_12-34"
+        window.date_time_dropdown.setCurrentIndex(
+            window.date_time_dropdown.findData("%Y-%m-%d_%H-%M")
+        )
+        assert window.build_summary_values["datetime"].text() == "ISO_2026-05-19_12-34"
+        window.date_time_dropdown.setCurrentIndex(
+            window.date_time_dropdown.findText("Build All ISO Date/Time Outputs")
+        )
+        assert (
+            window.build_summary_values["datetime"].text().replace("\u200b", "")
+            == "Build All ISO Date/Time Outputs"
+        )
         for index, label in ((1, "Continue to icons"), (3, "Continue to output")):
             assert label in [
                 button.text()
@@ -332,7 +357,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.dotnet_build_title_frame.parentWidget() is window.dotnet_section_stack.widget(3)
         assert window.dotnet_build_summary_frame.width() == 575
         assert all(
-            label.width() == 85 for label in window.dotnet_build_summary_labels.values()
+            label.width() >= 85 for label in window.dotnet_build_summary_labels.values()
         )
         assert window.dotnet_build_summary_title.font().pointSize() == 16
         assert all(
@@ -342,6 +367,21 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert all(
             value.font().pointSize() == 12
             for value in window.dotnet_build_summary_values.values()
+        )
+        assert (
+            window.dotnet_build_summary_values["datetime"].text()
+            == "No Date Time Appended"
+        )
+        window.dotnet_date_time_dropdown.setCurrentIndex(
+            window.dotnet_date_time_dropdown.findData("%d-%m-%Y")
+        )
+        assert window.dotnet_build_summary_values["datetime"].text() == "UK | DD-MM-YYYY"
+        window.dotnet_date_time_dropdown.setCurrentIndex(
+            window.dotnet_date_time_dropdown.findText("Build All USA Date/Time Outputs")
+        )
+        assert (
+            window.dotnet_build_summary_values["datetime"].text().replace("\u200b", "")
+            == "Build All USA Date/Time Outputs"
         )
         for title, frame, labels, values in window.dotnet_selection_summaries.values():
             assert title.layout().itemAt(1).widget().font().pointSize() == 16

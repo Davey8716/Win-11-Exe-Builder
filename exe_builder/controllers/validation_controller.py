@@ -137,7 +137,7 @@ class ValidationController:
 
         state["is_ready"] = is_ready
 
-        self.app.status_label.setFixedSize(420, 75)
+        self.app.status_label.setFixedSize(420, 95)
 
         # Track previous state
         self.app._was_build_ready = is_ready
