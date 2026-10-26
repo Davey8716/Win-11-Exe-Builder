@@ -5,6 +5,9 @@ MAIN_SOURCE = (PROJECT_ROOT / "exe_builder" / "main.py").read_text(encoding="utf
 TOOLTIPS_SOURCE = (PROJECT_ROOT / "exe_builder" / "ui" / "tooltips.py").read_text(
     encoding="utf-8"
 )
+STYLES_SOURCE = (PROJECT_ROOT / "exe_builder" / "ui" / "styles.py").read_text(
+    encoding="utf-8"
+)
 
 
 def test_environment_sync_uses_compact_visible_warning_and_help_button():
@@ -36,6 +39,23 @@ def test_environment_sync_table_uses_uniform_six_pixel_padding():
     assert "ENV_SYNC_TABLE_PADDING = 6" in MAIN_SOURCE
     assert MAIN_SOURCE.count("ENV_SYNC_TABLE_PADDING,") >= 8
     assert "+ (2 * ENV_SYNC_TABLE_PADDING)" in MAIN_SOURCE
+
+
+def test_environment_sync_content_uses_shared_section_typography_and_geometry():
+    assert "ENV_SYNC_CONTENT_FONT_SIZE = 11" in MAIN_SOURCE
+    assert "ENV_SYNC_TABLE_ROW_VERTICAL_PADDING = 6" in MAIN_SOURCE
+    assert '"Rubik UI", ENV_SYNC_CONTENT_FONT_SIZE, QFont.Bold' in MAIN_SOURCE
+    assert "self.env_sync_warning_label.setFont(self.env_sync_content_font)" in MAIN_SOURCE
+    assert "label.setFont(self.env_sync_content_font)" in MAIN_SOURCE
+    assert "env_sync_font_metrics.height() + ENV_SYNC_TABLE_ROW_VERTICAL_PADDING" in MAIN_SOURCE
+    assert "row.setFixedHeight(self._env_sync_row_height)" in MAIN_SOURCE
+
+
+def test_environment_sync_subframes_use_shared_control_typography():
+    assert 'font-family: "Rubik UI";' in STYLES_SOURCE
+    assert "font-size: 11pt;" in STYLES_SOURCE
+    assert "ENV_SYNC_STATUS_LINE_STYLE" in STYLES_SOURCE
+    assert "ENV_SYNC_SCROLL_AREA_STYLE" in STYLES_SOURCE
 
 
 def test_environment_sync_help_button_opens_styled_information_dialog():

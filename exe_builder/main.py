@@ -120,6 +120,8 @@ PYTHON_SAVED_SETUP_DROPDOWN_WIDTH = (
 )
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
+ENV_SYNC_CONTENT_FONT_SIZE = 11
+ENV_SYNC_TABLE_ROW_VERTICAL_PADDING = 6
 BUILD_ACTION_FRAME_WIDTH = 450
 PROGRESSION_BUTTON_SIZE = (280, 42)
 SELECTOR_ROW_MARGINS = (1, 1, 1, 1)
@@ -466,7 +468,10 @@ class EXEBuilderApp(QWidget):
         self.env_sync_log_input.setFixedWidth(ENV_SYNC_CONTENT_WIDTH)
         self.env_sync_log_input.setPlaceholderText("Environment sync ready.")
         self.env_sync_log_input.setText("Environment sync ready.")
-        self.env_sync_log_input.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.env_sync_content_font = QFont(
+            "Rubik UI", ENV_SYNC_CONTENT_FONT_SIZE, QFont.Bold
+        )
+        self.env_sync_log_input.setFont(self.env_sync_content_font)
         self.env_sync_log_input.setStyleSheet(ENV_SYNC_STATUS_LINE_STYLE)
 
         self.env_sync_action_row = QWidget()
@@ -495,7 +500,7 @@ class EXEBuilderApp(QWidget):
             "Warning: sync may fail if packages are incompatible."
         )
         self.env_sync_warning_label.setFixedWidth(485)
-        self.env_sync_warning_label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+        self.env_sync_warning_label.setFont(self.env_sync_content_font)
         self.env_sync_warning_label.setStyleSheet(
             f"QLabel {{ color: {qcolor_name(Colors.WARNING)}; }}"
         )
@@ -512,15 +517,17 @@ class EXEBuilderApp(QWidget):
 
         self.env_sync_status_labels = []
         self.env_sync_row_labels = []
+        env_sync_font_metrics = QFontMetrics(self.env_sync_content_font)
+        self._env_sync_status_column_widths = [
+            ("Python Version", max(125, env_sync_font_metrics.horizontalAdvance("Python Version") + 12)),
+            ("Packages", max(80, env_sync_font_metrics.horizontalAdvance("Packages") + 12)),
+            ("State", max(275, env_sync_font_metrics.horizontalAdvance("State") + 12)),
+        ]
 
-        for text, width in [
-            ("Python Version", 125),
-            ("Packages", 80),
-            ("State", 275),
-        ]:
+        for text, width in self._env_sync_status_column_widths:
             label = QLabel(text)
             label.setFixedWidth(width)
-            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            label.setFont(self.env_sync_content_font)
             self.env_sync_status_labels.append(label)
             env_sync_status_header_layout.addWidget(label)
 
@@ -537,10 +544,13 @@ class EXEBuilderApp(QWidget):
         self.env_sync_rows_layout.setSpacing(2)
 
         env_sync_visible_rows = 5
-        env_sync_row_height = 22
+        self._env_sync_row_height = max(
+            22,
+            env_sync_font_metrics.height() + ENV_SYNC_TABLE_ROW_VERTICAL_PADDING,
+        )
         env_sync_row_spacing = self.env_sync_rows_layout.spacing()
         env_sync_scroll_height = (
-            env_sync_visible_rows * env_sync_row_height
+            env_sync_visible_rows * self._env_sync_row_height
             + (env_sync_visible_rows - 1) * env_sync_row_spacing
             + (2 * ENV_SYNC_TABLE_PADDING)
         )
@@ -3653,22 +3663,31 @@ class EXEBuilderApp(QWidget):
             return
 
         row = QWidget()
-        row.setFixedHeight(22)
+        row.setFixedHeight(self._env_sync_row_height)
         row_layout = QHBoxLayout(row)
         row_layout.setContentsMargins(0,0,0,0)
         row_layout.setSpacing(4)
 
+        version_width = self._env_sync_status_column_widths[0][1]
+        package_count_width = self._env_sync_status_column_widths[1][1]
+        state_minimum_width = self._env_sync_status_column_widths[2][1]
         column_data = [
-            (version, 125),
-            (package_count, 80),
-            (status, max(275, QFontMetrics(QFont("Rubik UI", 10, QFont.Bold)).horizontalAdvance(str(status)) + 12)),
+            (version, version_width),
+            (package_count, package_count_width),
+            (
+                status,
+                max(
+                    state_minimum_width,
+                    QFontMetrics(self.env_sync_content_font).horizontalAdvance(str(status)) + 12,
+                ),
+            ),
         ]
         row_width = sum(width for _, width in column_data) + row_layout.spacing() * (len(column_data) - 1)
 
         for text, width in column_data:
             label = QLabel(text)
             label.setFixedWidth(width)
-            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            label.setFont(self.env_sync_content_font)
             if not hasattr(self, "env_sync_row_labels"):
                 self.env_sync_row_labels = []
             self.env_sync_row_labels.append(label)

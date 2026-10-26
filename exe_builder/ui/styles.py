@@ -574,6 +574,8 @@ ENV_SYNC_STATUS_LINE_STYLE = f"""
         border: 2px solid {qcolor_name(Colors.BLACK)};
         border-radius: 4px;
         padding: 3px 8px;
+        font-family: "Rubik UI";
+        font-size: 11pt;
         font-weight: bold;
     }}
 
@@ -591,6 +593,10 @@ ENV_SYNC_SCROLL_AREA_STYLE = f"""
         background-color: {qcolor_name(Colors.PANEL_BG)};
         border: 2px solid {qcolor_name(Colors.BLACK)};
         border-radius: 4px;
+        color: {qcolor_name(Colors.TEXT_LIGHT)};
+        font-family: "Rubik UI";
+        font-size: 11pt;
+        font-weight: bold;
     }}
 
     QScrollArea QWidget {{
