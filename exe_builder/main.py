@@ -31,7 +31,7 @@ from exe_builder.controllers.environment_sync_controller import EnvironmentSyncC
 from exe_builder.ui.path_hover import attach_path_hovers
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QListWidget,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog
+from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QListWidget,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog,QMenu,QToolButton
 from exe_builder.controllers.validation_controller import ValidationController
 from exe_builder.controllers.activation_controller import ActivationController
 from PySide6.QtGui import QFont, QIcon, QPalette
@@ -112,6 +112,24 @@ SECTION_NAV_STYLE = (
     "QListWidget::item:disabled { color: #71808c; background: transparent; } "
     "QListWidget::item:selected:disabled { color: #71808c; background: transparent; }"
 )
+SAVED_SETUP_DELETE_MENU_STYLE = f"""
+    QToolButton {{
+        background-color: {qcolor_name(Colors.TITLE_BG)};
+        color: {qcolor_name(Colors.TEXT_LIGHT)};
+        border: 2px solid {qcolor_name(Colors.BLACK)};
+        border-radius: 4px;
+        padding: 2px 10px 2px 2px;
+    }}
+    QToolButton:hover {{ background-color: {qcolor_name(Colors.SURFACE_SELECTED_HOVER)}; }}
+    QToolButton::menu-button {{
+        width: 18px;
+        border-left: 1px solid {qcolor_name(Colors.BLACK)};
+    }}
+    QToolButton:disabled {{
+        background-color: {qcolor_name(Colors.DISABLED_BG)};
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+"""
 
 mutex = ctypes.windll.kernel32.CreateMutexW(
     None,
@@ -1535,16 +1553,27 @@ class EXEBuilderApp(QWidget):
               f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
         )
         self.save_build_setup_btn.clicked.connect(self._save_current_build_setup)
-        self.delete_build_setup_btn = QPushButton("Delete")
-        self.delete_build_setup_btn.setAccessibleName("Delete selected build setup")
+        self.delete_build_setup_btn = QToolButton()
+        self.delete_build_setup_btn.setText("Delete")
+        self.delete_build_setup_btn.setAccessibleName("Delete saved build setup")
         self.delete_build_setup_btn.setFont(QFont("Rubik UI", 10, QFont.Bold))
-        self.delete_build_setup_btn.setFixedSize(75, 28)
-        self.delete_build_setup_btn.setStyleSheet(
-            button_base()
-            + "QPushButton { padding: 2px 5px; }"
-            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
-              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
+        self.delete_build_setup_btn.setFixedSize(85, 28)
+        self.delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
+        self.delete_build_setup_menu = QMenu(self.delete_build_setup_btn)
+        self.delete_selected_build_setup_action = self.delete_build_setup_menu.addAction(
+            "Delete selected"
         )
+        self.delete_all_build_setups_action = self.delete_build_setup_menu.addAction(
+            "Delete all"
+        )
+        self.delete_selected_build_setup_action.triggered.connect(
+            self._delete_selected_build_setup
+        )
+        self.delete_all_build_setups_action.triggered.connect(
+            self._delete_all_saved_build_setups
+        )
+        self.delete_build_setup_btn.setMenu(self.delete_build_setup_menu)
+        self.delete_build_setup_btn.setPopupMode(QToolButton.MenuButtonPopup)
         self.delete_build_setup_btn.clicked.connect(self._delete_selected_build_setup)
 
         self.build_summary_labels = {}
@@ -1680,9 +1709,12 @@ class EXEBuilderApp(QWidget):
         self.saved_build_setup_dropdown.setEnabled(
             not busy and self.saved_build_setup_dropdown.count() > 1
         )
-        self.delete_build_setup_btn.setEnabled(
+        has_saved_setups = self.saved_build_setup_dropdown.count() > 1
+        self.delete_build_setup_btn.setEnabled(not busy and has_saved_setups)
+        self.delete_selected_build_setup_action.setEnabled(
             not busy and self.saved_build_setup_dropdown.currentIndex() > 0
         )
+        self.delete_all_build_setups_action.setEnabled(not busy and has_saved_setups)
         for name in ("export_python_build_setups_btn", "import_python_build_setups_btn"):
             button = getattr(self, name, None)
             if button is not None:
@@ -1936,16 +1968,27 @@ class EXEBuilderApp(QWidget):
             self._load_selected_dotnet_build_setup
         )
 
-        self.dotnet_delete_build_setup_btn = QPushButton("Delete")
-        self.dotnet_delete_build_setup_btn.setAccessibleName("Delete selected C# build setup")
+        self.dotnet_delete_build_setup_btn = QToolButton()
+        self.dotnet_delete_build_setup_btn.setText("Delete")
+        self.dotnet_delete_build_setup_btn.setAccessibleName("Delete saved C# build setup")
         self.dotnet_delete_build_setup_btn.setFont(QFont("Rubik UI", 10, QFont.Bold))
-        self.dotnet_delete_build_setup_btn.setFixedSize(75, 28)
-        self.dotnet_delete_build_setup_btn.setStyleSheet(
-            button_base()
-            + "QPushButton { padding: 2px 5px; }"
-            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
-              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
+        self.dotnet_delete_build_setup_btn.setFixedSize(85, 28)
+        self.dotnet_delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
+        self.dotnet_delete_build_setup_menu = QMenu(self.dotnet_delete_build_setup_btn)
+        self.dotnet_delete_selected_build_setup_action = (
+            self.dotnet_delete_build_setup_menu.addAction("Delete selected")
         )
+        self.dotnet_delete_all_build_setups_action = (
+            self.dotnet_delete_build_setup_menu.addAction("Delete all")
+        )
+        self.dotnet_delete_selected_build_setup_action.triggered.connect(
+            self._delete_selected_dotnet_build_setup
+        )
+        self.dotnet_delete_all_build_setups_action.triggered.connect(
+            self._delete_all_saved_dotnet_build_setups
+        )
+        self.dotnet_delete_build_setup_btn.setMenu(self.dotnet_delete_build_setup_menu)
+        self.dotnet_delete_build_setup_btn.setPopupMode(QToolButton.MenuButtonPopup)
         self.dotnet_delete_build_setup_btn.clicked.connect(
             self._delete_selected_dotnet_build_setup
         )
@@ -2160,9 +2203,16 @@ class EXEBuilderApp(QWidget):
         self.saved_dotnet_build_setup_dropdown.setEnabled(
             not self.building and self.saved_dotnet_build_setup_dropdown.count() > 1
         )
+        has_saved_setups = self.saved_dotnet_build_setup_dropdown.count() > 1
         self.dotnet_delete_build_setup_btn.setEnabled(
+            not self.building and has_saved_setups
+        )
+        self.dotnet_delete_selected_build_setup_action.setEnabled(
             not self.building
             and self.saved_dotnet_build_setup_dropdown.currentIndex() > 0
+        )
+        self.dotnet_delete_all_build_setups_action.setEnabled(
+            not self.building and has_saved_setups
         )
         for name in ("export_dotnet_build_setups_btn", "import_dotnet_build_setups_btn"):
             button = getattr(self, name, None)
@@ -2258,8 +2308,20 @@ class EXEBuilderApp(QWidget):
         self._populate_saved_dotnet_build_setups()
         self.state_ctrl.save_csharp_state()
 
+    def _delete_all_saved_dotnet_build_setups(self):
+        if self.building or not self.saved_dotnet_build_setups:
+            return
+        if not self._confirm_delete_all_saved_dotnet_build_setups():
+            return
+        self.saved_dotnet_build_setups = []
+        self._populate_saved_dotnet_build_setups()
+        self.state_ctrl.save_csharp_state()
+
     def _confirm_delete_saved_dotnet_build_setup(self, setup_name):
         return self._confirm_delete_saved_build_setup(setup_name)
+
+    def _confirm_delete_all_saved_dotnet_build_setups(self):
+        return self._confirm_delete_all_saved_build_setups()
 
     def _save_current_build_setup(self):
         setup = self._current_build_setup()
@@ -2359,10 +2421,44 @@ class EXEBuilderApp(QWidget):
         self._populate_saved_build_setups()
         self.state_ctrl.save_python_state()
 
+    def _delete_all_saved_build_setups(self):
+        if self.building or self.environment_sync_controller.is_running or not self.saved_build_setups:
+            return
+        if not self._confirm_delete_all_saved_build_setups():
+            return
+        self.saved_build_setups = []
+        self._populate_saved_build_setups()
+        self.state_ctrl.save_python_state()
+
     def _confirm_delete_saved_build_setup(self, setup_name):
         dialog = QMessageBox(self)
         dialog.setWindowTitle("Delete Saved Setup")
         dialog.setText(f"Delete this saved setup?\n\n{setup_name}")
+        dialog.setIcon(QMessageBox.NoIcon)
+        yes_button = dialog.addButton("Yes", QMessageBox.AcceptRole)
+        cancel_button = dialog.addButton("Cancel", QMessageBox.RejectRole)
+        dialog.setDefaultButton(cancel_button)
+        dialog.setEscapeButton(cancel_button)
+        dialog.setStyleSheet(CONFIRMATION_MESSAGE_BOX_STYLE)
+        dialog.setWindowFlags(
+            (dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+            | Qt.MSWindowsFixedSizeDialogHint
+        )
+        button_box = dialog.findChild(QDialogButtonBox)
+        if button_box is not None:
+            button_box.setCenterButtons(True)
+        apply_native_title_bar_style(
+            dialog,
+            caption=Colors.PANEL_BG,
+            border=Colors.PANEL_BG,
+        )
+        dialog.exec()
+        return dialog.clickedButton() == yes_button
+
+    def _confirm_delete_all_saved_build_setups(self):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Delete All Saved Setups")
+        dialog.setText("Delete all saved setups?")
         dialog.setIcon(QMessageBox.NoIcon)
         yes_button = dialog.addButton("Yes", QMessageBox.AcceptRole)
         cancel_button = dialog.addButton("Cancel", QMessageBox.RejectRole)

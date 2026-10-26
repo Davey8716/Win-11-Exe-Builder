@@ -64,10 +64,15 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert window.save_build_setup_btn.width() == 135
         assert window.save_build_setup_btn.height() == 28
         assert window.delete_build_setup_btn.font().bold()
-        assert window.delete_build_setup_btn.width() == 75
+        assert window.delete_build_setup_btn.text() == "Delete"
+        assert window.delete_build_setup_btn.width() == 85
         assert window.delete_build_setup_btn.height() == 28
+        assert window.delete_selected_build_setup_action.text() == "Delete selected"
+        assert window.delete_all_build_setups_action.text() == "Delete all"
         assert not window.save_build_setup_btn.isEnabled()
         assert not window.delete_build_setup_btn.isEnabled()
+        assert not window.delete_selected_build_setup_action.isEnabled()
+        assert not window.delete_all_build_setups_action.isEnabled()
         window.python_interpreter_path = window.python_path = str(interpreter)
         window.script_path = window.entry_script = str(script)
         window.project_root = str(tmp_path)
@@ -110,6 +115,8 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert window.build_btn.text() == "Build EXE"
         assert not window.save_build_setup_btn.isEnabled()
         assert window.delete_build_setup_btn.isEnabled()
+        assert window.delete_selected_build_setup_action.isEnabled()
+        assert window.delete_all_build_setups_action.isEnabled()
     finally:
         window._is_closing = True
         window.close()
@@ -133,6 +140,12 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert not reopened.delete_build_setup_btn.isEnabled()
         assert reopened.save_build_setup_btn.isEnabled()
         assert json.loads(saved_file.read_text())["saved_build_setups"] == []
+        reopened.saved_build_setups = [reopened._current_build_setup()]
+        reopened._populate_saved_build_setups()
+        reopened._confirm_delete_all_saved_build_setups = lambda: True
+        reopened._delete_all_saved_build_setups()
+        assert reopened.saved_build_setups == []
+        assert not reopened.delete_build_setup_btn.isEnabled()
         assert all(path.exists() for path in (interpreter, script, icon, output))
     finally:
         reopened._is_closing = True
@@ -177,6 +190,9 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert window.saved_dotnet_build_setup_dropdown.width() == 300
         assert not window.saved_dotnet_build_setup_dropdown.model().item(0).isEnabled()
         assert window.dotnet_delete_build_setup_btn.parentWidget() is saved_setups_section
+        assert window.dotnet_delete_build_setup_btn.text() == "Delete"
+        assert window.dotnet_delete_selected_build_setup_action.text() == "Delete selected"
+        assert window.dotnet_delete_all_build_setups_action.text() == "Delete all"
         assert window.dotnet_saved_setups_label.font().bold()
         assert window.dotnet_saved_setups_label.alignment() == Qt.AlignCenter
         controls = saved_setups_section.layout().itemAt(1).layout()
@@ -201,6 +217,8 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         )
         assert not window.dotnet_save_build_setup_btn.isEnabled()
         assert not window.dotnet_delete_build_setup_btn.isEnabled()
+        assert not window.dotnet_delete_selected_build_setup_action.isEnabled()
+        assert not window.dotnet_delete_all_build_setups_action.isEnabled()
 
         window.dotnet_project_input.set_display_path(str(project))
         window.dotnet_output_input.set_display_path(str(output))
@@ -223,6 +241,8 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert window.saved_dotnet_build_setup_dropdown.itemText(1) == "Local Exes / Reader / Reader"
         assert window.saved_dotnet_build_setup_dropdown.currentIndex() == 1
         assert window.dotnet_delete_build_setup_btn.isEnabled()
+        assert window.dotnet_delete_selected_build_setup_action.isEnabled()
+        assert window.dotnet_delete_all_build_setups_action.isEnabled()
         assert not window.dotnet_save_build_setup_btn.isEnabled()
         window.dotnet_save_build_setup_btn.click()
         assert len(window.saved_dotnet_build_setups) == 1
@@ -275,6 +295,12 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert not reopened.dotnet_delete_build_setup_btn.isEnabled()
         assert reopened.dotnet_save_build_setup_btn.isEnabled()
         assert json.loads(saved_file.read_text())["saved_build_setups"] == []
+        reopened.saved_dotnet_build_setups = [reopened._current_dotnet_build_setup()]
+        reopened._populate_saved_dotnet_build_setups()
+        reopened._confirm_delete_all_saved_dotnet_build_setups = lambda: True
+        reopened._delete_all_saved_dotnet_build_setups()
+        assert reopened.saved_dotnet_build_setups == []
+        assert not reopened.dotnet_delete_build_setup_btn.isEnabled()
     finally:
         reopened._is_closing = True
         reopened.close()
