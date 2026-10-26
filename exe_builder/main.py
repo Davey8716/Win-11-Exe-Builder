@@ -9,7 +9,11 @@ if __package__ in (None, ""):
 
 from ctypes import wintypes
 from exe_builder.controllers.build_controller import BuildController
-from exe_builder.controllers.dotnet_publish_controller import DotnetPublishController
+from exe_builder.controllers.dotnet_publish_controller import (
+    DotnetPublishController,
+    is_sdk_style_project,
+    validate_executable_name,
+)
 from exe_builder.build.datetime_build_options import (
     ISO_MASS_DATETIME_BUILD_LABEL,
     ISO_MASS_DATETIME_BUILD_SENTINEL,
@@ -195,6 +199,7 @@ class EXEBuilderApp(QWidget):
         self.build_mode = "python"
         self.guided_flow_enabled = True
         self._completed_python_steps = set()
+        self._completed_dotnet_steps = set()
         self.saved_build_setups = []
                     
         # =============================================================
@@ -2009,6 +2014,106 @@ class EXEBuilderApp(QWidget):
         self._update_build_summary()
         self._update_python_selection_summaries()
 
+    def _dotnet_project_is_valid(self):
+        """Return whether the selected C# project can advance the workflow."""
+        project = self.dotnet_project_input.text().strip()
+        return bool(
+            project
+            and project.lower().endswith(".csproj")
+            and os.path.isfile(project)
+            and is_sdk_style_project(project)
+        )
+
+    def _dotnet_output_is_ready(self):
+        """Return whether the output step has all entries required to continue."""
+        output = self.dotnet_output_input.text().strip()
+        return bool(
+            output
+            and os.path.isdir(output)
+            and not validate_executable_name(self.dotnet_name_input.text())
+        )
+
+    def _update_dotnet_progression_controls(self):
+        if not hasattr(self, "dotnet_icon_continue_btn"):
+            return
+        self.dotnet_icon_continue_btn.setText(
+            "Continue to file"
+            if self.dotnet_icon_input.text().strip()
+            else "Use no icon and continue"
+        )
+        self.dotnet_icon_continue_btn.setVisible(True)
+        self.dotnet_file_continue_btn.setVisible(self._dotnet_project_is_valid())
+        self.dotnet_output_continue_btn.setVisible(self._dotnet_output_is_ready())
+
+    def _update_dotnet_navigation(self):
+        """Enable C# sidebar pages only after their prior step is complete."""
+        if not hasattr(self, "dotnet_section_nav"):
+            return
+        if 0 not in self._completed_dotnet_steps:
+            reachable = 0
+        elif not self._dotnet_project_is_valid() or 1 not in self._completed_dotnet_steps:
+            reachable = 1
+        elif not self._dotnet_output_is_ready() or 2 not in self._completed_dotnet_steps:
+            reachable = 2
+        else:
+            reachable = 3
+        for index in range(self.dotnet_section_nav.count()):
+            item = self.dotnet_section_nav.item(index)
+            item.setFlags(
+                item.flags() | Qt.ItemIsEnabled if index <= reachable
+                else item.flags() & ~Qt.ItemIsEnabled
+            )
+        if self.dotnet_section_nav.currentRow() > reachable:
+            self.dotnet_section_nav.setCurrentRow(reachable)
+        self._update_dotnet_progression_controls()
+
+    def _complete_dotnet_step(self, index):
+        self._completed_dotnet_steps.add(index)
+        self._update_dotnet_navigation()
+        if not getattr(self, "_loading_state", False):
+            self.state_ctrl.save_csharp_state()
+
+    def _continue_from_dotnet_icons(self):
+        self._complete_dotnet_step(0)
+        if self.build_mode == "dotnet":
+            self.dotnet_section_nav.setCurrentRow(1)
+
+    def _continue_to_dotnet_output(self):
+        if not self._dotnet_project_is_valid() or getattr(self, "_loading_state", False):
+            return
+        self._complete_dotnet_step(1)
+        if self.build_mode == "dotnet":
+            self.dotnet_section_nav.setCurrentRow(2)
+
+    def _continue_to_dotnet_build(self):
+        if not self._dotnet_output_is_ready() or getattr(self, "_loading_state", False):
+            return
+        self._complete_dotnet_step(2)
+        if self.build_mode == "dotnet":
+            self.dotnet_section_nav.setCurrentRow(3)
+
+    def restore_dotnet_guided_workflow(self, saved_steps=()):
+        """Restore the furthest valid C# step from saved selections."""
+        if not hasattr(self, "dotnet_section_nav"):
+            return
+        completed = {
+            int(step) for step in saved_steps
+            if isinstance(step, int) and 0 <= step <= 2
+        }
+        if self._dotnet_project_is_valid():
+            completed.update((0, 1))
+        else:
+            completed.discard(1)
+            completed.discard(2)
+        if self._dotnet_project_is_valid() and self._dotnet_output_is_ready():
+            completed.add(2)
+        else:
+            completed.discard(2)
+        self._completed_dotnet_steps = completed
+        self._update_dotnet_navigation()
+        if all(step in completed for step in range(3)):
+            self.dotnet_section_nav.setCurrentRow(3)
+
     def _update_section_navigation_enabled(self):
         """Keep sidebar tabs locked while either build mode is running."""
         for name in ("python_section_nav", "dotnet_section_nav"):
@@ -2416,6 +2521,15 @@ class EXEBuilderApp(QWidget):
             "File Select": self._create_selection_summary(("icon",)),
             "Output Select": self._create_selection_summary(("icon", "file")),
         }
+
+        def progression_button(text, callback):
+            button = QPushButton(text)
+            button.setFixedSize(*PROGRESSION_BUTTON_SIZE)
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
+            button.setStyleSheet(button_base())
+            button.clicked.connect(callback)
+            return button
+
         for label, heading, controls in sections:
             page = QWidget()
             layout = QVBoxLayout(page)
@@ -2427,6 +2541,21 @@ class EXEBuilderApp(QWidget):
                 layout.addWidget(summary_frame, alignment=Qt.AlignHCenter)
             layout.addWidget(heading, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
+            if label == "Icons Select":
+                self.dotnet_icon_continue_btn = progression_button(
+                    "Use no icon and continue", self._continue_from_dotnet_icons
+                )
+                layout.addWidget(self.dotnet_icon_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "File Select":
+                self.dotnet_file_continue_btn = progression_button(
+                    "Continue to output", self._continue_to_dotnet_output
+                )
+                layout.addWidget(self.dotnet_file_continue_btn, alignment=Qt.AlignHCenter)
+            elif label == "Output Select":
+                self.dotnet_output_continue_btn = progression_button(
+                    "Continue to build", self._continue_to_dotnet_build
+                )
+                layout.addWidget(self.dotnet_output_continue_btn, alignment=Qt.AlignHCenter)
             layout.addStretch()
             self.dotnet_section_stack.addWidget(page)
             self.dotnet_section_nav.addItem(label.replace(" Select", ""))
@@ -2444,6 +2573,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_section_nav.currentRowChanged.connect(self.dotnet_section_stack.setCurrentIndex)
         self.dotnet_section_nav.setCurrentRow(0)
         self._apply_build_mode_button_state(self.build_mode)
+        self._update_dotnet_navigation()
 
     @staticmethod
     def _populate_datetime_dropdown(dropdown):
@@ -2534,6 +2664,7 @@ class EXEBuilderApp(QWidget):
 
     def _on_dotnet_settings_changed(self, *_args):
         self._update_dotnet_selection_summaries()
+        self._update_dotnet_navigation()
         self.dotnet_publish_controller.refresh_ui()
         if not getattr(self, "_loading_state", False):
             self.state_ctrl.save_csharp_state()

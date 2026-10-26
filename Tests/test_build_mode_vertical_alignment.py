@@ -198,12 +198,138 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             window.dotnet_section_nav.viewport(), Qt.LeftButton,
             pos=window.dotnet_section_nav.visualItemRect(window.dotnet_section_nav.item(0)).center(),
         )
-        assert window.dotnet_section_nav.currentRow() == 2
+        assert window.dotnet_section_nav.currentRow() == 0
         window.building = False
         window.dotnet_publish_controller.refresh_ui()
         assert window.python_section_nav.isEnabled()
         assert window.dotnet_section_nav.isEnabled()
         assert window.dotnet_python_mode_btn.isEnabled()
+    finally:
+        window._is_closing = True
+        window.close()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="The app uses Windows APIs")
+def test_dotnet_guided_workflow_requires_each_continue_action(monkeypatch, tmp_path):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+
+    from exe_builder.controllers.activation_controller import ActivationController
+
+    project = tmp_path / "App.csproj"
+    project.write_text('<Project Sdk="Microsoft.NET.Sdk" />', encoding="utf-8")
+    output = tmp_path / "publish"
+    output.mkdir()
+
+    monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
+    monkeypatch.setattr(ctypes, "GetLastError", lambda: 0)
+    from exe_builder.main import EXEBuilderApp
+
+    app = QApplication.instance() or QApplication([])
+    window = EXEBuilderApp()
+
+    try:
+        window.show()
+        window.set_build_mode("dotnet", save=False)
+        app.processEvents()
+
+        navigation = window.dotnet_section_nav
+        assert bool(navigation.item(0).flags() & Qt.ItemIsEnabled)
+        assert not any(
+            bool(navigation.item(index).flags() & Qt.ItemIsEnabled)
+            for index in (1, 2, 3)
+        )
+        assert window.dotnet_icon_continue_btn.text() == "Use no icon and continue"
+        window.dotnet_icon_input.setText(str(tmp_path / "App.ico"))
+        assert window.dotnet_icon_continue_btn.text() == "Continue to file"
+        window.dotnet_icon_input.clear()
+        assert window.dotnet_icon_continue_btn.text() == "Use no icon and continue"
+
+        window.dotnet_icon_continue_btn.click()
+        assert navigation.currentRow() == 1
+        assert bool(navigation.item(1).flags() & Qt.ItemIsEnabled)
+        assert not bool(navigation.item(2).flags() & Qt.ItemIsEnabled)
+
+        window.dotnet_project_input.setText(str(project))
+        app.processEvents()
+        assert not window.dotnet_file_continue_btn.isHidden()
+        window.dotnet_file_continue_btn.click()
+        assert navigation.currentRow() == 2
+        assert bool(navigation.item(2).flags() & Qt.ItemIsEnabled)
+        assert not bool(navigation.item(3).flags() & Qt.ItemIsEnabled)
+
+        window.dotnet_output_input.setText(str(output))
+        window.dotnet_name_input.setText("App")
+        app.processEvents()
+        assert not window.dotnet_output_continue_btn.isHidden()
+        window.dotnet_output_continue_btn.click()
+        assert navigation.currentRow() == 3
+        assert bool(navigation.item(3).flags() & Qt.ItemIsEnabled)
+        assert window._completed_dotnet_steps == {0, 1, 2}
+
+        window.dotnet_project_input.clear()
+        app.processEvents()
+        assert navigation.currentRow() == 1
+        assert not bool(navigation.item(2).flags() & Qt.ItemIsEnabled)
+        assert not bool(navigation.item(3).flags() & Qt.ItemIsEnabled)
+    finally:
+        window._is_closing = True
+        window.close()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="The app uses Windows APIs")
+def test_saved_dotnet_workflow_restores_the_reachable_build_tab(monkeypatch, tmp_path):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+
+    from exe_builder.controllers.activation_controller import ActivationController
+
+    project = tmp_path / "Saved.csproj"
+    project.write_text('<Project Sdk="Microsoft.NET.Sdk" />', encoding="utf-8")
+    output = tmp_path / "publish"
+    output.mkdir()
+    state_dir = tmp_path / "EXEBuilder"
+    state_dir.mkdir()
+    (state_dir / "csharp_exe_builder_state.json").write_text(
+        json.dumps({
+            "project_path": str(project),
+            "output_folder": str(output),
+            "icon_path": "",
+            "executable_name": "Saved",
+            "runtime": "win-x64",
+            "self_contained": True,
+            "single_file": False,
+            "trim": False,
+            "guided_dotnet_steps": [0, 1, 2],
+        }),
+        encoding="utf-8",
+    )
+    (state_dir / "exe_builder_preferences.json").write_text(
+        json.dumps({"build_mode": "dotnet"}), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
+    monkeypatch.setattr(ctypes, "GetLastError", lambda: 0)
+    from exe_builder.main import EXEBuilderApp
+
+    app = QApplication.instance() or QApplication([])
+    window = EXEBuilderApp()
+
+    try:
+        window.show()
+        app.processEvents()
+        assert window.build_mode == "dotnet"
+        assert all(
+            bool(window.dotnet_section_nav.item(index).flags() & Qt.ItemIsEnabled)
+            for index in range(4)
+        )
+        assert window.dotnet_section_nav.currentRow() == 3
     finally:
         window._is_closing = True
         window.close()

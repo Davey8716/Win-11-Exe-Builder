@@ -471,6 +471,8 @@ class DotnetPublishController(QObject):
         building = getattr(self.app, "building", False)
         if hasattr(self.app, "_update_section_navigation_enabled"):
             self.app._update_section_navigation_enabled()
+        if hasattr(self.app, "_update_dotnet_navigation"):
+            self.app._update_dotnet_navigation()
         if hasattr(self.app, "_apply_build_mode_button_state"):
             self.app._apply_build_mode_button_state(
                 getattr(self.app, "build_mode", "dotnet")

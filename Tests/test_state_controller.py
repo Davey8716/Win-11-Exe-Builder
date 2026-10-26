@@ -221,6 +221,7 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         "recent_icons": [],
         "last_non_desktop_output_folder": "",
         "last_build_seconds": 45,
+            "guided_dotnet_steps": [],
     }
     assert not controller.python_state_file_path() == controller.csharp_state_file_path()
 
