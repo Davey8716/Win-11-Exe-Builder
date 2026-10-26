@@ -105,6 +105,18 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert not window.save_build_setup_btn.isEnabled()
         assert window.saved_build_setup_dropdown.currentIndex() == 1
         assert window.delete_build_setup_btn.isEnabled()
+        alternate_icon = tmp_path / "alternate.ico"
+        alternate_icon.write_text("test", encoding="utf-8")
+        window.icon_path_input.set_display_path(str(alternate_icon))
+        assert window.save_build_setup_btn.isEnabled()
+        window.icon_path_input.set_display_path(window.icon_path)
+        assert not window.save_build_setup_btn.isEnabled()
+        alternate_output = tmp_path / "Local Exes" / "Alternate Audio Book"
+        alternate_output.mkdir()
+        window.output_path_input.set_display_path(str(alternate_output))
+        assert window.save_build_setup_btn.isEnabled()
+        window.output_path_input.set_display_path(str(output))
+        assert not window.save_build_setup_btn.isEnabled()
         window.save_build_setup_btn.click()
         assert len(window.saved_build_setups) == 1
         assert window.saved_build_setup_dropdown.count() == 2
@@ -265,6 +277,18 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert window.dotnet_delete_build_setup_btn.isEnabled()
         assert window.dotnet_delete_selected_build_setup_action.isEnabled()
         assert window.dotnet_delete_all_build_setups_action.isEnabled()
+        assert not window.dotnet_save_build_setup_btn.isEnabled()
+        alternate_icon = tmp_path / "alternate-reader.ico"
+        alternate_icon.write_text("test", encoding="utf-8")
+        window.dotnet_icon_input.set_display_path(str(alternate_icon))
+        assert window.dotnet_save_build_setup_btn.isEnabled()
+        window.dotnet_icon_input.set_display_path(str(icon))
+        assert not window.dotnet_save_build_setup_btn.isEnabled()
+        alternate_output = tmp_path / "Local Exes" / "Alternate Reader"
+        alternate_output.mkdir()
+        window.dotnet_output_input.set_display_path(str(alternate_output))
+        assert window.dotnet_save_build_setup_btn.isEnabled()
+        window.dotnet_output_input.set_display_path(str(output))
         assert not window.dotnet_save_build_setup_btn.isEnabled()
         window.dotnet_save_build_setup_btn.click()
         assert len(window.saved_dotnet_build_setups) == 1

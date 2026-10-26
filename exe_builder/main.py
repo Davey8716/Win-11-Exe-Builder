@@ -126,6 +126,12 @@ SAVED_SETUP_COMBO_BOX_STYLE = COMBO_BOX_STYLE + """
     QComboBox { font: bold 12pt 'Rubik UI'; }
     QComboBox QAbstractItemView { font: bold 12pt 'Rubik UI'; }
 """
+SAVED_SETUP_SAVE_BUTTON_STYLE = button_base() + f"""
+    QPushButton:disabled, QPushButton:disabled:hover {{
+        background-color: {qcolor_name(Colors.DISABLED_BG)};
+        color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)};
+    }}
+"""
 SAVED_SETUP_DELETE_MENU_STYLE = f"""
     QToolButton {{
         background-color: {qcolor_name(Colors.TITLE_BG)};
@@ -1331,6 +1337,23 @@ class EXEBuilderApp(QWidget):
 
         self.date_time_dropdown.currentIndexChanged.connect(self.ui_handlers.on_datetime_format_changed)
         self.appened_py_version.toggled.connect(self.ui_handlers.on_append_py_version_toggle)
+        # A saved setup contains all of these values.  Refresh independently of
+        # summary/navigation updates so Save setup is disabled exactly when the
+        # displayed values already match a saved setup.
+        for field in (
+            self.python_entry_input,
+            self.icon_path_input,
+            self.script_path_input,
+            self.output_path_input,
+            self.exe_name_input,
+        ):
+            field.textChanged.connect(self._update_saved_build_setup_controls)
+        self.date_time_dropdown.currentIndexChanged.connect(
+            self._update_saved_build_setup_controls
+        )
+        self.appened_py_version.toggled.connect(
+            self._update_saved_build_setup_controls
+        )
         self.recent_controller.populate_recent_interpreters_dropdown()
         self.interpreter_refresh_btn.clicked.connect(self.ui_handlers.clear_interpreter_path)
         self.icon_btn.clicked.connect(self.file_pickers.select_icon)
@@ -1559,7 +1582,7 @@ class EXEBuilderApp(QWidget):
         self.save_build_setup_btn.setFixedSize(
             SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
         )
-        self.save_build_setup_btn.setStyleSheet(button_base())
+        self.save_build_setup_btn.setStyleSheet(SAVED_SETUP_SAVE_BUTTON_STYLE)
         self.save_build_setup_btn.clicked.connect(self._save_current_build_setup)
         self.delete_build_setup_btn = QToolButton()
         self.delete_build_setup_btn.setText("Delete")
@@ -1968,7 +1991,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_save_build_setup_btn.setFixedSize(
             SAVED_SETUP_SAVE_BUTTON_WIDTH, SAVED_SETUP_CONTROL_HEIGHT
         )
-        self.dotnet_save_build_setup_btn.setStyleSheet(button_base())
+        self.dotnet_save_build_setup_btn.setStyleSheet(SAVED_SETUP_SAVE_BUTTON_STYLE)
         self.dotnet_save_build_setup_btn.clicked.connect(self._save_current_dotnet_build_setup)
 
         self.saved_dotnet_build_setup_dropdown = QComboBox()
