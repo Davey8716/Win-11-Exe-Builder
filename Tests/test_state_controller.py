@@ -217,6 +217,7 @@ def test_save_state_persists_independent_dotnet_publish_settings(monkeypatch, tm
         "self_contained": True,
         "single_file": False,
         "trim": False,
+        "saved_build_setups": [],
         "recent_projects": [],
         "recent_icons": [],
         "last_non_desktop_output_folder": "",

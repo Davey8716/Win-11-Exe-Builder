@@ -507,6 +507,10 @@ class DotnetPublishController(QObject):
             self.app._apply_build_mode_button_state(
                 getattr(self.app, "build_mode", "dotnet")
             )
+        if hasattr(self.app, "_update_saved_dotnet_build_setup_controls"):
+            self.app._update_saved_dotnet_build_setup_controls()
+        if hasattr(self.app, "_update_dotnet_build_summary"):
+            self.app._update_dotnet_build_summary()
         values = self.values()
         project_ok = bool(
             values["project"]

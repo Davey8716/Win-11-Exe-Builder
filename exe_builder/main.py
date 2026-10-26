@@ -206,6 +206,7 @@ class EXEBuilderApp(QWidget):
         self._completed_python_steps = set()
         self._completed_dotnet_steps = set()
         self.saved_build_setups = []
+        self.saved_dotnet_build_setups = []
                     
         # =============================================================
         # Title + Build Options
@@ -1651,6 +1652,7 @@ class EXEBuilderApp(QWidget):
             return
         busy = self.building or self.environment_sync_controller.is_running
         current_setup = self._current_build_setup()
+        self._sync_saved_build_setup_selection(current_setup)
         self.save_build_setup_btn.setEnabled(
             not busy
             and self._build_setup_is_available(current_setup)
@@ -1662,6 +1664,386 @@ class EXEBuilderApp(QWidget):
         self.delete_build_setup_btn.setEnabled(
             not busy and self.saved_build_setup_dropdown.currentIndex() > 0
         )
+
+    def _sync_saved_build_setup_selection(self, current_setup):
+        """Reflect the configuration currently displayed in the build summary."""
+        dropdown = self.saved_build_setup_dropdown
+        matching_index = 0
+        for dropdown_index in range(1, dropdown.count()):
+            setup_index = dropdown.itemData(dropdown_index)
+            if (isinstance(setup_index, int)
+                    and 0 <= setup_index < len(self.saved_build_setups)
+                    and self.saved_build_setups[setup_index] == current_setup):
+                matching_index = dropdown_index
+                break
+        if dropdown.currentIndex() != matching_index:
+            previous = dropdown.blockSignals(True)
+            dropdown.setCurrentIndex(matching_index)
+            dropdown.blockSignals(previous)
+
+    def _create_dotnet_saved_build_setup_controls(self):
+        """Create the C# counterpart of the Python saved-setups controls."""
+        self.dotnet_saved_setups_section = QWidget()
+        self.dotnet_saved_setups_section.setFixedWidth(PAIRED_FRAME_WIDTH)
+        layout = QVBoxLayout(self.dotnet_saved_setups_section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        self.dotnet_saved_setups_label = QLabel("Saved setups")
+        self.dotnet_saved_setups_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_saved_setups_label.setAlignment(Qt.AlignCenter)
+        self.dotnet_saved_setups_label.setStyleSheet(
+            f"QLabel {{ color: {qcolor_name(Colors.TEXT_LIGHT)}; }}"
+        )
+        layout.addWidget(self.dotnet_saved_setups_label)
+
+        controls = QHBoxLayout()
+        controls.setContentsMargins(0, 0, 0, 0)
+        controls.setSpacing(8)
+        self.dotnet_save_build_setup_btn = QPushButton("Save setup")
+        self.dotnet_save_build_setup_btn.setAccessibleName("Save current C# build setup")
+        self.dotnet_save_build_setup_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_save_build_setup_btn.setFixedSize(135, 28)
+        self.dotnet_save_build_setup_btn.setStyleSheet(
+            button_base()
+            + "QPushButton { padding: 2px 12px; }"
+            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
+        )
+        self.dotnet_save_build_setup_btn.clicked.connect(self._save_current_dotnet_build_setup)
+
+        self.saved_dotnet_build_setup_dropdown = QComboBox()
+        self.saved_dotnet_build_setup_dropdown.addItem("Saved build setups")
+        self.saved_dotnet_build_setup_dropdown.setAccessibleName("Saved C# build setups")
+        self.saved_dotnet_build_setup_dropdown.setToolTip(
+            "Choose a saved setup to fill the publish fields, then click Publish."
+        )
+        self.saved_dotnet_build_setup_dropdown.setFixedWidth(300)
+        self.saved_dotnet_build_setup_dropdown.setStyleSheet(COMBO_BOX_STYLE)
+        self.saved_dotnet_build_setup_dropdown.currentIndexChanged.connect(
+            self._load_selected_dotnet_build_setup
+        )
+
+        self.dotnet_delete_build_setup_btn = QPushButton("Delete")
+        self.dotnet_delete_build_setup_btn.setAccessibleName("Delete selected C# build setup")
+        self.dotnet_delete_build_setup_btn.setFont(QFont("Rubik UI", 10, QFont.Bold))
+        self.dotnet_delete_build_setup_btn.setFixedSize(75, 28)
+        self.dotnet_delete_build_setup_btn.setStyleSheet(
+            button_base()
+            + "QPushButton { padding: 2px 5px; }"
+            + f"QPushButton:disabled {{ background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+              f"color: {qcolor_name(Colors.BUILD_DISABLED_TEXT)}; }}"
+        )
+        self.dotnet_delete_build_setup_btn.clicked.connect(
+            self._delete_selected_dotnet_build_setup
+        )
+
+        controls.addWidget(self.dotnet_save_build_setup_btn)
+        controls.addWidget(self.saved_dotnet_build_setup_dropdown)
+        controls.addWidget(self.dotnet_delete_build_setup_btn)
+        layout.addLayout(controls)
+        self._update_saved_dotnet_build_setup_controls()
+
+    def _create_dotnet_build_summary(self):
+        """Create the C# build recap with the Python builder's presentation."""
+        self.dotnet_build_summary_title_frame = QFrame()
+        self.dotnet_build_summary_title_frame.setFrameShape(QFrame.StyledPanel)
+        self.dotnet_build_summary_title_frame.setFrameShadow(QFrame.Raised)
+        self.dotnet_build_summary_title_frame.setStyleSheet(TITLE_FRAME_STYLE)
+        title_layout = QHBoxLayout(self.dotnet_build_summary_title_frame)
+        title_layout.setContentsMargins(3, 3, 3, 3)
+        self.dotnet_build_summary_title = QLabel("Build Summary")
+        self.dotnet_build_summary_title.setFixedHeight(30)
+        self.dotnet_build_summary_title.setFont(QFont("Rubik UI", 14, QFont.Bold))
+        self.dotnet_build_summary_title.setAlignment(Qt.AlignVCenter)
+        title_layout.addStretch()
+        title_layout.addWidget(self.dotnet_build_summary_title)
+        title_layout.addStretch()
+        self.dotnet_build_summary_title_frame.setFixedSize(
+            QFontMetrics(self.dotnet_build_summary_title.font()).horizontalAdvance(
+                self.dotnet_build_summary_title.text()
+            ) + 25,
+            35,
+        )
+
+        self.dotnet_build_summary_frame = QFrame()
+        self.dotnet_build_summary_frame.setObjectName("configurationFrame")
+        self.dotnet_build_summary_frame.setStyleSheet(MAIN_FRAME_STYLE)
+        self.dotnet_build_summary_frame.setFixedWidth(PAIRED_FRAME_WIDTH)
+        summary_layout = QVBoxLayout(self.dotnet_build_summary_frame)
+        summary_layout.setContentsMargins(12, 10, 12, 10)
+        summary_layout.setSpacing(5)
+        self.dotnet_build_summary_labels = {}
+        self.dotnet_build_summary_values = {}
+        for key, label_text in (
+            ("project", "Project"),
+            ("icon", "Icon"),
+            ("output", "Output"),
+            ("name", "EXE name"),
+            ("runtime", "Runtime"),
+        ):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(8)
+            label = QLabel(label_text)
+            label.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            label.setFixedWidth(85)
+            value = QLabel()
+            value.setFont(QFont("Rubik UI", 10, QFont.Bold))
+            value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
+            value.setWordWrap(True)
+            value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            value.setTextInteractionFlags(Qt.NoTextInteraction)
+            value.setFocusPolicy(Qt.NoFocus)
+            row.addWidget(label)
+            row.addWidget(value, 1)
+            summary_layout.addLayout(row)
+            self.dotnet_build_summary_labels[key] = label
+            self.dotnet_build_summary_values[key] = value
+        self._update_dotnet_build_summary()
+
+    def _update_dotnet_build_summary(self):
+        if not hasattr(self, "dotnet_build_summary_values"):
+            return
+        values = {
+            "project": self.dotnet_project_input.text() or "Not selected",
+            "icon": self.dotnet_icon_input.text() or "(No icon needed to publish)",
+            "output": self.dotnet_output_input.text() or "Not selected",
+            "name": self.dotnet_name_input.text().strip() or "Not named",
+            "runtime": self.dotnet_runtime_combo.currentText() or "Not selected",
+        }
+        for key, text in values.items():
+            is_optional_icon = key == "icon" and not self.dotnet_icon_input.text()
+            color = Colors.TEXT_LIGHT if is_optional_icon else Colors.SUCCESS
+            self.dotnet_build_summary_labels[key].setStyleSheet(
+                f"QLabel {{ color: {qcolor_name(color)}; }}"
+            )
+            widget = self.dotnet_build_summary_values[key]
+            widget.setStyleSheet(
+                f"QLabel {{ color: {qcolor_name(color)}; font-weight: bold; "
+                f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
+                f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
+            )
+            widget.setText(self._summary_display_text(text))
+            widget.setToolTip(text)
+
+    def _current_dotnet_build_setup(self):
+        values = self.dotnet_publish_controller.values()
+        return {
+            **values,
+            "datetime_format": self.dotnet_publish_controller.selected_datetime_format(),
+        }
+
+    def _dotnet_build_setup_is_available(self, setup):
+        required_strings = ("project", "output", "icon", "name", "runtime")
+        option_keys = ("self_contained", "single_file", "trim")
+        if not isinstance(setup, dict) or not all(
+            isinstance(setup.get(key), str) for key in required_strings
+        ):
+            return False
+        if setup.get("datetime_format") is not None and not isinstance(
+            setup.get("datetime_format"), str
+        ):
+            return False
+        if not all(isinstance(setup.get(key), bool) for key in option_keys):
+            return False
+        if sum(setup[key] for key in option_keys) != 1:
+            return False
+
+        original_setup = self._current_dotnet_build_setup()
+        fields = (
+            self.dotnet_project_input,
+            self.dotnet_output_input,
+            self.dotnet_icon_input,
+            self.dotnet_name_input,
+            self.dotnet_runtime_combo,
+            self.dotnet_date_time_dropdown,
+            self.dotnet_self_contained,
+            self.dotnet_single_file,
+            self.dotnet_trim,
+        )
+        previous = [(field, field.blockSignals(True)) for field in fields]
+        try:
+            self.dotnet_project_input.set_display_path(setup["project"])
+            self.dotnet_output_input.set_display_path(setup["output"])
+            self.dotnet_icon_input.set_display_path(setup["icon"])
+            self.dotnet_name_input.setText(setup["name"])
+            runtime_index = self.dotnet_runtime_combo.findData(setup["runtime"])
+            datetime_index = (
+                self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
+                if setup["datetime_format"] is None
+                else self.dotnet_date_time_dropdown.findData(setup["datetime_format"])
+            )
+            if runtime_index < 0 or datetime_index < 0:
+                return False
+            self.dotnet_runtime_combo.setCurrentIndex(runtime_index)
+            self.dotnet_date_time_dropdown.setCurrentIndex(datetime_index)
+            for key, checkbox in zip(option_keys, fields[-3:]):
+                checkbox.setChecked(setup[key])
+            return not self.dotnet_publish_controller.validation_error()
+        finally:
+            self._restore_dotnet_build_setup_fields(original_setup)
+            for field, blocked in previous:
+                field.blockSignals(blocked)
+
+    def _restore_dotnet_build_setup_fields(self, setup):
+        """Restore setup values after temporary validation or saved-setup loading."""
+        self.dotnet_project_input.set_display_path(setup["project"])
+        self.dotnet_output_input.set_display_path(setup["output"])
+        self.dotnet_icon_input.set_display_path(setup["icon"])
+        self.dotnet_name_input.setText(setup["name"])
+        self.dotnet_runtime_combo.setCurrentIndex(
+            self.dotnet_runtime_combo.findData(setup["runtime"])
+        )
+        datetime_index = (
+            self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
+            if setup["datetime_format"] is None
+            else self.dotnet_date_time_dropdown.findData(setup["datetime_format"])
+        )
+        self.dotnet_date_time_dropdown.setCurrentIndex(datetime_index)
+        for key, checkbox in (
+            ("self_contained", self.dotnet_self_contained),
+            ("single_file", self.dotnet_single_file),
+            ("trim", self.dotnet_trim),
+        ):
+            checkbox.setChecked(setup[key])
+
+    def _populate_saved_dotnet_build_setups(self):
+        dropdown = self.saved_dotnet_build_setup_dropdown
+        previous = dropdown.blockSignals(True)
+        try:
+            dropdown.clear()
+            dropdown.addItem("Saved build setups")
+            placeholder = dropdown.model().item(0)
+            if placeholder is not None:
+                placeholder.setEnabled(False)
+            for index, setup in enumerate(self.saved_dotnet_build_setups):
+                if not isinstance(setup, dict):
+                    continue
+                output = os.path.normpath(str(setup.get("output", "")))
+                label = " / ".join(part for part in (
+                    os.path.basename(os.path.dirname(output)),
+                    os.path.basename(output),
+                    str(setup.get("name", "Unnamed")),
+                ) if part)
+                dropdown.addItem(label, index)
+                dropdown.setItemData(dropdown.count() - 1, "\n".join(
+                    str(setup.get(key, "")) for key in ("project", "output", "icon")
+                ), Qt.ToolTipRole)
+            dropdown.setCurrentIndex(0)
+        finally:
+            dropdown.blockSignals(previous)
+        self._update_saved_dotnet_build_setup_controls()
+
+    def _update_saved_dotnet_build_setup_controls(self):
+        if not hasattr(self, "dotnet_save_build_setup_btn"):
+            return
+        current_setup = self._current_dotnet_build_setup()
+        self._sync_saved_dotnet_build_setup_selection(current_setup)
+        self.dotnet_save_build_setup_btn.setEnabled(
+            not self.building
+            and self._dotnet_build_setup_is_available(current_setup)
+            and current_setup not in self.saved_dotnet_build_setups
+        )
+        self.saved_dotnet_build_setup_dropdown.setEnabled(
+            not self.building and self.saved_dotnet_build_setup_dropdown.count() > 1
+        )
+        self.dotnet_delete_build_setup_btn.setEnabled(
+            not self.building
+            and self.saved_dotnet_build_setup_dropdown.currentIndex() > 0
+        )
+
+    def _sync_saved_dotnet_build_setup_selection(self, current_setup):
+        """Reflect the configuration currently displayed in the C# build summary."""
+        dropdown = self.saved_dotnet_build_setup_dropdown
+        matching_index = 0
+        for dropdown_index in range(1, dropdown.count()):
+            setup_index = dropdown.itemData(dropdown_index)
+            if (isinstance(setup_index, int)
+                    and 0 <= setup_index < len(self.saved_dotnet_build_setups)
+                    and self.saved_dotnet_build_setups[setup_index] == current_setup):
+                matching_index = dropdown_index
+                break
+        if dropdown.currentIndex() != matching_index:
+            previous = dropdown.blockSignals(True)
+            dropdown.setCurrentIndex(matching_index)
+            dropdown.blockSignals(previous)
+
+    def _save_current_dotnet_build_setup(self):
+        setup = self._current_dotnet_build_setup()
+        if (self.building or not self._dotnet_build_setup_is_available(setup)
+                or setup in self.saved_dotnet_build_setups):
+            return
+        self.saved_dotnet_build_setups = [
+            setup, *(item for item in self.saved_dotnet_build_setups if item != setup)
+        ][:50]
+        self._populate_saved_dotnet_build_setups()
+        self.state_ctrl.save_csharp_state()
+
+    def _load_selected_dotnet_build_setup(self, index):
+        if index <= 0 or self.building:
+            self._update_saved_dotnet_build_setup_controls()
+            return
+        setup_index = self.saved_dotnet_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_dotnet_build_setups):
+            return
+        setup = self.saved_dotnet_build_setups[setup_index]
+        if not self._dotnet_build_setup_is_available(setup):
+            self.dotnet_publish_controller._set_status(
+                "Saved setup has a missing file or output folder."
+            )
+            self._update_saved_dotnet_build_setup_controls()
+            return
+
+        fields = (
+            self.dotnet_project_input,
+            self.dotnet_output_input,
+            self.dotnet_icon_input,
+            self.dotnet_name_input,
+            self.dotnet_runtime_combo,
+            self.dotnet_date_time_dropdown,
+            self.dotnet_self_contained,
+            self.dotnet_single_file,
+            self.dotnet_trim,
+        )
+        previous_loading = self._loading_state
+        self._loading_state = True
+        previous = [(field, field.blockSignals(True)) for field in fields]
+        try:
+            self._restore_dotnet_build_setup_fields(setup)
+            selected = next(
+                checkbox for key, checkbox in (
+                    ("self_contained", self.dotnet_self_contained),
+                    ("single_file", self.dotnet_single_file),
+                    ("trim", self.dotnet_trim),
+                ) if setup[key]
+            )
+            self._sync_dotnet_publish_options(selected)
+        finally:
+            for field, blocked in previous:
+                field.blockSignals(blocked)
+            self._loading_state = previous_loading
+        self.restore_dotnet_guided_workflow(range(3))
+        self._on_dotnet_settings_changed()
+        self.state_ctrl.save_csharp_state()
+
+    def _delete_selected_dotnet_build_setup(self):
+        index = self.saved_dotnet_build_setup_dropdown.currentIndex()
+        if index <= 0 or self.building:
+            return
+        setup_index = self.saved_dotnet_build_setup_dropdown.itemData(index)
+        if not isinstance(setup_index, int) or setup_index >= len(self.saved_dotnet_build_setups):
+            return
+        if not self._confirm_delete_saved_dotnet_build_setup(
+            self.saved_dotnet_build_setup_dropdown.itemText(index)
+        ):
+            return
+        del self.saved_dotnet_build_setups[setup_index]
+        self._populate_saved_dotnet_build_setups()
+        self.state_ctrl.save_csharp_state()
+
+    def _confirm_delete_saved_dotnet_build_setup(self, setup_name):
+        return self._confirm_delete_saved_build_setup(setup_name)
 
     def _save_current_build_setup(self):
         setup = self._current_build_setup()
@@ -2509,6 +2891,8 @@ class EXEBuilderApp(QWidget):
                 lambda checked, selected=widget: self._on_dotnet_publish_option_toggled(selected, checked)
             )
         self._sync_dotnet_publish_options()
+        self._create_dotnet_build_summary()
+        self._create_dotnet_saved_build_setup_controls()
         self._install_dotnet_sidebar(dotnet_layout, panel)
         root_layout.addWidget(self.build_mode_stack)
 
@@ -2568,6 +2952,16 @@ class EXEBuilderApp(QWidget):
                 summary_title, summary_frame, _labels, _values = self.dotnet_selection_summaries[label]
                 layout.addWidget(summary_title, alignment=Qt.AlignHCenter)
                 layout.addWidget(summary_frame, alignment=Qt.AlignHCenter)
+            if label == "Build":
+                layout.addWidget(
+                    self.dotnet_build_summary_title_frame, alignment=Qt.AlignHCenter
+                )
+                layout.addWidget(
+                    self.dotnet_build_summary_frame, alignment=Qt.AlignHCenter
+                )
+                layout.addWidget(
+                    self.dotnet_saved_setups_section, alignment=Qt.AlignHCenter
+                )
             layout.addWidget(heading, alignment=Qt.AlignHCenter)
             layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Icons Select":
@@ -2693,8 +3087,10 @@ class EXEBuilderApp(QWidget):
 
     def _on_dotnet_settings_changed(self, *_args):
         self._update_dotnet_selection_summaries()
+        self._update_dotnet_build_summary()
         self._update_dotnet_navigation()
         self.dotnet_publish_controller.refresh_ui()
+        self._update_saved_dotnet_build_setup_controls()
         if not getattr(self, "_loading_state", False):
             self.state_ctrl.save_csharp_state()
 
