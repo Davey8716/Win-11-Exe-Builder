@@ -20,10 +20,44 @@ class JsonImportController(QObject):
         self.app.select_interpreter.setAcceptDrops(True)
         self.app.select_interpreter.installEventFilter(self)
 
+        for mode in ("python", "dotnet"):
+            for widget_name in (
+                f"{mode}_saved_setups_backup_section",
+                f"import_{mode}_build_setups_btn",
+            ):
+                widget = getattr(self.app, widget_name, None)
+                if widget is not None:
+                    widget.setAcceptDrops(True)
+                    widget.setProperty("saved_setup_drop_mode", mode)
+                    widget.installEventFilter(self)
+
     # -------------------------------
     # Event filter (shared for both)
     # -------------------------------
     def eventFilter(self, obj, event):
+        saved_setup_mode = obj.property("saved_setup_drop_mode")
+        if saved_setup_mode in ("python", "dotnet"):
+            if event.type() == QEvent.DragEnter:
+                urls = event.mimeData().urls()
+                if any(url.toLocalFile().lower().endswith(".json") for url in urls):
+                    event.acceptProposedAction()
+                else:
+                    event.ignore()
+                return True
+
+            if event.type() == QEvent.Drop:
+                paths = [
+                    url.toLocalFile()
+                    for url in event.mimeData().urls()
+                    if url.toLocalFile().lower().endswith(".json")
+                ]
+                if not paths:
+                    event.ignore()
+                    return True
+                self.app._import_saved_build_setups(saved_setup_mode, paths[0])
+                event.acceptProposedAction()
+                return True
+
         if event.type() == QEvent.DragEnter:
             if event.mimeData().hasUrls():
                 event.acceptProposedAction()

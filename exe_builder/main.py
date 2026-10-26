@@ -1781,6 +1781,11 @@ class EXEBuilderApp(QWidget):
         controls.addStretch()
         export_btn.clicked.connect(lambda: self._export_saved_build_setups(mode))
         import_btn.clicked.connect(lambda: self._import_saved_build_setups(mode))
+        drop_hint = (
+            f"Drop a {mode} saved-setups JSON backup here to import it."
+        )
+        section.setToolTip(drop_hint)
+        import_btn.setToolTip(drop_hint)
         layout.addLayout(controls)
         setattr(self, f"export_{mode}_build_setups_btn", export_btn)
         setattr(self, f"import_{mode}_build_setups_btn", import_btn)
@@ -1890,9 +1895,12 @@ class EXEBuilderApp(QWidget):
             Colors.SUCCESS,
         )
 
-    def _import_saved_build_setups(self, mode):
-        title = "Import Python Saved Setups" if mode == "python" else "Import C# Saved Setups"
-        path, _ = QFileDialog.getOpenFileName(self, title, "", "JSON Files (*.json)")
+    def _import_saved_build_setups(self, mode, path=None):
+        if path is None:
+            title = "Import Python Saved Setups" if mode == "python" else "Import C# Saved Setups"
+            path, _ = QFileDialog.getOpenFileName(
+                self, title, "", "JSON Files (*.json)"
+            )
         if not path:
             return
         try:

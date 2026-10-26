@@ -440,3 +440,80 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
     finally:
         window._is_closing = True
         window.close()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="The app uses Windows APIs")
+def test_saved_setup_backup_sections_accept_matching_json_drops(monkeypatch, tmp_path):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+    from exe_builder.controllers.activation_controller import ActivationController
+    from exe_builder.main import EXEBuilderApp
+
+    class DropUrl:
+        def __init__(self, path):
+            self.path = path
+
+        def toLocalFile(self):
+            return self.path
+
+    class DropMimeData:
+        def __init__(self, path):
+            self.path = path
+
+        def urls(self):
+            return [DropUrl(self.path)]
+
+    class DropEvent:
+        def __init__(self, path):
+            self.mime_data = DropMimeData(path)
+            self.accepted = False
+
+        def type(self):
+            return QEvent.Drop
+
+        def mimeData(self):
+            return self.mime_data
+
+        def acceptProposedAction(self):
+            self.accepted = True
+
+        def ignore(self):
+            self.accepted = False
+
+    monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
+    monkeypatch.setattr(ctypes, "GetLastError", lambda: 0)
+    app = QApplication.instance() or QApplication([])
+    window = EXEBuilderApp()
+    try:
+        setup = {
+            "interpreter": "C:/Python/python.exe",
+            "icon": "",
+            "script": "C:/Project/tool.py",
+            "output": "C:/Builds/Tool",
+            "name": "Tool",
+            "datetime_format": None,
+            "append_py_version": False,
+        }
+        backup = tmp_path / "python-setups.json"
+        backup.write_text(
+            json.dumps({
+                "format": "win11-exe-builder-saved-setups",
+                "version": 1,
+                "builder": "python",
+                "saved_setups": [setup],
+            }),
+            encoding="utf-8",
+        )
+
+        event = DropEvent(str(backup))
+        assert window.json_import_controller.eventFilter(
+            window.python_saved_setups_backup_section, event
+        )
+        assert event.accepted
+        assert window.saved_build_setups == [setup]
+    finally:
+        window._is_closing = True
+        window.close()
