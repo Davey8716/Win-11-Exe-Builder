@@ -106,13 +106,17 @@ PATH_ENTRY_ROW_SPACING = 3
 SELECTOR_SECTION_ROW_SPACING = 3
 SECTION_NAV_STYLE = (
     "QListWidget { background: #19232d; border: 0; padding: 4px 0; "
-    "color: #ecf3fa; font: bold 10pt 'Rubik UI'; } "
+    "color: #ecf3fa; font: bold 12pt 'Rubik UI'; } "
     "QListWidget::item { height: 38px; padding-left: 14px; border-left: 4px solid transparent; } "
     "QListWidget::item:selected { background: #263a4d; color: white; border-left-color: #4a6fa8; } "
     "QListWidget::item:hover:!selected { background: #24313e; } "
     "QListWidget::item:disabled { color: #71808c; background: transparent; } "
     "QListWidget::item:selected:disabled { color: #71808c; background: transparent; }"
 )
+SAVED_SETUP_COMBO_BOX_STYLE = COMBO_BOX_STYLE + """
+    QComboBox { font: bold 12pt 'Rubik UI'; }
+    QComboBox QAbstractItemView { font: bold 12pt 'Rubik UI'; }
+"""
 SAVED_SETUP_DELETE_MENU_STYLE = f"""
     QToolButton {{
         background-color: {qcolor_name(Colors.TITLE_BG)};
@@ -1010,12 +1014,12 @@ class EXEBuilderApp(QWidget):
         
 
         self.build_btn = QPushButton("Build EXE")
-        self.build_btn.setFont(QFont("Rubik UI", 13, QFont.Bold))
+        self.build_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.build_btn.setFixedSize(180, 35)
         self.build_btn.clicked.connect(self.build_controller.build_exe)
 
         self.python_open_output_btn = QPushButton("Open Output Folder")
-        self.python_open_output_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.python_open_output_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.python_open_output_btn.setFixedSize(180, 35)
         self.python_open_output_btn.clicked.connect(
             self.build_controller.open_python_output_folder
@@ -1537,13 +1541,15 @@ class EXEBuilderApp(QWidget):
             "Choose a saved setup to fill the build fields, then click Build EXE."
         )
         self.saved_build_setup_dropdown.setFixedWidth(300)
-        self.saved_build_setup_dropdown.setStyleSheet(COMBO_BOX_STYLE)
+        self.saved_build_setup_dropdown.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.saved_build_setup_dropdown.setStyleSheet(SAVED_SETUP_COMBO_BOX_STYLE)
+        self.saved_build_setup_dropdown.view().setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.saved_build_setup_dropdown.currentIndexChanged.connect(
             self._load_selected_build_setup
         )
         self.save_build_setup_btn = QPushButton("Save setup")
         self.save_build_setup_btn.setAccessibleName("Save current build setup")
-        self.save_build_setup_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.save_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.save_build_setup_btn.setFixedSize(135, 28)
         self.save_build_setup_btn.setStyleSheet(
             button_base()
@@ -1555,10 +1561,11 @@ class EXEBuilderApp(QWidget):
         self.delete_build_setup_btn = QToolButton()
         self.delete_build_setup_btn.setText("Delete")
         self.delete_build_setup_btn.setAccessibleName("Delete saved build setup")
-        self.delete_build_setup_btn.setFont(QFont("Rubik UI", 10, QFont.Bold))
+        self.delete_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.delete_build_setup_btn.setFixedSize(85, 28)
         self.delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
         self.delete_build_setup_menu = QMenu(self.delete_build_setup_btn)
+        self.delete_build_setup_menu.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.delete_selected_build_setup_action = self.delete_build_setup_menu.addAction(
             "Delete selected"
         )
@@ -1755,7 +1762,7 @@ class EXEBuilderApp(QWidget):
         import_btn = QPushButton("Import setups")
         for button in (export_btn, import_btn):
             button.setFixedSize(160, 28)
-            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
             button.setStyleSheet(button_base() + "QPushButton { padding: 2px 12px; }")
             controls.addWidget(button)
         controls.addStretch()
@@ -1943,7 +1950,7 @@ class EXEBuilderApp(QWidget):
         controls.setSpacing(8)
         self.dotnet_save_build_setup_btn = QPushButton("Save setup")
         self.dotnet_save_build_setup_btn.setAccessibleName("Save current C# build setup")
-        self.dotnet_save_build_setup_btn.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_save_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.dotnet_save_build_setup_btn.setFixedSize(135, 28)
         self.dotnet_save_build_setup_btn.setStyleSheet(
             button_base()
@@ -1960,7 +1967,11 @@ class EXEBuilderApp(QWidget):
             "Choose a saved setup to fill the publish fields, then click Publish."
         )
         self.saved_dotnet_build_setup_dropdown.setFixedWidth(300)
-        self.saved_dotnet_build_setup_dropdown.setStyleSheet(COMBO_BOX_STYLE)
+        self.saved_dotnet_build_setup_dropdown.setFont(QFont("Rubik UI", 12, QFont.Bold))
+        self.saved_dotnet_build_setup_dropdown.setStyleSheet(SAVED_SETUP_COMBO_BOX_STYLE)
+        self.saved_dotnet_build_setup_dropdown.view().setFont(
+            QFont("Rubik UI", 12, QFont.Bold)
+        )
         self.saved_dotnet_build_setup_dropdown.currentIndexChanged.connect(
             self._load_selected_dotnet_build_setup
         )
@@ -1968,10 +1979,11 @@ class EXEBuilderApp(QWidget):
         self.dotnet_delete_build_setup_btn = QToolButton()
         self.dotnet_delete_build_setup_btn.setText("Delete")
         self.dotnet_delete_build_setup_btn.setAccessibleName("Delete saved C# build setup")
-        self.dotnet_delete_build_setup_btn.setFont(QFont("Rubik UI", 10, QFont.Bold))
+        self.dotnet_delete_build_setup_btn.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.dotnet_delete_build_setup_btn.setFixedSize(85, 28)
         self.dotnet_delete_build_setup_btn.setStyleSheet(SAVED_SETUP_DELETE_MENU_STYLE)
         self.dotnet_delete_build_setup_menu = QMenu(self.dotnet_delete_build_setup_btn)
+        self.dotnet_delete_build_setup_menu.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.dotnet_delete_selected_build_setup_action = (
             self.dotnet_delete_build_setup_menu.addAction("Delete selected")
         )
@@ -3164,7 +3176,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_status_label.setFixedSize(420, 75)
         self.dotnet_status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.dotnet_status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.dotnet_status_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
+        self.dotnet_status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
         self.dotnet_status_label.setAlignment(Qt.AlignCenter)
 
         dotnet_status_cursor = self.dotnet_status_label.textCursor()
@@ -3182,7 +3194,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_open_output_btn = QPushButton("Open Output Folder")
         for button in (self.dotnet_publish_btn, self.dotnet_open_output_btn):
             button.setFixedSize(180, 35)
-            button.setFont(QFont("Rubik UI", 11, QFont.Bold))
+            button.setFont(QFont("Rubik UI", 12, QFont.Bold))
             button.setStyleSheet(button_base())
             actions.addWidget(button)
         actions.addStretch()
@@ -3455,12 +3467,12 @@ class EXEBuilderApp(QWidget):
             self.state_ctrl.save_csharp_state()
 
     def _on_dotnet_publish_option_toggled(self, selected, checked):
-        """Apply the selected .NET publish option, or its required empty state."""
+        """Apply a publish-option choice, allowing an intentionally empty state."""
         self._sync_dotnet_publish_options(selected if checked else None)
         self._on_dotnet_settings_changed()
 
     def _sync_dotnet_publish_options(self, selected=None):
-        """Synchronize one selected publish option or the required empty state."""
+        """Keep publish options mutually exclusive without disabling alternatives."""
         options = (
             self.dotnet_self_contained,
             self.dotnet_single_file,
@@ -3476,9 +3488,8 @@ class EXEBuilderApp(QWidget):
 
         building = getattr(self, "building", False)
         for option in options:
-            enabled = not building and (selected is None or option is selected)
-            option.setEnabled(enabled)
-            if building or not enabled:
+            option.setEnabled(not building)
+            if building:
                 style = build_disabled_checkbox()
             elif selected is None:
                 style = required_selection_checkbox()

@@ -44,6 +44,7 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert window.delete_build_setup_btn.parentWidget() is saved_setups_section
         assert window.saved_setups_label.parentWidget() is saved_setups_section
         assert window.saved_setups_label.font().bold()
+        assert window.saved_setups_label.font().pointSize() == 12
         assert window.saved_setups_label.alignment() == Qt.AlignCenter
         assert saved_setups_section.layout().spacing() == 16
         controls = saved_setups_section.layout().itemAt(1).layout()
@@ -64,9 +65,13 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
             window.build_title.parentWidget()
         )
         assert window.save_build_setup_btn.font().bold()
+        assert window.save_build_setup_btn.font().pointSize() == 12
+        assert window.saved_build_setup_dropdown.font().pointSize() == 12
         assert window.save_build_setup_btn.width() == 135
         assert window.save_build_setup_btn.height() == 28
         assert window.delete_build_setup_btn.font().bold()
+        assert window.delete_build_setup_btn.font().pointSize() == 12
+        assert window.delete_build_setup_menu.font().pointSize() == 12
         assert window.delete_build_setup_btn.text() == "Delete"
         assert window.delete_build_setup_btn.width() == 85
         assert window.delete_build_setup_btn.height() == 28
@@ -197,7 +202,12 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert window.dotnet_delete_selected_build_setup_action.text() == "Delete selected"
         assert window.dotnet_delete_all_build_setups_action.text() == "Delete all"
         assert window.dotnet_saved_setups_label.font().bold()
+        assert window.dotnet_saved_setups_label.font().pointSize() == 12
         assert window.dotnet_saved_setups_label.alignment() == Qt.AlignCenter
+        assert window.dotnet_save_build_setup_btn.font().pointSize() == 12
+        assert window.saved_dotnet_build_setup_dropdown.font().pointSize() == 12
+        assert window.dotnet_delete_build_setup_btn.font().pointSize() == 12
+        assert window.dotnet_delete_build_setup_menu.font().pointSize() == 12
         assert saved_setups_section.layout().spacing() == 16
         controls = saved_setups_section.layout().itemAt(1).layout()
         assert controls.itemAt(0).widget() is window.dotnet_save_build_setup_btn
