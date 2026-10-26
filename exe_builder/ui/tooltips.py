@@ -572,6 +572,72 @@ def attach_saved_setup_tooltips(app, mode):
     for name, text in tooltip_text.items():
         QtTooltip(getattr(app, name), text)
 
+    dropdown_name = (
+        "saved_build_setup_dropdown"
+        if mode == "python"
+        else "saved_dotnet_build_setup_dropdown"
+    )
+    dropdown = getattr(app, dropdown_name)
+    if hasattr(dropdown, "view"):
+        _attach_saved_setup_item_tooltips(dropdown)
+
+    menu_name = (
+        "delete_build_setup_menu"
+        if mode == "python"
+        else "dotnet_delete_build_setup_menu"
+    )
+    selected_action_name = (
+        "delete_selected_build_setup_action"
+        if mode == "python"
+        else "dotnet_delete_selected_build_setup_action"
+    )
+    all_action_name = (
+        "delete_all_build_setups_action"
+        if mode == "python"
+        else "dotnet_delete_all_build_setups_action"
+    )
+    menu = getattr(app, menu_name, None)
+    if menu is not None:
+        _attach_saved_setup_menu_tooltips(
+            menu,
+            {
+                getattr(app, selected_action_name): (
+                    "Delete the currently selected saved "
+                    f"{'Python build' if mode == 'python' else 'C# publish'} setup."
+                ),
+                getattr(app, all_action_name): (
+                    "Delete every saved "
+                    f"{'Python build' if mode == 'python' else 'C# publish'} setup."
+                ),
+            },
+        )
+
+
+def _attach_saved_setup_item_tooltips(dropdown):
+    """Use the application's tooltip style for open saved-setup combo boxes."""
+
+    view = dropdown.view()
+    viewport = view.viewport()
+    viewport.setMouseTracking(True)
+
+    def hovered_setup_details():
+        index = view.indexAt(viewport.mapFromGlobal(QCursor.pos()))
+        return index.data(Qt.UserRole + 1) if index.isValid() else ""
+
+    QtTooltip(viewport, hovered_setup_details, position_at_cursor=True)
+
+
+def _attach_saved_setup_menu_tooltips(menu, action_text):
+    """Use the application's tooltip style for saved-setup delete-menu actions."""
+
+    menu.setMouseTracking(True)
+
+    def hovered_action_description():
+        action = menu.actionAt(menu.mapFromGlobal(QCursor.pos()))
+        return action_text.get(action, "")
+
+    QtTooltip(menu, hovered_action_description, position_at_cursor=True)
+
 
 def attach_dotnet_tooltips(app):
     """Register help for controls shown by the C# .NET Publish mode."""

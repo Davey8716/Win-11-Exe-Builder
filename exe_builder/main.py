@@ -1640,12 +1640,6 @@ class EXEBuilderApp(QWidget):
         self.delete_all_build_setups_action = self.delete_build_setup_menu.addAction(
             "Delete all"
         )
-        self.delete_selected_build_setup_action.setToolTip(
-            "Delete the currently selected saved Python build setup."
-        )
-        self.delete_all_build_setups_action.setToolTip(
-            "Delete every saved Python build setup."
-        )
         self.delete_selected_build_setup_action.triggered.connect(
             self._delete_selected_build_setup
         )
@@ -1795,7 +1789,7 @@ class EXEBuilderApp(QWidget):
                 dropdown.setItemData(dropdown.count() - 1, "\n".join(
                     str(setup.get(key, "")) for key in
                     ("interpreter", "script", "output", "icon")
-                ), Qt.ToolTipRole)
+                ), Qt.UserRole + 1)
             dropdown.setCurrentIndex(0)
         finally:
             dropdown.blockSignals(previous)
@@ -2093,12 +2087,6 @@ class EXEBuilderApp(QWidget):
         self.dotnet_delete_all_build_setups_action = (
             self.dotnet_delete_build_setup_menu.addAction("Delete all")
         )
-        self.dotnet_delete_selected_build_setup_action.setToolTip(
-            "Delete the currently selected saved C# publish setup."
-        )
-        self.dotnet_delete_all_build_setups_action.setToolTip(
-            "Delete every saved C# publish setup."
-        )
         self.dotnet_delete_selected_build_setup_action.triggered.connect(
             self._delete_selected_dotnet_build_setup
         )
@@ -2317,7 +2305,7 @@ class EXEBuilderApp(QWidget):
                 dropdown.addItem(label, index)
                 dropdown.setItemData(dropdown.count() - 1, "\n".join(
                     str(setup.get(key, "")) for key in ("project", "output", "icon")
-                ), Qt.ToolTipRole)
+                ), Qt.UserRole + 1)
             dropdown.setCurrentIndex(0)
         finally:
             dropdown.blockSignals(previous)

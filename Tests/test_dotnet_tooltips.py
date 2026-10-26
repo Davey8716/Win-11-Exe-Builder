@@ -67,6 +67,58 @@ def test_python_saved_setup_controls_have_tooltips(monkeypatch):
     }
 
 
+def test_saved_setup_entry_and_delete_menu_hovers_use_qt_tooltips(monkeypatch):
+    registered_tooltips = []
+
+    class FakeTooltip:
+        def __init__(self, widget, text, **kwargs):
+            registered_tooltips.append((widget, text, kwargs))
+
+    class FakeViewport:
+        def setMouseTracking(self, _enabled):
+            pass
+
+    class FakeView:
+        def __init__(self):
+            self._viewport = FakeViewport()
+
+        def viewport(self):
+            return self._viewport
+
+    class FakeDropdown:
+        def __init__(self):
+            self._view = FakeView()
+
+        def view(self):
+            return self._view
+
+    class FakeMenu:
+        def setMouseTracking(self, _enabled):
+            pass
+
+    monkeypatch.setattr(tooltips, "QtTooltip", FakeTooltip)
+    dropdown = FakeDropdown()
+    menu = FakeMenu()
+    selected_action = object()
+    all_action = object()
+    app = SimpleNamespace(
+        saved_build_setup_dropdown=dropdown,
+        save_build_setup_btn="save",
+        export_python_build_setups_btn="export",
+        import_python_build_setups_btn="import",
+        delete_build_setup_btn="delete",
+        delete_build_setup_menu=menu,
+        delete_selected_build_setup_action=selected_action,
+        delete_all_build_setups_action=all_action,
+    )
+
+    tooltips.attach_saved_setup_tooltips(app, "python")
+
+    hover_widgets = {widget for widget, _text, _kwargs in registered_tooltips}
+    assert dropdown.view().viewport() in hover_widgets
+    assert menu in hover_widgets
+
+
 def test_summary_hovers_reuse_source_field_guidance(monkeypatch):
     registered_path_hovers = []
 
