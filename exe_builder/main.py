@@ -607,7 +607,7 @@ class EXEBuilderApp(QWidget):
 
         # --- Path row (input + refresh inline) ---
         interpreter_entry_row = QWidget()
-        interpreter_entry_row.setFixedHeight(37)
+        interpreter_entry_row.setFixedHeight(52)
         interpreter_entry_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         interpreter_entry_layout = QHBoxLayout(interpreter_entry_row)
         interpreter_entry_layout.setContentsMargins(1,1,1,1)
@@ -1004,7 +1004,7 @@ class EXEBuilderApp(QWidget):
             PAIRED_FRAME_WIDTH,
             self.output_btn.sizeHint().width() + self.date_time_dropdown.width() + 40,
         )
-        self.output_frame.setFixedSize(output_frame_width, 170)
+        self.output_frame.setFixedSize(output_frame_width, 200)
         self.interpreter_frame.setFixedSize(output_frame_width, self.output_frame.height())
         build_frame_width = (
             build_actions.minimumSize().width()
@@ -1124,15 +1124,15 @@ class EXEBuilderApp(QWidget):
                 widget.setPlaceholderText(text)
                 widget.setFont(font)
 
-        section_output_line_height = 30
+        section_output_line_height = self.python_entry_input.two_line_height()
         for widget in [
             self.python_entry_input,
             self.icon_path_input,
             self.script_path_input,
             self.output_path_input,
-            self.exe_name_input,
         ]:
             widget.setFixedHeight(section_output_line_height)
+        self.exe_name_input.setFixedHeight(30)
 
         for cb in [
             self.tooltips_checkbox,
@@ -1554,6 +1554,11 @@ class EXEBuilderApp(QWidget):
             self.build_summary_labels[key] = label
             self.build_summary_values[key] = value
 
+    @staticmethod
+    def _summary_display_text(text):
+        """Add invisible wrap points at path separators without changing the data."""
+        return text.replace("\\", "\\\u200b").replace("/", "/\u200b")
+
     def _update_build_summary(self):
         if not hasattr(self, "build_summary_values"):
             return
@@ -1566,9 +1571,7 @@ class EXEBuilderApp(QWidget):
         }
         for key, text in values.items():
             widget = self.build_summary_values[key]
-            # Give QLabel valid wrap points inside Windows and POSIX-style paths.
-            display_text = text.replace("\\", "\\\u200b").replace("/", "/\u200b")
-            widget.setText(display_text)
+            widget.setText(self._summary_display_text(text))
             widget.setToolTip(text)
             if key == "icon":
                 text_color = Colors.SUCCESS if self.icon_path_input.text() else Colors.TEXT_LIGHT
@@ -1810,7 +1813,8 @@ class EXEBuilderApp(QWidget):
             label.setFixedWidth(85)
             value = QLabel()
             value.setFont(QFont("Rubik UI", 10, QFont.Bold))
-            value.setFixedHeight(24)
+            value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
+            value.setWordWrap(True)
             value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             value.setTextInteractionFlags(Qt.NoTextInteraction)
             value.setFocusPolicy(Qt.NoFocus)
@@ -1834,9 +1838,7 @@ class EXEBuilderApp(QWidget):
                     f"background-color: {qcolor_name(Colors.DISABLED_BG)}; "
                     f"border: 1px solid {qcolor_name(Colors.BORDER_DARK)}; padding: 0 4px; }}"
                 )
-                value.setText(
-                    QFontMetrics(value.font()).elidedText(display, Qt.ElideMiddle, 435)
-                )
+                value.setText(self._summary_display_text(display))
                 value.setToolTip(display)
 
     def _update_python_selection_summaries(self):
@@ -2314,7 +2316,7 @@ class EXEBuilderApp(QWidget):
             entry = QHBoxLayout()
             field = PathDisplayLineEdit()
             field.setPlaceholderText(placeholder)
-            field.setFixedHeight(30)
+            field.setFixedHeight(field.two_line_height())
             reset = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
             entry.addWidget(field)
             entry.addWidget(reset)
@@ -2355,7 +2357,9 @@ class EXEBuilderApp(QWidget):
         output_entry = QHBoxLayout()
         self.dotnet_output_input = PathDisplayLineEdit()
         self.dotnet_output_input.setPlaceholderText("No output folder selected.")
-        self.dotnet_output_input.setFixedHeight(30)
+        self.dotnet_output_input.setFixedHeight(
+            self.dotnet_output_input.two_line_height()
+        )
         self.dotnet_output_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
         self.dotnet_output_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_output_to_desktop)
         output_entry.addWidget(self.dotnet_output_input)

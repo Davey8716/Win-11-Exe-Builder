@@ -45,6 +45,13 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_section_stack.currentIndex() == 0
         assert window.python_mode_btn.parentWidget() is window.python_mode_selector
         assert window.dotnet_mode_btn.parentWidget() is window.python_mode_selector
+        for field in (
+            window.python_entry_input,
+            window.icon_path_input,
+            window.script_path_input,
+            window.output_path_input,
+        ):
+            assert field.height() >= field.fontMetrics().lineSpacing() * 2
         build_page = window.python_section_stack.widget(5)
         assert window.build_summary_title_frame.parentWidget() is build_page
         assert window.build_summary_title.parentWidget() is window.build_summary_title_frame
@@ -56,6 +63,9 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
             assert title.parentWidget() is window.python_section_stack.widget(index)
             assert frame.parentWidget() is window.python_section_stack.widget(index)
             assert set(labels) == set(values) == keys
+            for value in values.values():
+                assert value.wordWrap()
+                assert value.height() >= value.fontMetrics().lineSpacing() * 2
         assert window.python_selection_summaries["Icons"][3]["interpreter"].text() == "Not selected"
         assert window.python_selection_summaries["File"][3]["icon"].text() == "No icon"
         assert window.build_summary_values["interpreter"].font().bold()
@@ -99,24 +109,27 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert not window.interpreter_continue_btn.isHidden()
         assert bool(window.python_section_nav.item(2).flags() & Qt.ItemIsEnabled)
         assert window.build_summary_values["interpreter"].text().replace("\u200b", "") == "C:/Python/python.exe"
-        assert window.python_selection_summaries["Icons"][3]["interpreter"].text() == "C:/Python/python.exe"
-        assert window.python_selection_summaries["Output"][3]["interpreter"].text() == "C:/Python/python.exe"
+        assert window.python_selection_summaries["Icons"][3]["interpreter"].text().replace("\u200b", "") == "C:/Python/python.exe"
+        assert window.python_selection_summaries["Output"][3]["interpreter"].text().replace("\u200b", "") == "C:/Python/python.exe"
         window.icon_path_input.setText("C:/icons/app.ico")
         assert bool(window.python_section_nav.item(3).flags() & Qt.ItemIsEnabled)
         assert window.build_summary_values["icon"].text().replace("\u200b", "") == "C:/icons/app.ico"
         assert qcolor_name(Colors.SUCCESS) in window.build_summary_labels["icon"].styleSheet()
         assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["icon"].styleSheet()
-        assert window.python_selection_summaries["File"][3]["icon"].text() == "C:/icons/app.ico"
+        assert window.python_selection_summaries["File"][3]["icon"].text().replace("\u200b", "") == "C:/icons/app.ico"
         assert window.python_selection_summaries["Output"][3]["icon"].toolTip() == "C:/icons/app.ico"
         window.script_path_input.setText("C:/project/main.py")
         assert bool(window.python_section_nav.item(4).flags() & Qt.ItemIsEnabled)
         assert window.build_summary_values["file"].text().replace("\u200b", "") == "C:/project/main.py"
-        assert window.python_selection_summaries["Output"][3]["file"].text() == "C:/project/main.py"
+        assert window.python_selection_summaries["Output"][3]["file"].text().replace("\u200b", "") == "C:/project/main.py"
         long_script_path = "C:\\" + "very-long-folder-name\\" * 12 + "main.py"
         window.script_path_input.setText(long_script_path)
         displayed_path = window.build_summary_values["file"].text()
         assert displayed_path.replace("\u200b", "") == long_script_path
         assert "\\\u200b" in displayed_path
+        selection_summary_path = window.python_selection_summaries["Output"][3]["file"].text()
+        assert selection_summary_path.replace("\u200b", "") == long_script_path
+        assert "\\\u200b" in selection_summary_path
         window.python_section_nav.setCurrentRow(1)
         next_button = next(
             button for button in window.python_section_stack.widget(1).findChildren(QPushButton)
@@ -144,6 +157,12 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
 
         window.set_build_mode("dotnet", save=False)
         app.processEvents()
+        for field in (
+            window.dotnet_icon_input,
+            window.dotnet_project_input,
+            window.dotnet_output_input,
+        ):
+            assert field.height() >= field.fontMetrics().lineSpacing() * 2
         dotnet_title_center = window.dotnet_mode_title.mapTo(
             window, QPoint(window.dotnet_mode_title.width() // 2, 0)
         ).x()
@@ -160,10 +179,10 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.dotnet_selection_summaries["Output Select"][0].parentWidget() is window.dotnet_section_stack.widget(2)
         assert window.dotnet_build_title_frame.parentWidget() is window.dotnet_section_stack.widget(3)
         window.dotnet_icon_input.setText("C:/icons/dotnet.ico")
-        assert window.dotnet_selection_summaries["File Select"][3]["icon"].text() == "C:/icons/dotnet.ico"
-        assert window.dotnet_selection_summaries["Output Select"][3]["icon"].text() == "C:/icons/dotnet.ico"
+        assert window.dotnet_selection_summaries["File Select"][3]["icon"].text().replace("\u200b", "") == "C:/icons/dotnet.ico"
+        assert window.dotnet_selection_summaries["Output Select"][3]["icon"].text().replace("\u200b", "") == "C:/icons/dotnet.ico"
         window.dotnet_project_input.setText("C:/project/app.csproj")
-        assert window.dotnet_selection_summaries["Output Select"][3]["file"].text() == "C:/project/app.csproj"
+        assert window.dotnet_selection_summaries["Output Select"][3]["file"].text().replace("\u200b", "") == "C:/project/app.csproj"
         window.dotnet_icon_input.clear()
         assert window.dotnet_selection_summaries["File Select"][3]["icon"].text() == "No icon"
         assert window.dotnet_selection_summaries["Output Select"][3]["icon"].text() == "No icon"

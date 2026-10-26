@@ -17,3 +17,4 @@ def test_dotnet_path_fields_use_the_python_path_font():
         assert font.family() == "Rubik UI"
         assert font.pointSize() == 11
         assert font.bold()
+        assert field.height() >= field.fontMetrics().lineSpacing() * 2
