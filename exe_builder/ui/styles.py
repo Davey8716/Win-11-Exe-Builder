@@ -30,6 +30,7 @@ class Colors:
     COMBO_DISABLED_TEXT = QColor(170, 170, 170)
     SELECTION_BG = QColor(74, 111, 168)
     INFO = QColor(45, 125, 210)
+    PATH_HOVER_GLOW = QColor(80, 190, 255)
     WARNING = QColor(230, 162, 60)
     DISABLED_TEXT = QColor(255, 255, 255)
     TOOLTIP_BG = QColor(40, 40, 50)

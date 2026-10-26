@@ -1,7 +1,7 @@
 import sys
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
@@ -32,4 +32,20 @@ def test_clickable_path_label_emits_only_for_a_valid_left_click(qt_app, tmp_path
     assert label.cursor().shape() == Qt.ArrowCursor
     QTest.mouseClick(label, Qt.LeftButton)
     assert activated == [str(path)]
+    label.close()
+
+
+def test_clickable_path_label_glows_while_a_valid_path_is_hovered(qt_app, tmp_path):
+    path = tmp_path / "summary-path.txt"
+    path.write_text("ok", encoding="utf-8")
+    label = ClickablePathLabel()
+    label.resize(200, 30)
+    label.show()
+
+    label.set_path(str(path))
+    QApplication.sendEvent(label, QEvent(QEvent.Enter))
+    assert label.graphicsEffect() is not None
+
+    QApplication.sendEvent(label, QEvent(QEvent.Leave))
+    assert label.graphicsEffect() is None
     label.close()
