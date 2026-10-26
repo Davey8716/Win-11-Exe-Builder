@@ -2,6 +2,7 @@ import os
 from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QIcon, QTextBlockFormat, QTextCursor
 from PySide6.QtWidgets import QCheckBox
+from ..build.datetime_build_options import is_mass_datetime_build_selection
 from ..ui.styles import (
     APPEND_PY_VERSION_STYLE,
     BUILD_DISABLED_TITLE_FRAME_STYLE,
@@ -46,6 +47,16 @@ class ValidationController:
         self._existing_output_warning_context = None
         self._existing_output_warning_visible = False
         self._existing_output_warning_token = 0
+
+    def _run_built_app_is_available(self):
+        """Return whether the global launcher is valid for current output choices."""
+        for field in ("date_time_dropdown", "dotnet_date_time_dropdown"):
+            dropdown = getattr(self.app, field, None)
+            if dropdown is not None and is_mass_datetime_build_selection(
+                dropdown.currentData()
+            ):
+                return False
+        return True
 
     def _cancel_existing_output_warning(self):
         """Prevent a pending output warning from restoring a stale ready status."""
@@ -427,7 +438,10 @@ class ValidationController:
             )
         run_built_app = getattr(app, "run_built_app_after_build", None)
         if run_built_app is not None:
-            set_btn(run_built_app, not building)
+            set_btn(
+                run_built_app,
+                not building and self._run_built_app_is_available(),
+            )
         # 🔑 mutual exclusion + build lock
         min_checked = app.minimize_after_build.isChecked()
         close_checked = app.close_after_build.isChecked()

@@ -3574,6 +3574,9 @@ class EXEBuilderApp(QWidget):
             self.state_ctrl.save_preferences()
 
     def _on_dotnet_settings_changed(self, *_args):
+        self.ui_handlers.disable_run_built_app_for_mass_datetime_selection(
+            self.dotnet_date_time_dropdown.currentData()
+        )
         self._invalidate_saved_setup_backup_status("dotnet")
         self._update_dotnet_selection_summaries()
         self._update_dotnet_build_summary()

@@ -173,6 +173,16 @@ class StateController:
                 elif not app.append_datetime:
                     index = self._find_enabled_dropdown_text(app.date_time_dropdown, self.NO_DATETIME_LABEL)
                     if index >= 0: app.date_time_dropdown.setCurrentIndex(index)
+            disable_run_for_mass_build = getattr(
+                getattr(app, "ui_handlers", None),
+                "disable_run_built_app_for_mass_datetime_selection",
+                None,
+            )
+            if disable_run_for_mass_build is not None:
+                for field in ("date_time_dropdown", "dotnet_date_time_dropdown"):
+                    dropdown = getattr(app, field, None)
+                    if dropdown is not None and disable_run_for_mass_build(dropdown.currentData()):
+                        break
             env = getattr(app, "environment_sync_controller", None)
             if env is not None and python_data.get("env_sync_profiles"): env.load_serialized_profiles(python_data["env_sync_profiles"], update_ui=True)
             app.validator.update_ui_state()

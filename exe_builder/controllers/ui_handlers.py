@@ -2,21 +2,10 @@
 import os,subprocess,time,webbrowser
 from PySide6.QtCore import QTimer
 from ..build.datetime_build_options import (
-    ISO_MASS_DATETIME_BUILD_SENTINEL,
-    MASS_DATETIME_BUILD_SENTINEL,
     NO_DATETIME_LABEL,
-    UK_MASS_DATETIME_BUILD_SENTINEL,
-    USA_MASS_DATETIME_BUILD_SENTINEL,
+    is_mass_datetime_build_selection,
 )
 from ..ui.ui_highlights import flash_delete_highlight
-
-MASS_DATETIME_BUILD_SENTINELS = {
-    MASS_DATETIME_BUILD_SENTINEL,
-    ISO_MASS_DATETIME_BUILD_SENTINEL,
-    UK_MASS_DATETIME_BUILD_SENTINEL,
-    USA_MASS_DATETIME_BUILD_SENTINEL,
-}
-
 
 def _find_no_datetime_index(dropdown):
     if not hasattr(dropdown, "count") or not hasattr(dropdown, "itemText"):
@@ -423,6 +412,35 @@ class UIHandlers:
         app.validator.update_ui_state()
         app.dotnet_publish_controller.refresh_ui()
 
+    def disable_run_built_app_for_mass_datetime_selection(self, selection):
+        """Disable the global launcher when one build creates several EXEs."""
+        if not is_mass_datetime_build_selection(selection):
+            return False
+
+        app = self.app
+        checkbox = getattr(app, "run_built_app_after_build", None)
+        if checkbox is not None:
+            block_signals = getattr(checkbox, "blockSignals", None)
+            if block_signals is None:
+                checkbox.setChecked(False)
+            else:
+                previous_signals = block_signals(True)
+                try:
+                    checkbox.setChecked(False)
+                finally:
+                    block_signals(previous_signals)
+
+        app.run_built_app_after_build_enabled = False
+        if hasattr(app, "state_ctrl"):
+            app.state_ctrl.save_state()
+        if hasattr(app, "validator"):
+            app.validator.validation_status_message()
+            app.validator.update_ui_state()
+        publish_controller = getattr(app, "dotnet_publish_controller", None)
+        if publish_controller is not None:
+            publish_controller.refresh_ui()
+        return True
+
     def on_suppress_exit_dialogue_toggle(self, state):
         app = self.app
         app.suppress_exit_dialogue_enabled = bool(state)
@@ -488,8 +506,9 @@ class UIHandlers:
 
         data = app.date_time_dropdown.currentData()
 
-        if data in MASS_DATETIME_BUILD_SENTINELS:
+        if is_mass_datetime_build_selection(data):
             app.mass_datetime_build_selected = True
+            self.disable_run_built_app_for_mass_datetime_selection(data)
             if not hasattr(app, "_mass_datetime_restore_state"):
                 app._mass_datetime_restore_state = {
                     "append_datetime": getattr(app, "append_datetime", False),

@@ -20,6 +20,7 @@ from exe_builder.ui.styles import (
     sidebar_menu_button_style,
 )
 from exe_builder.controllers.validation_controller import ValidationController
+from exe_builder.build.datetime_build_options import ISO_MASS_DATETIME_BUILD_SENTINEL
 
 
 def test_combo_box_disabled_style_greys_drop_down_and_arrow():
@@ -128,8 +129,12 @@ class DummyInput:
 
 
 class DummyDropdown:
-    def __init__(self):
+    def __init__(self, data=None):
         self.enabled = None
+        self.data = data
+
+    def currentData(self):
+        return self.data
 
     def setEnabled(self, value):
         self.enabled = value
@@ -199,6 +204,7 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         tooltips_checkbox=DummyCheckbox(),
         open_app_data_btn=DummyButton(),
         open_output_dir_after_build=DummyCheckbox(),
+        run_built_app_after_build=DummyCheckbox(),
         minimize_after_build=DummyCheckbox(),
         close_after_build=DummyCheckbox(),
         env_sync_scan_btn=DummyButton(),
@@ -248,6 +254,25 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         output_title_frame=DummyFrame(),
         build_controller=SimpleNamespace(has_python_output=lambda: False),
     )
+
+
+def test_run_built_app_is_disabled_for_any_batch_datetime_selection(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    controller = ValidationController(app)
+
+    app.date_time_dropdown.data = ISO_MASS_DATETIME_BUILD_SENTINEL
+    controller.update_ui_state()
+    assert app.run_built_app_after_build.enabled is False
+
+    app.date_time_dropdown.data = None
+    app.dotnet_date_time_dropdown = DummyDropdown(ISO_MASS_DATETIME_BUILD_SENTINEL)
+    controller.update_ui_state()
+    assert app.run_built_app_after_build.enabled is False
+
+    app.dotnet_date_time_dropdown.data = None
+    controller.update_ui_state()
+    assert app.run_built_app_after_build.enabled is True
 
 
 def test_python_open_output_button_matches_dotnet_availability_styling(monkeypatch, tmp_path):
