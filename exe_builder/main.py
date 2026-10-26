@@ -97,8 +97,7 @@ PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
-BUILD_FRAME_HEIGHT = 200
-DOTNET_BUILD_FRAME_WIDTH = 450
+BUILD_ACTION_FRAME_WIDTH = 450
 PROGRESSION_BUTTON_SIZE = (280, 42)
 SELECTOR_ROW_MARGINS = (1, 1, 1, 1)
 SELECTOR_ROW_SPACING = 4
@@ -983,19 +982,20 @@ class EXEBuilderApp(QWidget):
         build_frame.setFrameShape(QFrame.StyledPanel)
         build_frame.setFrameShadow(QFrame.Raised)
         build_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        build_frame.setObjectName("configurationFrame")
+        build_frame.setStyleSheet(MAIN_FRAME_STYLE)
 
-        build_action_gap = 4
         build_action_edge_padding = 12
         build_layout = QVBoxLayout(build_frame)
         build_layout.setContentsMargins(
-            build_action_edge_padding, 5,
+            build_action_edge_padding, build_action_edge_padding,
             build_action_edge_padding, build_action_edge_padding,
         )
-        build_layout.setSpacing(build_action_gap)
+        build_layout.setSpacing(7)
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
-        self.status_label.setFixedSize(250, 110)
+        self.status_label.setFixedSize(420, 75)
         self.status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
@@ -1026,12 +1026,11 @@ class EXEBuilderApp(QWidget):
         )
 
         build_layout.addWidget(self.status_label, alignment=Qt.AlignHCenter)
-        build_layout.addStretch()
         build_actions = QHBoxLayout()
-        build_actions.setContentsMargins(0, 0, 0, 0)
-        build_actions.setSpacing(build_action_gap)
+        build_actions.addStretch()
         build_actions.addWidget(self.build_btn)
         build_actions.addWidget(self.python_open_output_btn)
+        build_actions.addStretch()
         build_layout.addLayout(build_actions)
 
         output_frame_width = max(
@@ -1042,12 +1041,8 @@ class EXEBuilderApp(QWidget):
         self.interpreter_frame.setFixedSize(
             output_frame_width, self.interpreter_frame.sizeHint().height()
         )
-        build_frame_width = (
-            build_actions.minimumSize().width()
-            + (2 * build_action_edge_padding)
-            + (2 * build_frame.frameWidth())
-        )
-        build_frame.setFixedSize(build_frame_width, BUILD_FRAME_HEIGHT)
+        build_frame.setFixedWidth(BUILD_ACTION_FRAME_WIDTH)
+        build_frame.setFixedHeight(build_frame.sizeHint().height())
         self.env_sync_frame.setFixedWidth(output_frame_width)
 
         for frame in [
@@ -1406,6 +1401,9 @@ class EXEBuilderApp(QWidget):
             if label == "Build":
                 layout.addWidget(self.build_summary_title_frame, alignment=Qt.AlignHCenter)
                 layout.addWidget(self.build_summary_frame, alignment=Qt.AlignHCenter)
+            layout.addWidget(title, alignment=Qt.AlignHCenter)
+            layout.addWidget(controls, alignment=Qt.AlignHCenter)
+            if label == "Build":
                 saved_setups_section = QWidget()
                 saved_setups_section.setFixedWidth(PAIRED_FRAME_WIDTH)
                 saved_setups_layout = QVBoxLayout(saved_setups_section)
@@ -1433,8 +1431,6 @@ class EXEBuilderApp(QWidget):
                     self.python_saved_setups_backup_section,
                     alignment=Qt.AlignHCenter,
                 )
-            layout.addWidget(title, alignment=Qt.AlignHCenter)
-            layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Environment Sync":
                 skip = progression_button(
                     "Continue without syncing", self._continue_to_interpreter
@@ -3169,7 +3165,7 @@ class EXEBuilderApp(QWidget):
 
         # The bordered build frame contains only build status and actions;
         # publish settings live directly below the Build Section heading.
-        panel.setFixedWidth(DOTNET_BUILD_FRAME_WIDTH)
+        panel.setFixedWidth(BUILD_ACTION_FRAME_WIDTH)
 
         self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
         self.dotnet_status_label.setReadOnly(True)
@@ -3314,6 +3310,9 @@ class EXEBuilderApp(QWidget):
                 layout.addWidget(
                     self.dotnet_build_summary_frame, alignment=Qt.AlignHCenter
                 )
+            layout.addWidget(heading, alignment=Qt.AlignHCenter)
+            layout.addWidget(controls, alignment=Qt.AlignHCenter)
+            if label == "Build":
                 layout.addWidget(
                     self.dotnet_saved_setups_section, alignment=Qt.AlignHCenter
                 )
@@ -3321,8 +3320,6 @@ class EXEBuilderApp(QWidget):
                     self.dotnet_saved_setups_backup_section,
                     alignment=Qt.AlignHCenter,
                 )
-            layout.addWidget(heading, alignment=Qt.AlignHCenter)
-            layout.addWidget(controls, alignment=Qt.AlignHCenter)
             if label == "Icons Select":
                 self.dotnet_icon_continue_btn = progression_button(
                     "Use no icon and continue", self._continue_from_dotnet_icons

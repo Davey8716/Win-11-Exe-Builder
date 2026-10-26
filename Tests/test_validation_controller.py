@@ -264,7 +264,7 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
         "A build already exists here. Build again to overwrite it, "
         "or choose another output folder."
     )
-    assert app.status_label.size == (250, 110)
+    assert app.status_label.size == (420, 75)
 
     app.building = True
     controller.update_ui_state()
@@ -297,7 +297,7 @@ def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path
         "Ready to build.\nThe output folder will open after building."
         "\nThe app will then close."
     )
-    assert app.status_label.alignment == validation_controller.Qt.AlignLeft
+    assert app.status_label.alignment == validation_controller.Qt.AlignCenter
 
     app.open_output_dir_after_build.setChecked(False)
     controller.update_ui_state()

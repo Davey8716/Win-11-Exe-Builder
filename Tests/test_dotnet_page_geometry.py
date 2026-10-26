@@ -62,8 +62,8 @@ def test_dotnet_publish_panel_uses_the_compact_build_width():
     assert "self.dotnet_runtime_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)" in MAIN_SOURCE
     assert "self.dotnet_runtime_combo.setMinimumWidth(190)" in MAIN_SOURCE
     assert "checkbox.setMinimumWidth(checkbox.sizeHint().width())" in MAIN_SOURCE
-    assert "DOTNET_BUILD_FRAME_WIDTH = 450" in MAIN_SOURCE
-    assert "panel.setFixedWidth(DOTNET_BUILD_FRAME_WIDTH)" in MAIN_SOURCE
+    assert "BUILD_ACTION_FRAME_WIDTH = 450" in MAIN_SOURCE
+    assert "panel.setFixedWidth(BUILD_ACTION_FRAME_WIDTH)" in MAIN_SOURCE
     assert "panel.setFixedWidth(PAIRED_FRAME_WIDTH)" not in MAIN_SOURCE
 
 

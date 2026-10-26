@@ -1,6 +1,6 @@
 import os
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QIcon, QTextCursor
+from PySide6.QtGui import QIcon, QTextBlockFormat, QTextCursor
 from PySide6.QtWidgets import QCheckBox
 from ..ui.styles import (
     APPEND_PY_VERSION_STYLE,
@@ -116,7 +116,7 @@ class ValidationController:
 
         state["is_ready"] = is_ready
 
-        self.app.status_label.setFixedSize(250, 110)
+        self.app.status_label.setFixedSize(420, 75)
 
         # Track previous state
         self.app._was_build_ready = is_ready
@@ -579,13 +579,16 @@ class ValidationController:
             status_text = "Missing required inputs."
 
         app.status_label.setText(status_text)
-        app.status_label.selectAll()
-        app.status_label.setAlignment(
-            Qt.AlignLeft
-            if is_ready and not output_available and status_text != "Ready to build."
-            else Qt.AlignCenter
-        )
-        app.status_label.moveCursor(QTextCursor.Start)
+        if hasattr(app.status_label, "textCursor"):
+            cursor = app.status_label.textCursor()
+            cursor.select(QTextCursor.Document)
+            text_format = QTextBlockFormat()
+            text_format.setAlignment(Qt.AlignCenter)
+            cursor.mergeBlockFormat(text_format)
+            cursor.clearSelection()
+            app.status_label.setTextCursor(cursor)
+        else:
+            app.status_label.setAlignment(Qt.AlignCenter)
 
         if building:
             color = Colors.BLACK

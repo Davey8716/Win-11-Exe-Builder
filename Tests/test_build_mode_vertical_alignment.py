@@ -42,9 +42,17 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert close_font.family() == "Rubik UI"
         assert close_font.pointSize() == 13
         assert close_font.bold()
-        assert window.status_label.size().width() == 250
-        assert window.status_label.size().height() == 110
-        assert window.status_label.parentWidget().height() == 200
+        assert window.status_label.size().width() == 420
+        assert window.status_label.size().height() == 75
+        assert window.status_label.parentWidget().height() == 145
+        assert window.status_label.parentWidget().width() == 450
+        assert window.status_label.size() == window.dotnet_status_label.size()
+        assert window.status_label.parentWidget().width() == (
+            window.dotnet_status_label.parentWidget().width()
+        )
+        assert window.status_label.parentWidget().height() == (
+            window.dotnet_status_label.parentWidget().height()
+        )
 
         def horizontal_gap(left, right):
             left_edge = left.mapTo(window, QPoint(left.width(), 0)).x()
@@ -81,6 +89,16 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_section_nav.item(0).text() == "Environment Sync"
         assert window.python_section_nav.count() == 6
         assert window.python_section_stack.currentIndex() == 0
+        window.python_section_nav.setCurrentRow(5)
+        app.processEvents()
+        python_actions_center = (
+            window.build_btn.mapTo(window, QPoint(window.build_btn.width(), 0)).x()
+            + window.python_open_output_btn.mapTo(window, QPoint(0, 0)).x()
+        ) // 2
+        python_panel_center = window.status_label.parentWidget().mapTo(
+            window, QPoint(window.status_label.parentWidget().width() // 2, 0)
+        ).x()
+        assert abs(python_actions_center - python_panel_center) <= 1
         assert window.python_mode_btn.parentWidget() is window.python_mode_selector
         assert window.dotnet_mode_btn.parentWidget() is window.python_mode_selector
         for field in (
