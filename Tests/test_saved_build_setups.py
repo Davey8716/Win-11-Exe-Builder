@@ -285,8 +285,10 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
 
+    from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication, QFileDialog
     from exe_builder.controllers.activation_controller import ActivationController
+    from exe_builder.ui.styles import Colors, qcolor_name
 
     monkeypatch.setattr(ActivationController, "listen_for_activation", lambda self: None)
     monkeypatch.setattr(ctypes, "GetLastError", lambda: 0)
@@ -317,6 +319,11 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
     app = QApplication.instance() or QApplication([])
     window = EXEBuilderApp()
     try:
+        scheduled_resets = []
+        monkeypatch.setattr(
+            QTimer, "singleShot",
+            lambda milliseconds, callback: scheduled_resets.append((milliseconds, callback)),
+        )
         monkeypatch.setattr(
             QFileDialog, "getSaveFileName", lambda *_args: (str(python_backup), "")
         )
@@ -336,6 +343,12 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
         )
         window._import_saved_build_setups("python")
         assert window.saved_build_setups == [python_setup]
+        assert qcolor_name(Colors.SUCCESS) in window.status_label.styleSheet()
+        assert scheduled_resets[-1][0] == 3000
+        python_refreshes = []
+        window.validator.update_ui_state = lambda: python_refreshes.append(True)
+        scheduled_resets[-1][1]()
+        assert python_refreshes == [True]
 
         monkeypatch.setattr(
             QFileDialog, "getSaveFileName", lambda *_args: (str(dotnet_backup), "")
@@ -352,6 +365,16 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
         )
         window._import_saved_build_setups("dotnet")
         assert window.saved_dotnet_build_setups == [dotnet_setup]
+        assert qcolor_name(Colors.SUCCESS) in window.dotnet_status_label.styleSheet()
+        assert scheduled_resets[-1][0] == 3000
+        dotnet_refreshes = []
+        window.dotnet_publish_controller.refresh_ui = lambda: dotnet_refreshes.append(True)
+        scheduled_resets[-1][1]()
+        assert dotnet_refreshes == [True]
+
+        window._import_saved_build_setups("dotnet")
+        assert "Imported 0 saved setups" in window.dotnet_status_label.toPlainText()
+        assert qcolor_name(Colors.ERROR) in window.dotnet_status_label.styleSheet()
 
         monkeypatch.setattr(
             QFileDialog, "getOpenFileName", lambda *_args: (str(python_backup), "")
@@ -359,6 +382,7 @@ def test_export_import_saved_setups_are_portable_and_mode_specific(monkeypatch, 
         window._import_saved_build_setups("dotnet")
         assert window.saved_dotnet_build_setups == [dotnet_setup]
         assert "different builder" in window.dotnet_status_label.toPlainText()
+        assert qcolor_name(Colors.ERROR) in window.dotnet_status_label.styleSheet()
     finally:
         window._is_closing = True
         window.close()

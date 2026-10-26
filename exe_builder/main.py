@@ -82,6 +82,7 @@ from exe_builder.ui.styles import (
     qcolor_name,
     required_selection_checkbox,
     sidebar_menu_button_style,
+    status_text_style,
     Colors,
     utility_icon_button_style,
 )
@@ -210,6 +211,7 @@ class EXEBuilderApp(QWidget):
         self._completed_dotnet_steps = set()
         self.saved_build_setups = []
         self.saved_dotnet_build_setups = []
+        self._saved_setup_backup_status_tokens = {"python": 0, "dotnet": 0}
                     
         # =============================================================
         # Title + Build Options
@@ -1589,6 +1591,7 @@ class EXEBuilderApp(QWidget):
     def _update_build_summary(self):
         if not hasattr(self, "build_summary_values"):
             return
+        self._invalidate_saved_setup_backup_status("python")
         values = {
             "interpreter": self.python_entry_input.text() or "Not selected",
             "icon": self.icon_path_input.text() or "(No icon needed to build)",
@@ -1769,11 +1772,38 @@ class EXEBuilderApp(QWidget):
             self._populate_saved_dotnet_build_setups()
             self.state_ctrl.save_csharp_state()
 
-    def _set_saved_setup_backup_status(self, mode, message):
+    def _invalidate_saved_setup_backup_status(self, mode):
+        self._saved_setup_backup_status_tokens[mode] += 1
+
+    def _set_saved_setup_backup_status(self, mode, message, color):
+        self._invalidate_saved_setup_backup_status(mode)
         if mode == "python":
             self.status_label.setText(message)
+            self.status_label.setAlignment(Qt.AlignCenter)
+            self.status_label.setStyleSheet(status_text_style(color))
         else:
             self.dotnet_publish_controller._set_status(message)
+            self.dotnet_status_label.setStyleSheet(status_text_style(color))
+
+    def _restore_saved_setup_backup_status(self, mode, message, token):
+        """Restore normal status only if this import result is still current."""
+        if (self._saved_setup_backup_status_tokens[mode] != token or self.building):
+            return
+        label = self.status_label if mode == "python" else self.dotnet_status_label
+        current_text = label.toPlainText() if hasattr(label, "toPlainText") else label.text()
+        if current_text != message:
+            return
+        if mode == "python":
+            self.validator.update_ui_state()
+        else:
+            self.dotnet_publish_controller.refresh_ui()
+
+    def _schedule_saved_setup_backup_status_reset(self, mode, message):
+        token = self._saved_setup_backup_status_tokens[mode]
+        QTimer.singleShot(
+            3000,
+            lambda: self._restore_saved_setup_backup_status(mode, message, token),
+        )
 
     def _export_saved_build_setups(self, mode):
         title = "Export Python Saved Setups" if mode == "python" else "Export C# Saved Setups"
@@ -1800,10 +1830,13 @@ class EXEBuilderApp(QWidget):
             with open(path, "w", encoding="utf-8") as handle:
                 json.dump(payload, handle, indent=4)
         except OSError as exc:
-            self._set_saved_setup_backup_status(mode, f"Could not export saved setups: {exc}")
+            self._set_saved_setup_backup_status(
+                mode, f"Could not export saved setups: {exc}", Colors.ERROR
+            )
             return
         self._set_saved_setup_backup_status(
-            mode, f"Exported {len(setups)} saved setup{'s' if len(setups) != 1 else ''}."
+            mode, f"Exported {len(setups)} saved setup{'s' if len(setups) != 1 else ''}.",
+            Colors.SUCCESS,
         )
 
     def _import_saved_build_setups(self, mode):
@@ -1815,17 +1848,25 @@ class EXEBuilderApp(QWidget):
             with open(path, "r", encoding="utf-8") as handle:
                 payload = json.load(handle)
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            self._set_saved_setup_backup_status(mode, f"Could not import saved setups: {exc}")
+            self._set_saved_setup_backup_status(
+                mode, f"Could not import saved setups: {exc}", Colors.ERROR
+            )
             return
         if not isinstance(payload, dict) or payload.get("format") != "win11-exe-builder-saved-setups":
-            self._set_saved_setup_backup_status(mode, "That file is not a saved-setups backup.")
+            self._set_saved_setup_backup_status(
+                mode, "That file is not a saved-setups backup.", Colors.ERROR
+            )
             return
         if payload.get("version") != 1 or payload.get("builder") != mode:
-            self._set_saved_setup_backup_status(mode, "That backup is for a different builder.")
+            self._set_saved_setup_backup_status(
+                mode, "That backup is for a different builder.", Colors.ERROR
+            )
             return
         imported = payload.get("saved_setups")
         if not isinstance(imported, list):
-            self._set_saved_setup_backup_status(mode, "That backup has no valid saved setups.")
+            self._set_saved_setup_backup_status(
+                mode, "That backup has no valid saved setups.", Colors.ERROR
+            )
             return
         imported = [
             setup for setup in imported
@@ -1841,9 +1882,16 @@ class EXEBuilderApp(QWidget):
                 merged.append(setup)
         added = sum(1 for setup in imported if setup not in existing)
         self._replace_saved_setup_collection(mode, merged[:50])
-        self._set_saved_setup_backup_status(
-            mode, f"Imported {added} saved setup{'s' if added != 1 else ''}."
-        )
+        if not added:
+            self._set_saved_setup_backup_status(
+                mode,
+                "Imported 0 saved setups — no new valid setups were found.",
+                Colors.ERROR,
+            )
+            return
+        message = f"Imported {added} saved setup{'s' if added != 1 else ''}."
+        self._set_saved_setup_backup_status(mode, message, Colors.SUCCESS)
+        self._schedule_saved_setup_backup_status_reset(mode, message)
 
     def _create_dotnet_saved_build_setup_controls(self):
         """Create the C# counterpart of the Python saved-setups controls."""
@@ -3278,6 +3326,7 @@ class EXEBuilderApp(QWidget):
             self.state_ctrl.save_preferences()
 
     def _on_dotnet_settings_changed(self, *_args):
+        self._invalidate_saved_setup_backup_status("dotnet")
         self._update_dotnet_selection_summaries()
         self._update_dotnet_build_summary()
         self._update_dotnet_navigation()
