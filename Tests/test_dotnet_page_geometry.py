@@ -34,11 +34,20 @@ def test_dotnet_divider_uses_the_python_canonical_geometry():
 def test_dotnet_build_section_is_centered_below_the_selection_grid():
     assert "self.dotnet_build_title = QLabel(\"Build Section\")" in MAIN_SOURCE
     assert "self.dotnet_build_title_row = QWidget()" in MAIN_SOURCE
+    assert "self.dotnet_build_options_row = QWidget()" in MAIN_SOURCE
     assert "self.dotnet_build_frame_row = QWidget()" in MAIN_SOURCE
     assert "dotnet_layout.addWidget(self.dotnet_build_title_row)" in MAIN_SOURCE
-    assert "dotnet_layout.addWidget(self.dotnet_build_frame_row)" in MAIN_SOURCE
+    assert "self.dotnet_build_controls = QWidget()" in MAIN_SOURCE
+    assert "dotnet_build_controls_layout.addWidget(self.dotnet_build_options_row)" in MAIN_SOURCE
+    assert "dotnet_build_controls_layout.addWidget(self.dotnet_build_frame_row)" in MAIN_SOURCE
+    assert "dotnet_build_controls_layout.setSpacing(16)" in MAIN_SOURCE
+    assert "(\"Build\", self.dotnet_build_title_frame, self.dotnet_build_controls)" in MAIN_SOURCE
     assert "dotnet_build_frame_row_layout.addWidget(" in MAIN_SOURCE
     assert "left_column.addWidget(panel" not in MAIN_SOURCE
+
+
+def test_application_uses_the_expanded_fixed_height():
+    assert "APP_FIXED_SIZE = (850, 925)" in MAIN_SOURCE
 
 
 def test_dotnet_build_status_text_is_centered():
@@ -57,7 +66,7 @@ def test_dotnet_publish_panel_uses_the_compact_build_width():
     assert "panel.setFixedWidth(PAIRED_FRAME_WIDTH)" not in MAIN_SOURCE
 
 
-def test_dotnet_build_controls_are_ordered_from_runtime_to_actions():
+def test_dotnet_build_options_precede_the_bordered_build_frame():
     runtime_row = "runtime_row = QHBoxLayout()"
     options_row = "publish_options_row = QHBoxLayout()"
     status = "self.dotnet_status_label = QTextEdit"
@@ -66,6 +75,11 @@ def test_dotnet_build_controls_are_ordered_from_runtime_to_actions():
     assert MAIN_SOURCE.index(runtime_row) < MAIN_SOURCE.index(options_row)
     assert MAIN_SOURCE.index(options_row) < MAIN_SOURCE.index(status)
     assert MAIN_SOURCE.index(status) < MAIN_SOURCE.index(actions, MAIN_SOURCE.index(status))
+    assert "build_options_layout.addLayout(runtime_row)" in MAIN_SOURCE
+    assert "build_options_layout.addLayout(publish_options_row)" in MAIN_SOURCE
+    assert "panel_layout.addLayout(runtime_row)" not in MAIN_SOURCE
+    assert "panel_layout.addLayout(publish_options_row)" not in MAIN_SOURCE
+    assert "panel.setFixedHeight(panel.sizeHint().height())" in MAIN_SOURCE
     assert "self.dotnet_status_label.setFixedSize(420, 75)" in MAIN_SOURCE
     assert "self.dotnet_status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)" in MAIN_SOURCE
     assert "self.dotnet_status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)" in MAIN_SOURCE
@@ -75,7 +89,7 @@ def test_dotnet_runtime_and_publish_options_rows_are_centered():
     runtime_start = MAIN_SOURCE.index("runtime_row = QHBoxLayout()")
     options_start = MAIN_SOURCE.index("publish_options_row = QHBoxLayout()")
     runtime_row = MAIN_SOURCE[runtime_start:options_start]
-    options_row = MAIN_SOURCE[options_start:MAIN_SOURCE.index("panel_layout.addLayout(runtime_row)")]
+    options_row = MAIN_SOURCE[options_start:MAIN_SOURCE.index("build_options_layout.addLayout(runtime_row)")]
 
     assert runtime_row.count("runtime_row.addStretch()") == 2
     assert options_row.count("publish_options_row.addStretch()") == 2

@@ -45,15 +45,18 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert window.saved_setups_label.parentWidget() is saved_setups_section
         assert window.saved_setups_label.font().bold()
         assert window.saved_setups_label.alignment() == Qt.AlignCenter
+        assert saved_setups_section.layout().spacing() == 16
         controls = saved_setups_section.layout().itemAt(1).layout()
         assert controls.itemAt(0).widget() is window.save_build_setup_btn
         assert controls.itemAt(1).widget() is window.saved_build_setup_dropdown
         assert controls.itemAt(2).widget() is window.delete_build_setup_btn
         build_layout = build_page.layout()
+        assert build_layout.spacing() == 16
         assert build_layout.indexOf(window.build_summary_frame) < build_layout.indexOf(saved_setups_section)
         assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(window.build_title.parentWidget())
         assert saved_setups_section.width() == window.build_summary_frame.width()
         assert window.python_saved_setups_backup_section.parentWidget() is build_page
+        assert window.python_saved_setups_backup_section.layout().spacing() == 16
         assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(
             window.python_saved_setups_backup_section
         )
@@ -195,11 +198,13 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert window.dotnet_delete_all_build_setups_action.text() == "Delete all"
         assert window.dotnet_saved_setups_label.font().bold()
         assert window.dotnet_saved_setups_label.alignment() == Qt.AlignCenter
+        assert saved_setups_section.layout().spacing() == 16
         controls = saved_setups_section.layout().itemAt(1).layout()
         assert controls.itemAt(0).widget() is window.dotnet_save_build_setup_btn
         assert controls.itemAt(1).widget() is window.saved_dotnet_build_setup_dropdown
         assert controls.itemAt(2).widget() is window.dotnet_delete_build_setup_btn
         build_layout = build_page.layout()
+        assert build_layout.spacing() == 16
         assert build_layout.indexOf(window.dotnet_build_summary_frame) < build_layout.indexOf(
             saved_setups_section
         )
@@ -209,6 +214,7 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         assert window.dotnet_build_summary_frame.width() == window.build_summary_frame.width()
         assert saved_setups_section.width() == window.dotnet_build_summary_frame.width()
         assert window.dotnet_saved_setups_backup_section.parentWidget() is build_page
+        assert window.dotnet_saved_setups_backup_section.layout().spacing() == 16
         assert build_layout.indexOf(saved_setups_section) < build_layout.indexOf(
             window.dotnet_saved_setups_backup_section
         )

@@ -87,7 +87,7 @@ from exe_builder.ui.styles import (
     utility_icon_button_style,
 )
 
-APP_FIXED_SIZE = (850, 760)
+APP_FIXED_SIZE = (850, 925)
 NAVIGATION_SIDEBAR_WIDTH = 205
 CONTENT_PANE_WIDTH = APP_FIXED_SIZE[0] - NAVIGATION_SIDEBAR_WIDTH
 CONTENT_COLUMN_WIDTH = 599
@@ -96,7 +96,6 @@ PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
 BUILD_FRAME_HEIGHT = 200
-DOTNET_BUILD_FRAME_HEIGHT = 215
 DOTNET_BUILD_FRAME_WIDTH = 450
 PROGRESSION_BUTTON_SIZE = (280, 42)
 SELECTOR_ROW_MARGINS = (1, 1, 1, 1)
@@ -1393,7 +1392,7 @@ class EXEBuilderApp(QWidget):
             page = QWidget()
             layout = QVBoxLayout(page)
             layout.setContentsMargins(28, 28, 28, 20)
-            layout.setSpacing(12)
+            layout.setSpacing(16 if label == "Build" else 12)
             if label in self.python_selection_summaries:
                 summary_title, summary_frame, _labels, _values = self.python_selection_summaries[label]
                 layout.addWidget(summary_title, alignment=Qt.AlignHCenter)
@@ -1405,7 +1404,7 @@ class EXEBuilderApp(QWidget):
                 saved_setups_section.setFixedWidth(PAIRED_FRAME_WIDTH)
                 saved_setups_layout = QVBoxLayout(saved_setups_section)
                 saved_setups_layout.setContentsMargins(0, 0, 0, 0)
-                saved_setups_layout.setSpacing(6)
+                saved_setups_layout.setSpacing(16)
                 self.saved_setups_label = QLabel("Saved setups")
                 self.saved_setups_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
                 self.saved_setups_label.setAlignment(Qt.AlignCenter)
@@ -1740,7 +1739,7 @@ class EXEBuilderApp(QWidget):
         section.setFixedWidth(PAIRED_FRAME_WIDTH)
         layout = QVBoxLayout(section)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(16)
         label = QLabel("Setups backup")
         label.setFont(QFont("Rubik UI", 11, QFont.Bold))
         label.setAlignment(Qt.AlignCenter)
@@ -1927,7 +1926,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_saved_setups_section.setFixedWidth(PAIRED_FRAME_WIDTH)
         layout = QVBoxLayout(self.dotnet_saved_setups_section)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(16)
 
         self.dotnet_saved_setups_label = QLabel("Saved setups")
         self.dotnet_saved_setups_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
@@ -2929,6 +2928,14 @@ class EXEBuilderApp(QWidget):
         dotnet_build_frame_row_layout.setContentsMargins(0, 0, 0, 0)
         dotnet_build_frame_row_layout.setSpacing(0)
 
+        self.dotnet_build_options_row = QWidget()
+        self.dotnet_build_options_row.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Fixed
+        )
+        dotnet_build_options_row_layout = QHBoxLayout(self.dotnet_build_options_row)
+        dotnet_build_options_row_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_build_options_row_layout.setSpacing(0)
+
         self.dotnet_build_title_frame = QFrame()
         self.dotnet_build_title_frame.setFrameShape(QFrame.StyledPanel)
         self.dotnet_build_title_frame.setFrameShadow(QFrame.Raised)
@@ -2955,7 +2962,6 @@ class EXEBuilderApp(QWidget):
             self.dotnet_build_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop
         )
         dotnet_layout.addWidget(self.dotnet_build_title_row)
-        dotnet_layout.addWidget(self.dotnet_build_frame_row)
 
         def section(title, column):
             heading = QFrame()
@@ -3101,6 +3107,12 @@ class EXEBuilderApp(QWidget):
         panel_layout.setContentsMargins(12, 12, 12, 12)
         panel_layout.setSpacing(7)
 
+        build_options = QWidget()
+        build_options.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        build_options_layout = QVBoxLayout(build_options)
+        build_options_layout.setContentsMargins(0, 4, 0, 4)
+        build_options_layout.setSpacing(3)
+
         runtime_row = QHBoxLayout()
         self.dotnet_runtime_label = QLabel("Target runtime")
         self.dotnet_runtime_label.setFont(QFont("Rubik UI", 11, QFont.Bold))
@@ -3135,13 +3147,15 @@ class EXEBuilderApp(QWidget):
         publish_options_row.addWidget(self.dotnet_single_file)
         publish_options_row.addWidget(self.dotnet_trim)
         publish_options_row.addStretch()
-        panel_layout.addLayout(runtime_row)
-        panel_layout.addLayout(publish_options_row)
+        build_options_layout.addLayout(runtime_row)
+        build_options_layout.addLayout(publish_options_row)
+        dotnet_build_options_row_layout.addWidget(
+            build_options, alignment=Qt.AlignHCenter | Qt.AlignTop
+        )
 
-        # Keep the C# build section compact while retaining room for both
-        # publish-action buttons and the centered option rows.
+        # The bordered build frame contains only build status and actions;
+        # publish settings live directly below the Build Section heading.
         panel.setFixedWidth(DOTNET_BUILD_FRAME_WIDTH)
-        panel.setFixedHeight(DOTNET_BUILD_FRAME_HEIGHT)
 
         self.dotnet_status_label = QTextEdit("Select a C# project to begin.")
         self.dotnet_status_label.setReadOnly(True)
@@ -3171,9 +3185,16 @@ class EXEBuilderApp(QWidget):
             actions.addWidget(button)
         actions.addStretch()
         panel_layout.addLayout(actions)
+        panel.setFixedHeight(panel.sizeHint().height())
         dotnet_build_frame_row_layout.addWidget(
             panel, alignment=Qt.AlignHCenter | Qt.AlignTop
         )
+        self.dotnet_build_controls = QWidget()
+        dotnet_build_controls_layout = QVBoxLayout(self.dotnet_build_controls)
+        dotnet_build_controls_layout.setContentsMargins(0, 0, 0, 0)
+        dotnet_build_controls_layout.setSpacing(16)
+        dotnet_build_controls_layout.addWidget(self.dotnet_build_options_row)
+        dotnet_build_controls_layout.addWidget(self.dotnet_build_frame_row)
         left_column.addStretch()
         right_column.addStretch()
         self._sync_dotnet_center_divider_height()
@@ -3247,7 +3268,9 @@ class EXEBuilderApp(QWidget):
             dotnet_mode_selector_layout.addWidget(button)
         dotnet_sidebar_layout.addWidget(self.dotnet_mode_selector)
         sections = list(self.dotnet_sections)
-        sections.append(("Build", self.dotnet_build_title_frame, build_panel))
+        sections.append(
+            ("Build", self.dotnet_build_title_frame, self.dotnet_build_controls)
+        )
         self.dotnet_selection_summaries = {
             "File Select": self._create_selection_summary(("icon",)),
             "Output Select": self._create_selection_summary(("icon", "file")),
@@ -3265,7 +3288,7 @@ class EXEBuilderApp(QWidget):
             page = QWidget()
             layout = QVBoxLayout(page)
             layout.setContentsMargins(28, 28, 28, 20)
-            layout.setSpacing(12)
+            layout.setSpacing(16 if label == "Build" else 12)
             if label in self.dotnet_selection_summaries:
                 summary_title, summary_frame, _labels, _values = self.dotnet_selection_summaries[label]
                 layout.addWidget(summary_title, alignment=Qt.AlignHCenter)
@@ -3304,7 +3327,7 @@ class EXEBuilderApp(QWidget):
             layout.addStretch()
             self.dotnet_section_stack.addWidget(page)
             self.dotnet_section_nav.addItem(label.replace(" Select", ""))
-        for row in (self.dotnet_content_row, self.dotnet_build_title_row, self.dotnet_build_frame_row):
+        for row in (self.dotnet_content_row, self.dotnet_build_title_row):
             dotnet_layout.removeWidget(row)
             row.hide()
         shell = QWidget()
