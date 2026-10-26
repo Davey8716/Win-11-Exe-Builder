@@ -60,6 +60,10 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_selection_summaries["File"][3]["icon"].text() == "No icon"
         assert window.build_summary_values["interpreter"].font().bold()
         assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["interpreter"].styleSheet()
+        assert window.build_summary_values["interpreter"].wordWrap()
+        assert window.build_summary_values["interpreter"].height() >= (
+            window.build_summary_values["interpreter"].fontMetrics().lineSpacing() * 2
+        )
         assert window.build_summary_values["interpreter"].textInteractionFlags() == Qt.NoTextInteraction
         assert window.build_summary_values["interpreter"].focusPolicy() == Qt.NoFocus
         assert qcolor_name(Colors.TEXT_LIGHT) in window.build_summary_values["icon"].styleSheet()
@@ -94,20 +98,25 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert window.python_section_stack.currentIndex() == 1
         assert not window.interpreter_continue_btn.isHidden()
         assert bool(window.python_section_nav.item(2).flags() & Qt.ItemIsEnabled)
-        assert window.build_summary_values["interpreter"].text() == "C:/Python/python.exe"
+        assert window.build_summary_values["interpreter"].text().replace("\u200b", "") == "C:/Python/python.exe"
         assert window.python_selection_summaries["Icons"][3]["interpreter"].text() == "C:/Python/python.exe"
         assert window.python_selection_summaries["Output"][3]["interpreter"].text() == "C:/Python/python.exe"
         window.icon_path_input.setText("C:/icons/app.ico")
         assert bool(window.python_section_nav.item(3).flags() & Qt.ItemIsEnabled)
-        assert window.build_summary_values["icon"].text() == "C:/icons/app.ico"
+        assert window.build_summary_values["icon"].text().replace("\u200b", "") == "C:/icons/app.ico"
         assert qcolor_name(Colors.SUCCESS) in window.build_summary_labels["icon"].styleSheet()
         assert qcolor_name(Colors.SUCCESS) in window.build_summary_values["icon"].styleSheet()
         assert window.python_selection_summaries["File"][3]["icon"].text() == "C:/icons/app.ico"
         assert window.python_selection_summaries["Output"][3]["icon"].toolTip() == "C:/icons/app.ico"
         window.script_path_input.setText("C:/project/main.py")
         assert bool(window.python_section_nav.item(4).flags() & Qt.ItemIsEnabled)
-        assert window.build_summary_values["file"].text() == "C:/project/main.py"
+        assert window.build_summary_values["file"].text().replace("\u200b", "") == "C:/project/main.py"
         assert window.python_selection_summaries["Output"][3]["file"].text() == "C:/project/main.py"
+        long_script_path = "C:\\" + "very-long-folder-name\\" * 12 + "main.py"
+        window.script_path_input.setText(long_script_path)
+        displayed_path = window.build_summary_values["file"].text()
+        assert displayed_path.replace("\u200b", "") == long_script_path
+        assert "\\\u200b" in displayed_path
         window.python_section_nav.setCurrentRow(1)
         next_button = next(
             button for button in window.python_section_stack.widget(1).findChildren(QPushButton)

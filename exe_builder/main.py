@@ -1535,8 +1535,8 @@ class EXEBuilderApp(QWidget):
             label.setFixedWidth(85)
             value = QLabel()
             value.setFont(QFont("Rubik UI", 10, QFont.Bold))
-            value.setFixedHeight(24)
-            value.setWordWrap(False)
+            value.setFixedHeight(QFontMetrics(value.font()).lineSpacing() * 2 + 2)
+            value.setWordWrap(True)
             value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             value.setTextInteractionFlags(Qt.NoTextInteraction)
             value.setFocusPolicy(Qt.NoFocus)
@@ -1566,7 +1566,9 @@ class EXEBuilderApp(QWidget):
         }
         for key, text in values.items():
             widget = self.build_summary_values[key]
-            widget.setText(text)
+            # Give QLabel valid wrap points inside Windows and POSIX-style paths.
+            display_text = text.replace("\\", "\\\u200b").replace("/", "/\u200b")
+            widget.setText(display_text)
             widget.setToolTip(text)
             if key == "icon":
                 text_color = Colors.SUCCESS if self.icon_path_input.text() else Colors.TEXT_LIGHT
