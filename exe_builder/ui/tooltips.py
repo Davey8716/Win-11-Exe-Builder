@@ -243,6 +243,11 @@ def attach_tooltips(app):
     )    
 
     QtTooltip(
+        app.run_built_app_after_build,
+        "Launch the executable that was just built after a successful build."
+    )
+
+    QtTooltip(
         app.suppress_exit_dialogue,
         "Skip the exit confirmation popup when closing the app.\n"
         "When enabled, the native X close exits immediately."

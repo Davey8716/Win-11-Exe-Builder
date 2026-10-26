@@ -327,10 +327,16 @@ class DotnetPublishController(QObject):
         )
         if opens_output:
             status += "\nThe output folder will open after building."
+        runs_built_app = bool(
+            getattr(app, "run_built_app_after_build", None)
+            and app.run_built_app_after_build.isChecked()
+        )
+        if runs_built_app:
+            status += "\nThe built app will then run."
         if minimizes:
             status += (
                 "\nThe app will then minimize."
-                if opens_output else "\nThe app will minimize after building."
+                if opens_output else "\nThis app will minimize after building."
             )
         elif closes:
             status += (

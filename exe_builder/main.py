@@ -31,7 +31,7 @@ from exe_builder.controllers.environment_sync_controller import EnvironmentSyncC
 from exe_builder.ui.path_hover import attach_path_hovers
 from exe_builder.ui.tooltips import attach_tooltips
 from PySide6.QtCore import QPoint, QSize, Qt, QTimer
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout, QComboBox,QTextEdit,QListView,QListWidget,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog,QMenu,QToolButton
+from PySide6.QtWidgets import QWidget,QVBoxLayout,QLabel,QPushButton,QFrame,QApplication,QHBoxLayout,QVBoxLayout,QCheckBox,QLineEdit,QHBoxLayout,QGridLayout,QComboBox,QTextEdit,QListView,QListWidget,QScrollArea,QMessageBox,QDialog,QDialogButtonBox,QStackedWidget,QFileDialog,QMenu,QToolButton
 from exe_builder.controllers.validation_controller import ValidationController
 from exe_builder.controllers.activation_controller import ActivationController
 from PySide6.QtGui import QFont, QIcon, QPalette
@@ -95,7 +95,7 @@ PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
 ENV_SYNC_CONTENT_WIDTH = 560
 ENV_SYNC_TABLE_PADDING = 6
-BUILD_FRAME_HEIGHT = 170
+BUILD_FRAME_HEIGHT = 200
 DOTNET_BUILD_FRAME_HEIGHT = 215
 DOTNET_BUILD_FRAME_WIDTH = 450
 PROGRESSION_BUTTON_SIZE = (280, 42)
@@ -216,6 +216,7 @@ class EXEBuilderApp(QWidget):
         self.close_after_build_enabled = getattr(self, "close_after_build_enabled", True)
         self.minimize_after_build_enabled = getattr(self, "minimize_after_build_enabled", True)
         self.open_output_dir_after_build_enabled = getattr(self, "open_output_dir_after_build_enabled", False)
+        self.run_built_app_after_build_enabled = getattr(self, "run_built_app_after_build_enabled", False)
         self.suppress_exit_dialogue_enabled = getattr(self, "suppress_exit_dialogue_enabled", False)
         self.tooltips_enabled = getattr(self, "tooltips_enabled", True)
         self.script_path = getattr(self, "script_path", "")
@@ -281,45 +282,37 @@ class EXEBuilderApp(QWidget):
         self.minimize_after_build = QCheckBox("Minimize After Build")
         self.suppress_exit_dialogue = QCheckBox("Surpress Exit Dialogue")
         self.open_output_dir_after_build = QCheckBox("Open Output Directory")
+        self.run_built_app_after_build = QCheckBox("Run Built App")
         self.close_after_build = QCheckBox("Close After Build")
         self.open_app_data_btn = QPushButton("Open App Data")
 
-        toggle_columns = QHBoxLayout()
-        toggle_columns.setContentsMargins(0, 0, 0, 0)
-        toggle_columns.setSpacing(0)
+        toggle_grid = QGridLayout()
+        toggle_grid.setContentsMargins(0, 0, 0, 0)
+        toggle_grid.setHorizontalSpacing(20)
+        toggle_grid.setVerticalSpacing(8)
+        toggle_grid.setColumnStretch(0, 1)
+        toggle_grid.setColumnStretch(1, 1)
 
-        left_toggle_column = QVBoxLayout()
-        left_toggle_column.setContentsMargins(0, 0, 0, 0)
-        left_toggle_column.setSpacing(0)
-
-        right_toggle_column = QVBoxLayout()
-        right_toggle_column.setContentsMargins(0, 0, 0, 0)
-        right_toggle_column.setSpacing(0)
-
-        left_toggle_column.addWidget(self.tooltips_checkbox, alignment=Qt.AlignLeft | Qt.AlignTop)
-        left_toggle_column.addWidget(self.minimize_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
-        left_toggle_column.addWidget(self.suppress_exit_dialogue, alignment=Qt.AlignLeft | Qt.AlignTop)
-        left_toggle_column.addStretch()
-
-        right_toggle_column.addWidget(self.open_output_dir_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
-        right_toggle_column.addWidget(self.close_after_build, alignment=Qt.AlignLeft | Qt.AlignTop)
-        right_toggle_column.addWidget(self.open_app_data_btn, alignment=Qt.AlignLeft | Qt.AlignTop)
-        right_toggle_column.addStretch()
-
-        toggle_columns.addLayout(left_toggle_column, 1)
-        toggle_columns.addLayout(right_toggle_column, 1)
+        for row, left, right in (
+            (0, self.tooltips_checkbox, self.open_output_dir_after_build),
+            (1, self.minimize_after_build, self.run_built_app_after_build),
+            (2, self.suppress_exit_dialogue, self.close_after_build),
+        ):
+            toggle_grid.addWidget(left, row, 0, alignment=Qt.AlignLeft | Qt.AlignTop)
+            toggle_grid.addWidget(right, row, 1, alignment=Qt.AlignLeft | Qt.AlignTop)
+        toggle_grid.addWidget(self.open_app_data_btn, 3, 0, alignment=Qt.AlignLeft | Qt.AlignTop)
 
         self.build_options_dialog = QDialog(self)
         self.build_options_dialog.setWindowTitle("Global Build Options")
         self.build_options_dialog.setModal(True)
-        self.build_options_dialog.setFixedSize(500, 155)
+        self.build_options_dialog.setFixedSize(500, 220)
         self.build_options_dialog.setStyleSheet(BUILD_OPTIONS_DIALOG_STYLE)
         apply_build_options_title_bar_style(self.build_options_dialog)
 
         build_options_layout = QVBoxLayout(self.build_options_dialog)
-        build_options_layout.setContentsMargins(12, 12, 12, 10)
-        build_options_layout.setSpacing(6)
-        build_options_layout.addLayout(toggle_columns)
+        build_options_layout.setContentsMargins(20, 20, 20, 20)
+        build_options_layout.setSpacing(8)
+        build_options_layout.addLayout(toggle_grid)
 
         build_options_buttons = QDialogButtonBox(QDialogButtonBox.Close)
         build_options_buttons.rejected.connect(self.build_options_dialog.reject)
@@ -328,6 +321,7 @@ class EXEBuilderApp(QWidget):
             QDialogButtonBox.Close
         )
         self.build_options_close_btn.setFixedSize(120, 32)
+        self.build_options_close_btn.setFont(QFont("Rubik UI", 13, QFont.Bold))
         build_options_layout.addWidget(build_options_buttons)
 
         # -------------------------------
@@ -996,7 +990,7 @@ class EXEBuilderApp(QWidget):
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
-        self.status_label.setFixedSize(250, 80)
+        self.status_label.setFixedSize(250, 110)
         self.status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))
@@ -1188,6 +1182,9 @@ class EXEBuilderApp(QWidget):
         self.open_output_dir_after_build.setFont(QFont("Rubik UI", 13, QFont.Bold))
 
         self.open_output_dir_after_build.setChecked(False)
+        self.run_built_app_after_build.setFixedSize(240, 28)
+        self.run_built_app_after_build.setFont(QFont("Rubik UI", 13, QFont.Bold))
+        self.run_built_app_after_build.setChecked(False)
         self.open_app_data_btn.setFixedSize(225, 28)
         self.open_app_data_btn.setFont(QFont("Rubik UI", 13, QFont.Bold))
 
@@ -1340,6 +1337,7 @@ class EXEBuilderApp(QWidget):
         self.script_path_input.textChanged.connect(self.ui_handlers.on_script_path_change)
         self.minimize_after_build.stateChanged.connect(self.ui_handlers.on_minimize_toggle)
         self.open_output_dir_after_build.stateChanged.connect(self.ui_handlers.on_open_output_dir_toggle)
+        self.run_built_app_after_build.stateChanged.connect(self.ui_handlers.on_run_built_app_toggle)
         self.suppress_exit_dialogue.stateChanged.connect(self.ui_handlers.on_suppress_exit_dialogue_toggle)
         self.close_after_build.stateChanged.connect(self.ui_handlers.on_close_toggle)
 

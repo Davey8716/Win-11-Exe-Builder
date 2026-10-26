@@ -416,6 +416,13 @@ class UIHandlers:
         app.validator.update_ui_state()
         app.dotnet_publish_controller.refresh_ui()
 
+    def on_run_built_app_toggle(self, state):
+        app = self.app
+        app.run_built_app_after_build_enabled = bool(state)
+        app.state_ctrl.save_state()
+        app.validator.update_ui_state()
+        app.dotnet_publish_controller.refresh_ui()
+
     def on_suppress_exit_dialogue_toggle(self, state):
         app = self.app
         app.suppress_exit_dialogue_enabled = bool(state)

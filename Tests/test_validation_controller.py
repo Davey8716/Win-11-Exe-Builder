@@ -264,7 +264,7 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
         "A build already exists here. Build again to overwrite it, "
         "or choose another output folder."
     )
-    assert app.status_label.size == (250, 80)
+    assert app.status_label.size == (250, 110)
 
     app.building = True
     controller.update_ui_state()

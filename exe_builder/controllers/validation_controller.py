@@ -116,7 +116,7 @@ class ValidationController:
 
         state["is_ready"] = is_ready
 
-        self.app.status_label.setFixedSize(250, 80)
+        self.app.status_label.setFixedSize(250, 110)
 
         # Track previous state
         self.app._was_build_ready = is_ready
@@ -404,6 +404,9 @@ class ValidationController:
             app.open_output_dir_after_build.setStyleSheet(
                 build_disabled_checkbox_without_checkmark()
             )
+        run_built_app = getattr(app, "run_built_app_after_build", None)
+        if run_built_app is not None:
+            set_btn(run_built_app, not building)
         # 🔑 mutual exclusion + build lock
         min_checked = app.minimize_after_build.isChecked()
         close_checked = app.close_after_build.isChecked()
@@ -559,10 +562,13 @@ class ValidationController:
                 opens_output = app.open_output_dir_after_build.isChecked()
                 if opens_output:
                     status_text += "\nThe output folder will open after building."
+                runs_built_app = getattr(app, "run_built_app_after_build", None)
+                if runs_built_app is not None and runs_built_app.isChecked():
+                    status_text += "\nThe built app will then run."
                 if app.minimize_after_build.isChecked():
                     status_text += (
                         "\nThe app will then minimize."
-                        if opens_output else "\nThe app will minimize after building."
+                        if opens_output else "\nThis app will minimize after building."
                     )
                 elif app.close_after_build.isChecked():
                     status_text += (

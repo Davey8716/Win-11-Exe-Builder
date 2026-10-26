@@ -57,7 +57,9 @@ size, but applications that rely on reflection or dynamic loading may require
 additional project configuration. C# publishing runs `dotnet clean` first so
 an icon embedded by an earlier build is not reused from .NET build outputs.
 The output folder has an explicit **Open
-Output Folder** action as well as the existing post-build option.
+Output Folder** action as well as the existing post-build option. Build options
+also include **Run Built App**, which starts the exact executable that was just
+created after a successful Python or C# build.
 
 When an icon is selected, the builder also copies it beside the published EXE
 as `_exe_builder_tray_icon.ico`, including for single-file output. A C# app can

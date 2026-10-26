@@ -144,6 +144,48 @@ def test_open_python_output_folder_opens_only_a_complete_matching_build(tmp_path
     assert opened == [str(target)]
 
 
+def test_run_built_app_after_python_build_launches_the_completed_executable(tmp_path, monkeypatch):
+    script = tmp_path / "launcher.py"
+    script.write_text("print('hello')\n", encoding="utf-8")
+    target = tmp_path / "Builder"
+    target.mkdir()
+    executable = target / "Builder.exe"
+    executable.write_bytes(b"complete")
+    app = make_app(
+        script_path_input=DummyInput(str(script)),
+        output_path_input=DummyInput(str(tmp_path)),
+        run_built_app_after_build_enabled=True,
+        build_mode="python",
+    )
+    controller = BuildController(app)
+    launched = []
+    monkeypatch.setattr(build_controller.os, "startfile", launched.append, raising=False)
+
+    controller._run_built_application_on_success()
+
+    assert launched == [str(executable)]
+
+
+def test_run_built_app_after_dotnet_publish_launches_the_named_executable(tmp_path, monkeypatch):
+    target = tmp_path / "PublishedApp"
+    target.mkdir()
+    executable = target / "PublishedApp.exe"
+    executable.write_bytes(b"complete")
+    app = make_app(
+        run_built_app_after_build_enabled=True,
+        build_mode="dotnet",
+        dotnet_name_input=DummyInput("PublishedApp"),
+        current_build_paths=[str(target)],
+    )
+    controller = BuildController(app)
+    launched = []
+    monkeypatch.setattr(build_controller.os, "startfile", launched.append, raising=False)
+
+    controller._run_built_application_on_success()
+
+    assert launched == [str(executable)]
+
+
 def test_initialize_debug_log_uses_selected_output_folder(tmp_path):
     script = tmp_path / "project" / "main.py"
     script.parent.mkdir()

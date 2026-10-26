@@ -1200,10 +1200,38 @@ class BuildController(QObject):
 
     def _run_success_post_build_action(self):
         app = self.app
+        self._run_built_application_on_success()
         if getattr(app, "minimize_after_build_enabled", False):
             app.showMinimized()
         if getattr(app, "close_after_build_enabled", False):
             app.close_app()
+
+    def _run_built_application_on_success(self):
+        """Launch the executable produced by this build, when requested."""
+        app = self.app
+        if not getattr(app, "run_built_app_after_build_enabled", False):
+            return
+
+        executable = ""
+        if getattr(app, "build_mode", "python") == "python":
+            output = self.latest_python_output_path()
+            if output:
+                executable = os.path.join(output, f"{os.path.basename(output)}.exe")
+        else:
+            name_input = getattr(app, "dotnet_name_input", None)
+            name = name_input.text().strip() if name_input is not None else ""
+            for output in reversed(getattr(app, "current_build_paths", []) or []):
+                candidate = os.path.join(output, f"{name}.exe") if name else ""
+                if candidate and os.path.isfile(candidate):
+                    executable = candidate
+                    break
+
+        if not executable or not os.path.isfile(executable):
+            return
+        try:
+            os.startfile(executable)
+        except OSError:
+            pass
 
     def _maybe_open_output_directory_on_success(self, output_dir=None):
         app = self.app

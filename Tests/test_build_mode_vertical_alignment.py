@@ -30,6 +30,22 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
     window = EXEBuilderApp()
 
     try:
+        build_options_dialog = window.build_options_dialog
+        build_options_grid = build_options_dialog.layout().itemAt(0).layout()
+        assert build_options_dialog.size().width() == 500
+        assert build_options_dialog.size().height() == 220
+        assert build_options_grid.horizontalSpacing() == 20
+        assert build_options_grid.verticalSpacing() == 8
+        assert build_options_grid.itemAtPosition(3, 0).widget() is window.open_app_data_btn
+        assert build_options_grid.itemAtPosition(3, 1) is None
+        close_font = window.build_options_close_btn.font()
+        assert close_font.family() == "Rubik UI"
+        assert close_font.pointSize() == 13
+        assert close_font.bold()
+        assert window.status_label.size().width() == 250
+        assert window.status_label.size().height() == 110
+        assert window.status_label.parentWidget().height() == 200
+
         def horizontal_gap(left, right):
             left_edge = left.mapTo(window, QPoint(left.width(), 0)).x()
             right_edge = right.mapTo(window, QPoint(0, 0)).x()
