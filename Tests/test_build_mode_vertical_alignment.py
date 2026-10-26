@@ -53,7 +53,10 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         python_title_center = window.title_label.mapTo(
             window, QPoint(window.title_label.width() // 2, 0)
         ).x()
-        assert abs(python_title_center - window.width() / 2) <= 1
+        python_content_center = window.python_section_stack.mapTo(
+            window, QPoint(window.python_section_stack.width() // 2, 0)
+        ).x()
+        assert abs(python_title_center - python_content_center) <= 1
         assert window.build_options_btn.text() == "☰"
         assert window.build_options_btn.parentWidget() is window.title_options_slot
         assert window.python_mode_selector.layout().count() == 2
@@ -241,7 +244,10 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         dotnet_title_center = window.dotnet_mode_title.mapTo(
             window, QPoint(window.dotnet_mode_title.width() // 2, 0)
         ).x()
-        assert abs(dotnet_title_center - window.width() / 2) <= 1
+        dotnet_content_center = window.dotnet_section_stack.mapTo(
+            window, QPoint(window.dotnet_section_stack.width() // 2, 0)
+        ).x()
+        assert abs(dotnet_title_center - dotnet_content_center) <= 1
         assert window.build_options_btn.parentWidget() is window.dotnet_title_options_slot
         assert window.dotnet_mode_selector.layout().count() == 2
         assert window.dotnet_section_nav.count() == 4

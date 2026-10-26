@@ -86,6 +86,8 @@ from exe_builder.ui.styles import (
 )
 
 APP_FIXED_SIZE = (850, 760)
+NAVIGATION_SIDEBAR_WIDTH = 205
+CONTENT_PANE_WIDTH = APP_FIXED_SIZE[0] - NAVIGATION_SIDEBAR_WIDTH
 CONTENT_COLUMN_WIDTH = 599
 PATH_DROPDOWN_SIZE = (320, 35)
 PAIRED_FRAME_WIDTH = 575
@@ -318,21 +320,27 @@ class EXEBuilderApp(QWidget):
 
         title_row = QWidget()
         title_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        title_row.setFixedHeight(44)
+        title_row.setFixedSize(APP_FIXED_SIZE[0], 44)
         title_row_layout = QHBoxLayout(title_row)
-        title_row_layout.setContentsMargins(5, 0, 5, 0)
+        title_row_layout.setContentsMargins(0, 0, 0, 0)
         title_row_layout.setSpacing(0)
+        self.python_title_navigation_header = QWidget()
+        self.python_title_navigation_header.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
+        title_navigation_layout = QHBoxLayout(self.python_title_navigation_header)
+        title_navigation_layout.setContentsMargins(5, 0, 0, 0)
+        title_navigation_layout.setSpacing(0)
         self.title_options_slot = QWidget()
         self.title_options_slot.setFixedSize(34, 34)
         self.title_options_layout = QHBoxLayout(self.title_options_slot)
         self.title_options_layout.setContentsMargins(0, 0, 0, 0)
-        title_row_layout.addWidget(self.title_options_slot)
-        title_row_layout.addStretch()
-        title_row_layout.addWidget(self.title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
-        title_row_layout.addStretch()
-        title_right_spacer = QWidget()
-        title_right_spacer.setFixedSize(34, 34)
-        title_row_layout.addWidget(title_right_spacer)
+        title_navigation_layout.addWidget(
+            self.title_options_slot, alignment=Qt.AlignLeft | Qt.AlignVCenter
+        )
+        self.python_title_content_header = QWidget()
+        self.python_title_content_header.setFixedWidth(CONTENT_PANE_WIDTH)
+        self.title_frame.setParent(self.python_title_content_header)
+        title_row_layout.addWidget(self.python_title_navigation_header)
+        title_row_layout.addWidget(self.python_title_content_header)
 
         self.content_row = QWidget()
         self.content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -1435,7 +1443,7 @@ class EXEBuilderApp(QWidget):
             if old_row and old_row.widget():
                 old_row.widget().hide()
         self.python_navigation_sidebar = QWidget()
-        self.python_navigation_sidebar.setFixedWidth(205)
+        self.python_navigation_sidebar.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
         self.python_navigation_sidebar.setStyleSheet("background: #19232d;")
         sidebar_layout = QVBoxLayout(self.python_navigation_sidebar)
         sidebar_layout.setContentsMargins(10, 8, 10, 8)
@@ -2558,22 +2566,29 @@ class EXEBuilderApp(QWidget):
         dotnet_title_layout.addWidget(self.dotnet_mode_title)
         dotnet_title_layout.addStretch()
         dotnet_header = QWidget()
-        dotnet_header.setFixedHeight(44)
-        dotnet_header.setFixedWidth(APP_FIXED_SIZE[0])
+        dotnet_header.setFixedSize(APP_FIXED_SIZE[0], 44)
         dotnet_header_layout = QHBoxLayout(dotnet_header)
-        dotnet_header_layout.setContentsMargins(5, 0, 5, 0)
+        dotnet_header_layout.setContentsMargins(0, 0, 0, 0)
         dotnet_header_layout.setSpacing(0)
+        self.dotnet_title_navigation_header = QWidget()
+        self.dotnet_title_navigation_header.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
+        dotnet_title_navigation_layout = QHBoxLayout(
+            self.dotnet_title_navigation_header
+        )
+        dotnet_title_navigation_layout.setContentsMargins(5, 0, 0, 0)
+        dotnet_title_navigation_layout.setSpacing(0)
         self.dotnet_title_options_slot = QWidget()
         self.dotnet_title_options_slot.setFixedSize(34, 34)
         self.dotnet_title_options_layout = QHBoxLayout(self.dotnet_title_options_slot)
         self.dotnet_title_options_layout.setContentsMargins(0, 0, 0, 0)
-        dotnet_header_layout.addWidget(self.dotnet_title_options_slot)
-        dotnet_header_layout.addStretch()
-        dotnet_header_layout.addWidget(self.dotnet_title_container, alignment=Qt.AlignHCenter | Qt.AlignTop)
-        dotnet_header_layout.addStretch()
-        dotnet_title_right_spacer = QWidget()
-        dotnet_title_right_spacer.setFixedSize(34, 34)
-        dotnet_header_layout.addWidget(dotnet_title_right_spacer)
+        dotnet_title_navigation_layout.addWidget(
+            self.dotnet_title_options_slot, alignment=Qt.AlignLeft | Qt.AlignVCenter
+        )
+        self.dotnet_title_content_header = QWidget()
+        self.dotnet_title_content_header.setFixedWidth(CONTENT_PANE_WIDTH)
+        self.dotnet_title_container.setParent(self.dotnet_title_content_header)
+        dotnet_header_layout.addWidget(self.dotnet_title_navigation_header)
+        dotnet_header_layout.addWidget(self.dotnet_title_content_header)
         self.dotnet_section_title_frames = []
         self.dotnet_configuration_frames = []
         self.dotnet_sections = []
@@ -2905,7 +2920,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_section_nav.setStyleSheet(SECTION_NAV_STYLE)
         self.dotnet_section_stack = QStackedWidget()
         self.dotnet_navigation_sidebar = QWidget()
-        self.dotnet_navigation_sidebar.setFixedWidth(205)
+        self.dotnet_navigation_sidebar.setFixedWidth(NAVIGATION_SIDEBAR_WIDTH)
         self.dotnet_navigation_sidebar.setStyleSheet("background: #19232d;")
         dotnet_sidebar_layout = QVBoxLayout(self.dotnet_navigation_sidebar)
         dotnet_sidebar_layout.setContentsMargins(10, 8, 10, 8)
@@ -3067,6 +3082,14 @@ class EXEBuilderApp(QWidget):
         header_layout.addWidget(self.build_options_btn)
         self.build_options_btn.show()
 
+    def _center_mode_headers(self):
+        """Center each visible mode title over its content pane, not its sidebar."""
+        for container, title in (
+            (self.python_title_content_header, self.title_frame),
+            (self.dotnet_title_content_header, self.dotnet_title_container),
+        ):
+            title.move((container.width() - title.width()) // 2, 0)
+
     def set_build_mode(self, mode, save=True):
         if mode not in {"python", "dotnet"} or getattr(self, "building", False):
             return
@@ -3075,6 +3098,8 @@ class EXEBuilderApp(QWidget):
         self._place_build_options_button(mode)
         self._apply_build_mode_button_state(mode)
         self.setFixedSize(*APP_FIXED_SIZE)
+        self._center_mode_headers()
+        QTimer.singleShot(0, self._center_mode_headers)
         if mode == "python":
             self.validation_controller.update_build_button()
             self.validation_controller.update_ui_state()
