@@ -274,7 +274,8 @@ def attach_tooltips(app):
 
     QtTooltip(
         app.open_output_dir_after_build,
-        "Opens Output Directory after build if it output directory is not Desktop."
+        "Opens the built Python app folder after a build. For multiple builds, "
+        "opens the output directory. Disabled for Desktop output."
 
     )    
 

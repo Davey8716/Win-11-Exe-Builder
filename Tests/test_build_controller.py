@@ -2276,6 +2276,110 @@ def test_build_exe_adds_parent_search_path_for_sibling_packages(tmp_path, monkey
     assert f"--add-data={project_root}{os.pathsep}." in app.captured_cmd
 
 
+def test_build_complete_presents_exact_generated_app_folder(tmp_path, monkeypatch):
+    output_dir = tmp_path / "dist"
+    output_dir.mkdir()
+    target = output_dir / "main_Paltalk Automation_UK_29-10-2026_15-01_py3.14"
+    target.mkdir()
+    (target / (target.name + ".exe")).touch()
+    (target / "_internal").mkdir()
+    opened, focused = [], []
+    monkeypatch.setattr(build_controller.os, "startfile", opened.append, raising=False)
+    app = make_app(
+        build_start_time=0, last_build_seconds=45, status_label=DummyLabel(),
+        output_path=str(output_dir), current_build_paths=[str(target)],
+        open_output_dir_after_build_enabled=True, minimize_after_build_enabled=False,
+        close_after_build_enabled=False, state_ctrl=SimpleNamespace(save_state=lambda: None),
+        validation_controller=DummyValidationController(), set_status=lambda _message: None,
+        build_process=None,
+    )
+    controller = BuildController(app)
+    monkeypatch.setattr(build_controller.time, "time", lambda: 5)
+    monkeypatch.setattr(controller, "stop_eta", lambda: None)
+    monkeypatch.setattr(build_controller.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(controller, "_focus_existing_output_explorer_window", lambda path: focused.append(path) or False)
+
+    controller._active_python_output_target = str(target)
+    controller._on_build_complete_ui(0, "", "")
+    assert focused == [str(target)]
+    assert opened == [str(target)]
+
+    opened.clear()
+    focused.clear()
+    monkeypatch.setattr(controller, "_focus_existing_output_explorer_window", lambda path: focused.append(path) or True)
+    controller._active_python_output_target = str(target)
+    controller._on_build_complete_ui(0, "", "")
+    assert focused == [str(target)]
+    assert opened == []
+
+    focused.clear()
+    app.open_output_dir_after_build_enabled = False
+    controller._active_python_output_target = str(target)
+    controller._on_build_complete_ui(0, "", "")
+    assert focused == [] and opened == []
+
+    app.open_output_dir_after_build_enabled = True
+    controller._on_build_complete_ui(1, "", "failed")
+    assert focused == [] and opened == []
+
+
+def test_single_build_passes_generated_target_to_explorer(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    opened = []
+    app = make_buildable_app(tmp_path, open_output_dir_after_build_enabled=True)
+    app.exe_name_input.setText("main_Paltalk Automation")
+    app.append_datetime = True
+    app.datetime_format = "%d-%m-%Y_%H-%M"
+    app.append_py_version = True
+    controller = BuildController(app)
+    monkeypatch.setattr(controller, "_get_python_version_suffix", lambda: "py3.14")
+    monkeypatch.setattr(controller, "_focus_existing_output_explorer_window", lambda _path: False)
+    monkeypatch.setattr(build_controller.os, "startfile", opened.append, raising=False)
+
+    controller.build_exe(None)
+    target = latest_build_target(app)
+    target.mkdir()
+    (target / (target.name + ".exe")).touch()
+    controller._on_build_complete_ui(0, "", "")
+
+    assert "Paltalk Automation" in target.name and target.name.endswith("py3.14")
+    assert opened == [str(target)]
+
+
+def test_explorer_focus_does_not_match_parent_folder(tmp_path, monkeypatch):
+    import win32com.client
+
+    parent = tmp_path / "Paltalk Automation"
+    target = parent / "main_Paltalk Automation_UK_29-10-2026_15-01_py3.14"
+    window = SimpleNamespace(Document=SimpleNamespace(Folder=SimpleNamespace(Self=SimpleNamespace(Path=str(parent)))), HWND=123)
+    windows = SimpleNamespace(Count=1, Item=lambda _index: window)
+    monkeypatch.setattr(win32com.client, "Dispatch", lambda _name: SimpleNamespace(Windows=lambda: windows))
+    controller = BuildController(make_app())
+    focused = []
+    monkeypatch.setattr(controller, "_focus_window_by_handle", lambda hwnd: focused.append(hwnd) or True)
+
+    assert controller._focus_existing_output_explorer_window(str(target)) is False
+    assert focused == []
+
+
+def test_missing_completed_app_logs_fallback(tmp_path, monkeypatch):
+    output = tmp_path / "dist"
+    output.mkdir()
+    missing = output / "app_3.14"
+    log = output / "debug.log"
+    opened = []
+    app = make_app(output_path=str(output), debug_log_path=str(log), open_output_dir_after_build_enabled=True)
+    controller = BuildController(app)
+    monkeypatch.setattr(controller, "_focus_existing_output_explorer_window", lambda _path: False)
+    monkeypatch.setattr(build_controller.os, "startfile", opened.append, raising=False)
+
+    controller._present_successful_build_outputs(completed_output=str(missing))
+
+    assert opened == [str(output)]
+    assert str(missing) in log.read_text(encoding="utf-8")
+    assert "Matching executable was not found" in log.read_text(encoding="utf-8")
+
+
 def test_build_complete_focuses_existing_output_directory_window(tmp_path, monkeypatch):
     output_dir = tmp_path / "dist"
     output_dir.mkdir()

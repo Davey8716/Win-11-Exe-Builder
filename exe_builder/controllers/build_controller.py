@@ -83,6 +83,7 @@ class BuildController(QObject):
         self._mass_datetime_output_group = []
         self._pending_self_update = None
         self._active_self_update_plan = None
+        self._active_python_output_target = ""
         self._self_update_launched = False
         self._python_output_identity = None
         self._python_output_target = ""
@@ -279,6 +280,7 @@ class BuildController(QObject):
         plan = self._pending_self_update
         self._pending_self_update = None
         self._active_self_update_plan = None
+        self._active_python_output_target = ""
         if plan is not None and not self._self_update_launched:
             cleanup_staging(plan)
 
@@ -1162,7 +1164,7 @@ class BuildController(QObject):
         except Exception:
             return False
 
-    def _present_successful_build_outputs(self, output_dir=None):
+    def _present_successful_build_outputs(self, output_dir=None, completed_output=None):
         output_dir = os.path.normpath(
             output_dir if output_dir is not None else getattr(self.app, "output_path", "") or ""
         )
@@ -1176,7 +1178,19 @@ class BuildController(QObject):
                 pass
             return
 
-        self._maybe_open_output_directory_on_success(output_dir)
+        target = completed_output if self._is_complete_python_output(completed_output) else output_dir
+        if target == output_dir and getattr(self.app, "open_output_dir_after_build_enabled", False) and completed_output is not None:
+            log_path = getattr(self.app, "debug_log_path", "")
+            if log_path:
+                try:
+                    with open(log_path, "a", encoding="utf-8") as log:
+                        _write_debug_log_section(log, "Output folder fallback", [
+                            f"Expected app folder: {completed_output or '<not recorded>'}",
+                            "Matching executable was not found; opening the selected output directory.",
+                        ])
+                except OSError:
+                    pass
+        self._maybe_open_output_directory_on_success(target)
 
     def _present_successful_mass_datetime_outputs(self):
         output_dir = os.path.normpath(getattr(self.app, "output_path", "") or "")
@@ -1398,6 +1412,7 @@ class BuildController(QObject):
         app.entry_script = entry_point
         app.project_root = project_root
         app.output_path = outdir
+        self._active_python_output_target = ""
         self._initialize_debug_log(script, outdir)
 
         # ==================================================
@@ -1676,6 +1691,7 @@ class BuildController(QObject):
             build_path,
             spec_path,
         ]
+        self._active_python_output_target = target_dir
 
         # ==================================================
         # Run PyInstaller (threaded)
@@ -1714,6 +1730,8 @@ class BuildController(QObject):
 
         active_self_update = self._active_self_update_plan
         self._active_self_update_plan = None
+        completed_output = self._active_python_output_target
+        self._active_python_output_target = ""
         if ret == 0 and active_self_update is not None:
             try:
                 validate_self_update_plan(active_self_update)
@@ -1735,14 +1753,7 @@ class BuildController(QObject):
         mass_completed_successfully = False
 
         if ret == 0:
-            completed_output = next(
-                (
-                    path for path in getattr(app, "current_build_paths", [])
-                    if self._is_complete_python_output(path)
-                ),
-                "",
-            )
-            if completed_output:
+            if self._is_complete_python_output(completed_output):
                 self._set_current_python_output(completed_output)
             app.last_build_seconds = int(time.time() - app.build_start_time)
             if mass_active:
@@ -1793,7 +1804,7 @@ class BuildController(QObject):
             if mass_completed_successfully:
                 self._present_successful_mass_datetime_outputs()
             else:
-                self._present_successful_build_outputs()
+                self._present_successful_build_outputs(completed_output=completed_output)
             app.state_ctrl.save_state()
             self._run_success_post_build_action()
         
