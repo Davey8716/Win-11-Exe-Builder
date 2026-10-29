@@ -1,7 +1,8 @@
-import datetime,os,sys,subprocess,time,warnings
+import datetime,os,sys,subprocess,time,warnings,threading
 from PySide6.QtGui import QFont
 from ..build.bundle_validation import validate_bundle_inputs
 from ..build.external_python import external_python_environment
+from ..build.taskbar_pin import PIN_IMPLEMENTATION_VERSION, pin_executable
 from ..build.datetime_build_options import (
     DATETIME_FORMAT_REGIONS,
     ISO_MASS_DATETIME_BUILD_SENTINEL,
@@ -67,6 +68,7 @@ def _expected_pyinstaller_exe_path(build_root, final_exe_name):
 
 class BuildController(QObject):
     build_complete_signal = Signal(int, str, str)
+    pin_finished_signal = Signal()
 
     def __init__(self, app):
         super().__init__()
@@ -89,8 +91,10 @@ class BuildController(QObject):
         self._python_output_target = ""
         self.build_thread = None
         self.worker = None
+        self._pin_lowered_window = None
 
         self.build_complete_signal.connect(self._on_build_complete_ui)
+        self.pin_finished_signal.connect(self._on_pin_finished)
 
     # ============================================================
     # MASS DATE/TIME BUILD QUEUE
@@ -1805,11 +1809,98 @@ class BuildController(QObject):
                 self._present_successful_mass_datetime_outputs()
             else:
                 self._present_successful_build_outputs(completed_output=completed_output)
+                if (getattr(app, "pin_built_exe_after_build_enabled", False)
+                        and getattr(app, "open_output_dir_after_build_enabled", False)
+                        and getattr(app, "build_mode", "python") == "python"
+                        and not self._is_desktop_output_path(getattr(app, "output_path", ""))):
+                    self._start_pin_attempt(completed_output)
+                    return
             app.state_ctrl.save_state()
             self._run_success_post_build_action()
         
             
         QTimer.singleShot(5000, self._unlock_status)
+
+    def _start_pin_attempt(self, output):
+        self.app.building = True
+        self.app.validation_controller.update_build_button()
+        self.app.validation_controller.update_ui_state()
+        self._pin_lowered_window = self._lower_builder_for_pin()
+
+        def run():
+            try:
+                self._pin_completed_python_output(output)
+            finally:
+                try:
+                    self.pin_finished_signal.emit()
+                except RuntimeError:
+                    pass
+
+        threading.Thread(target=run, daemon=True, name="taskbar-pin").start()
+
+    def _on_pin_finished(self):
+        app = self.app
+        self._restore_builder_after_pin()
+        if getattr(app, "_is_closing", False):
+            return
+        app.building = False
+        app.validation_controller.update_build_button()
+        app.validation_controller.update_ui_state()
+        app.state_ctrl.save_state()
+        self._run_success_post_build_action()
+        QTimer.singleShot(5000, self._unlock_status)
+
+    def _log_pin_stage(self, message):
+        try:
+            with open(self.app.debug_log_path, "a", encoding="utf-8") as log:
+                log.write(f"  {message}\n")
+                log.flush()
+        except (OSError, AttributeError):
+            pass
+
+    def _lower_builder_for_pin(self):
+        try:
+            import win32con
+            import win32gui
+
+            hwnd = int(self.app.winId())
+            was_topmost = bool(win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE) & win32con.WS_EX_TOPMOST)
+            flags = win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+            win32gui.SetWindowPos(hwnd, win32con.HWND_BOTTOM, 0, 0, 0, 0, flags)
+            self._log_pin_stage(f"Lowered builder window for taskbar pin; previously topmost={was_topmost}.")
+            return hwnd, was_topmost
+        except Exception as exc:
+            self._log_pin_stage(f"Could not lower builder window for taskbar pin: {exc}")
+            return None
+
+    def _restore_builder_after_pin(self):
+        lowered = self._pin_lowered_window
+        self._pin_lowered_window = None
+        if not lowered or not lowered[1] or getattr(self.app, "_is_closing", False):
+            return
+        try:
+            import win32con
+            import win32gui
+
+            flags = win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+            win32gui.SetWindowPos(lowered[0], win32con.HWND_TOPMOST, 0, 0, 0, 0, flags)
+            self._log_pin_stage("Restored builder window's topmost status after taskbar pin.")
+        except Exception as exc:
+            self._log_pin_stage(f"Could not restore builder window's topmost status: {exc}")
+
+    def _pin_completed_python_output(self, output):
+        log_stage = self._log_pin_stage
+
+        log_stage(f"Taskbar pin started. Implementation: {PIN_IMPLEMENTATION_VERSION}")
+        try:
+            if self._is_complete_python_output(output):
+                executable = os.path.join(output, f"{os.path.basename(output)}.exe")
+                success, diagnostic = pin_executable(executable, on_stage=log_stage)
+            else:
+                success, diagnostic = False, "The completed app folder or matching EXE could not be verified."
+        except Exception as exc:
+            success, diagnostic = False, f"Unexpected pin error ({type(exc).__name__}): {exc}"
+        log_stage(f"Taskbar pin {'command invoked' if success else 'stopped'}: {diagnostic}")
 
     def _unlock_status(self):
         app = self.app

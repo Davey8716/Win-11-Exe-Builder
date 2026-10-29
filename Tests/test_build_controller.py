@@ -4,6 +4,8 @@ from datetime import datetime as real_datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from exe_builder.controllers import build_controller
 from exe_builder.build import build_icon_contract
 from exe_builder.controllers.build_controller import BuildController, BuildWorker
@@ -2344,6 +2346,112 @@ def test_single_build_passes_generated_target_to_explorer(tmp_path, monkeypatch)
 
     assert "Paltalk Automation" in target.name and target.name.endswith("py3.14")
     assert opened == [str(target)]
+
+
+def test_pin_attempt_occurs_after_open_and_before_post_build_actions(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    events = []
+    app = make_buildable_app(tmp_path, open_output_dir_after_build_enabled=True,
+                             pin_built_exe_after_build_enabled=True)
+    controller = BuildController(app)
+    monkeypatch.setattr(controller, "_focus_existing_output_explorer_window", lambda _path: False)
+    monkeypatch.setattr(build_controller.os, "startfile", lambda path: events.append(("open", path)), raising=False)
+    monkeypatch.setattr(build_controller, "pin_executable", lambda path, on_stage: (events.append(("pin", path)) or (False, "menu not verified")))
+    monkeypatch.setattr(controller, "_start_pin_attempt", lambda path: (controller._pin_completed_python_output(path), controller._on_pin_finished()))
+    monkeypatch.setattr(controller, "_run_success_post_build_action", lambda: events.append(("post", None)))
+    controller.build_exe(None)
+    target = latest_build_target(app)
+    target.mkdir()
+    executable = target / (target.name + ".exe")
+    executable.touch()
+
+    controller._on_build_complete_ui(0, "", "")
+
+    assert events == [("open", str(target)), ("pin", str(executable)), ("post", None)]
+    assert "menu not verified" in Path(app.debug_log_path).read_text(encoding="utf-8")
+
+
+def test_pin_runs_in_background_before_post_build_actions(tmp_path, monkeypatch):
+    callbacks = []
+    app = make_app(building=False, validation_controller=DummyValidationController(),
+                   state_ctrl=SimpleNamespace(save_state=lambda: callbacks.append("save")))
+    controller = BuildController(app)
+    work = []
+    class FakeThread:
+        def __init__(self, target, **_kwargs):
+            work.append(target)
+        def start(self):
+            pass
+    monkeypatch.setattr(build_controller.threading, "Thread", FakeThread)
+    monkeypatch.setattr(controller, "_run_success_post_build_action", lambda: callbacks.append("post"))
+    monkeypatch.setattr(build_controller.QTimer, "singleShot", lambda *_args: None)
+    controller._start_pin_attempt(str(tmp_path))
+    assert app.building is True
+    assert callbacks == []
+    assert len(work) == 1
+    controller._on_pin_finished()
+    assert app.building is False
+    assert callbacks == ["save", "post"]
+
+
+@pytest.mark.parametrize("was_topmost", [True, False])
+def test_pin_lowers_builder_and_restores_original_topmost_status(tmp_path, monkeypatch, was_topmost):
+    import win32con
+    import win32gui
+
+    calls = []
+    log = tmp_path / "build.log"
+    app = make_app(debug_log_path=str(log), winId=lambda: 123)
+    controller = BuildController(app)
+    monkeypatch.setattr(win32gui, "GetWindowLong", lambda *_: win32con.WS_EX_TOPMOST if was_topmost else 0)
+    monkeypatch.setattr(win32gui, "SetWindowPos", lambda *args: calls.append(args))
+    controller._pin_lowered_window = controller._lower_builder_for_pin()
+    assert calls[0][0:2] == (123, win32con.HWND_BOTTOM)
+    assert calls[0][-1] & win32con.SWP_NOACTIVATE
+    controller._restore_builder_after_pin()
+    if was_topmost:
+        assert calls[1][0:2] == (123, win32con.HWND_TOPMOST)
+        assert calls[1][-1] & win32con.SWP_NOACTIVATE
+    else:
+        assert len(calls) == 1
+    assert controller._pin_lowered_window is None
+    assert "Lowered builder window" in log.read_text(encoding="utf-8")
+
+
+def test_pin_logs_start_and_live_stage_even_if_helper_crashes(tmp_path, monkeypatch):
+    target = tmp_path / "app"
+    target.mkdir()
+    (target / "app.exe").touch()
+    log = tmp_path / "build.log"
+    app = make_app(debug_log_path=str(log))
+    controller = BuildController(app)
+
+    def crash(_path, on_stage):
+        assert "Taskbar pin started. Implementation:" in log.read_text(encoding="utf-8")
+        on_stage("First menu detected.")
+        assert "First menu detected." in log.read_text(encoding="utf-8")
+        raise ValueError("broken helper")
+
+    monkeypatch.setattr(build_controller, "pin_executable", crash)
+    controller._pin_completed_python_output(str(target))
+    assert "Unexpected pin error (ValueError): broken helper" in log.read_text(encoding="utf-8")
+
+
+def test_pin_is_skipped_when_output_opening_is_off_or_build_fails(tmp_path, monkeypatch):
+    patch_build_runtime(monkeypatch)
+    attempts = []
+    app = make_buildable_app(tmp_path, open_output_dir_after_build_enabled=False,
+                             pin_built_exe_after_build_enabled=True)
+    controller = BuildController(app)
+    monkeypatch.setattr(build_controller, "pin_executable", lambda path: attempts.append(path))
+    controller.build_exe(None)
+    target = latest_build_target(app)
+    target.mkdir()
+    (target / (target.name + ".exe")).touch()
+    controller._on_build_complete_ui(0, "", "")
+    app.open_output_dir_after_build_enabled = True
+    controller._on_build_complete_ui(1, "", "failed")
+    assert attempts == []
 
 
 def test_explorer_focus_does_not_match_parent_folder(tmp_path, monkeypatch):

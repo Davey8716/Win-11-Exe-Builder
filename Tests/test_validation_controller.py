@@ -628,6 +628,24 @@ def test_open_output_directory_enabled_for_non_desktop_output(monkeypatch, tmp_p
     assert app.open_output_dir_after_build.stylesheet == ""
 
 
+def test_pin_toggle_requires_open_output_and_python_mode(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    app.pin_built_exe_after_build = DummyCheckbox()
+    app.pin_built_exe_after_build.setChecked(True)
+    controller = ValidationController(app)
+    app.open_output_dir_after_build.setChecked(False)
+    controller.update_ui_state()
+    assert not app.pin_built_exe_after_build.enabled
+    assert app.pin_built_exe_after_build.isChecked()
+    app.open_output_dir_after_build.setChecked(True)
+    controller.update_ui_state()
+    assert app.pin_built_exe_after_build.enabled
+    app.build_mode = "dotnet"
+    controller.update_ui_state()
+    assert not app.pin_built_exe_after_build.enabled
+
+
 def test_output_refresh_disabled_for_desktop_output_uses_build_style(
     monkeypatch, tmp_path
 ):

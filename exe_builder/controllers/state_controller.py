@@ -69,7 +69,7 @@ class StateController:
         legacy = self._read(legacy_path)
         if not legacy:
             return
-        pref_keys = {"tooltips_enabled", "close_after_build_enabled", "minimize_after_build_enabled", "open_output_dir_after_build_enabled", "run_built_app_after_build_enabled", "suppress_exit_dialogue_enabled", "build_mode", "guided_flow_enabled"}
+        pref_keys = {"tooltips_enabled", "close_after_build_enabled", "minimize_after_build_enabled", "open_output_dir_after_build_enabled", "pin_built_exe_after_build_enabled", "run_built_app_after_build_enabled", "suppress_exit_dialogue_enabled", "build_mode", "guided_flow_enabled"}
         python_data = {key: value for key, value in legacy.items() if key not in pref_keys | {"dotnet_publish"}}
         self._write(self.python_state_file_path(), python_data)
         self._write(self.csharp_state_file_path(), dict(legacy.get("dotnet_publish", {})))
@@ -103,7 +103,7 @@ class StateController:
             dotnet_saved_setups if isinstance(dotnet_saved_setups, list) else []
         )
         blocked = []
-        names = ("tooltips_checkbox", "suppress_exit_dialogue", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "appened_py_version", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
+        names = ("tooltips_checkbox", "suppress_exit_dialogue", "pin_built_exe_after_build", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "appened_py_version", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
         for name in names:
             widget = getattr(app, name, None)
             if widget is not None:
@@ -111,7 +111,7 @@ class StateController:
                 blocked.append(widget)
         try:
             norm = lambda path: os.path.normpath(path) if path else ""
-            for key, default in (("tooltips_enabled", True), ("close_after_build_enabled", True), ("minimize_after_build_enabled", True), ("open_output_dir_after_build_enabled", False), ("run_built_app_after_build_enabled", False), ("suppress_exit_dialogue_enabled", False)):
+            for key, default in (("tooltips_enabled", True), ("close_after_build_enabled", True), ("minimize_after_build_enabled", True), ("open_output_dir_after_build_enabled", False), ("pin_built_exe_after_build_enabled", False), ("run_built_app_after_build_enabled", False), ("suppress_exit_dialogue_enabled", False)):
                 setattr(app, key, preferences.get(key, default))
             app.build_mode = preferences.get("build_mode", "python")
             app.guided_flow_enabled = True
@@ -163,7 +163,7 @@ class StateController:
                 sync_publish_options = getattr(app, "_sync_dotnet_publish_options", None)
                 if sync_publish_options is not None:
                     sync_publish_options()
-            for field, value in (("tooltips_checkbox", app.tooltips_enabled), ("close_after_build", app.close_after_build_enabled), ("minimize_after_build", app.minimize_after_build_enabled and not app.close_after_build_enabled), ("open_output_dir_after_build", app.open_output_dir_after_build_enabled), ("run_built_app_after_build", app.run_built_app_after_build_enabled), ("suppress_exit_dialogue", app.suppress_exit_dialogue_enabled)):
+            for field, value in (("tooltips_checkbox", app.tooltips_enabled), ("close_after_build", app.close_after_build_enabled), ("minimize_after_build", app.minimize_after_build_enabled and not app.close_after_build_enabled), ("open_output_dir_after_build", app.open_output_dir_after_build_enabled), ("pin_built_exe_after_build", app.pin_built_exe_after_build_enabled), ("run_built_app_after_build", app.run_built_app_after_build_enabled), ("suppress_exit_dialogue", app.suppress_exit_dialogue_enabled)):
                 if hasattr(app, field): getattr(app, field).setChecked(value)
             if hasattr(app, "date_time_dropdown"):
                 if app.datetime_format:
@@ -202,7 +202,7 @@ class StateController:
 
     def save_preferences(self):
         app = self.app
-        self._write(self.preferences_file_path(), {key: getattr(app, key, default) for key, default in (("tooltips_enabled", True), ("close_after_build_enabled", True), ("minimize_after_build_enabled", True), ("open_output_dir_after_build_enabled", False), ("run_built_app_after_build_enabled", False), ("suppress_exit_dialogue_enabled", False), ("build_mode", "python"))})
+        self._write(self.preferences_file_path(), {key: getattr(app, key, default) for key, default in (("tooltips_enabled", True), ("close_after_build_enabled", True), ("minimize_after_build_enabled", True), ("open_output_dir_after_build_enabled", False), ("pin_built_exe_after_build_enabled", False), ("run_built_app_after_build_enabled", False), ("suppress_exit_dialogue_enabled", False), ("build_mode", "python"))})
 
     def save_python_state(self):
         app = self.app; norm = lambda path: os.path.normpath(path) if path else ""; existing = self._read(self.python_state_file_path())

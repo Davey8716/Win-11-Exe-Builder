@@ -379,6 +379,17 @@ def test_save_state_persists_open_output_directory_toggle(monkeypatch, tmp_path)
     assert data["open_output_dir_after_build_enabled"] is True
 
 
+def test_pin_preference_is_saved_and_restored(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    app = make_app(pin_built_exe_after_build_enabled=True, pin_built_exe_after_build=DummyCheckbox(), validator=DummyValidator())
+    controller = StateController(app)
+    controller.save_state()
+    app.pin_built_exe_after_build_enabled = False
+    controller.load_state()
+    assert app.pin_built_exe_after_build_enabled is True
+    assert app.pin_built_exe_after_build.checked is True
+
+
 def test_save_state_persists_mass_datetime_sentinels(monkeypatch, tmp_path):
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     sentinels = [

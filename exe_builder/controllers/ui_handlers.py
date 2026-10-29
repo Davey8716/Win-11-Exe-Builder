@@ -468,6 +468,11 @@ class UIHandlers:
         app.validator.update_ui_state()
         app.dotnet_publish_controller.refresh_ui()
 
+    def on_pin_built_exe_toggle(self, state):
+        self.app.pin_built_exe_after_build_enabled = bool(state)
+        self.app.state_ctrl.save_state()
+        self.app.validator.update_ui_state()
+
     def disable_run_built_app_for_mass_datetime_selection(self, selection):
         """Disable the global launcher when one build creates several EXEs."""
         if not is_mass_datetime_build_selection(selection):

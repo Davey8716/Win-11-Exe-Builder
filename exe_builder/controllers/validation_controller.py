@@ -432,6 +432,12 @@ class ValidationController:
         if hasattr(app, "open_app_data_btn"):
             set_btn(app.open_app_data_btn, not building)
         set_btn(app.open_output_dir_after_build, not building and not is_desktop)
+        pin_checkbox = getattr(app, "pin_built_exe_after_build", None)
+        if pin_checkbox is not None:
+            set_btn(pin_checkbox, not building and not is_desktop
+                    and getattr(app, "build_mode", "python") == "python"
+                    and app.open_output_dir_after_build.isChecked()
+                    and self._run_built_app_is_available())
         if is_desktop:
             app.open_output_dir_after_build.setStyleSheet(
                 build_disabled_checkbox_without_checkmark()
