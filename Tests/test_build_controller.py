@@ -2082,6 +2082,22 @@ def test_get_project_asset_data_args_skips_generated_and_environment_directories
         assert str(excluded) not in command_text
 
 
+@pytest.mark.parametrize("use_package_root", [False, True])
+def test_builder_taskbar_csharp_is_mapped_to_python_package(tmp_path, use_package_root):
+    package = tmp_path / "exe_builder"
+    helper = package / "build" / "taskbar_pin_helper"
+    helper.mkdir(parents=True)
+    (package / "build" / "taskbar_pin.py").touch()
+    source = helper / "PinWindow.cs"
+    source.touch()
+    root = package if use_package_root else tmp_path
+    destination = os.path.join("exe_builder", "build", "taskbar_pin_helper")
+    assert BuildController._get_taskbar_helper_data_args(str(root)) == [
+        f"--add-data={source}{os.pathsep}{destination}"
+    ]
+    assert BuildController._get_taskbar_helper_data_args(str(tmp_path / "other")) == []
+
+
 def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
     project_root = tmp_path / "project"
     project_root.mkdir()

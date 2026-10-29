@@ -597,6 +597,22 @@ class BuildController(QObject):
 
         return search_paths
 
+    @staticmethod
+    def _get_taskbar_helper_data_args(project_root):
+        if not project_root:
+            return []
+        root = Path(project_root)
+        candidates = [root / "exe_builder", root]
+        for package in candidates:
+            if package.name.lower() != "exe_builder":
+                continue
+            build_dir = package / "build"
+            source = build_dir / "taskbar_pin_helper" / "PinWindow.cs"
+            if (build_dir / "taskbar_pin.py").is_file() and source.is_file():
+                destination = os.path.join("exe_builder", "build", "taskbar_pin_helper")
+                return [f"--add-data={os.path.normpath(str(source))}{os.pathsep}{destination}"]
+        return []
+
     def _get_project_asset_data_args(self, project_root):
         if not project_root or not os.path.isdir(project_root):
             return []
@@ -1673,6 +1689,7 @@ class BuildController(QObject):
             cmd.append(f"--add-data={project_root}{os.pathsep}.")
 
         cmd.extend(self._get_project_asset_data_args(project_root))
+        cmd.extend(self._get_taskbar_helper_data_args(project_root))
 
         cmd.extend(project_manifest.pyinstaller_args())
 
