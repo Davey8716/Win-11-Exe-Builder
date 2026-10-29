@@ -9,6 +9,16 @@ import pytest
 from exe_builder.build import taskbar_pin
 
 
+def test_missing_csharp_source_reports_error_without_starting_helper(tmp_path, monkeypatch):
+    exe = tmp_path / "app.exe"
+    exe.touch()
+    monkeypatch.setattr(taskbar_pin.sys, "platform", "win32")
+    monkeypatch.setattr(taskbar_pin, "_CS_SOURCE_ERROR", "source missing")
+    success, message = taskbar_pin.pin_executable(str(exe))
+    assert not success
+    assert "C# source is unavailable: source missing" in message
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="PowerShell integration test")
 @pytest.mark.parametrize("failure,expected", [("", ["Show more options", "Pin to taskbar"]), ("missing", []), ("missingsecond", ["Show more options"]), ("duplicate", []), ("unsupported", []), ("second", ["Show more options"])])
 def test_named_menu_flow_uses_actions_and_stops_on_failure(failure, expected):

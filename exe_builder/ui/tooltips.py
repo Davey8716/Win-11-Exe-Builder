@@ -281,8 +281,8 @@ def attach_tooltips(app):
 
     QtTooltip(
         app.pin_built_exe_after_build,
-        "Pins a single Python build to the taskbar using fixed menu keystrokes. "
-        "Requires Open Output Directory; stops if the expected menu item cannot be verified."
+        "Pins a single Python build using Explorer's taskbar menu. "
+        "Requires Open Output Directory; stops if the expected menu item cannot be found."
     )
 
     QtTooltip(
