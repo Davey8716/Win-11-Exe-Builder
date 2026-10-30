@@ -10,6 +10,15 @@ public static class PinWindow {
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr h);
+    [DllImport("user32.dll", SetLastError=true)] private static extern bool PostMessage(IntPtr h, uint message, IntPtr wParam, IntPtr lParam);
+    public static bool IsTargetWindow(IntPtr h, int processId) {
+        uint actualProcessId;
+        return IsWindow(h) && GetWindowThreadProcessId(h, out actualProcessId) != 0 && actualProcessId == (uint)processId;
+    }
+    public static bool RequestClose(IntPtr h, int processId) {
+        return IsTargetWindow(h, processId) && PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero);
+    }
     [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint flags);
     [DllImport("user32.dll")] public static extern bool IsChild(IntPtr parent, IntPtr child);
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }

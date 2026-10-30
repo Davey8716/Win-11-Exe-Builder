@@ -97,6 +97,32 @@ Invoke-NamedMenu 'Show more options'
 Trace-Stage 'Searching for the classic menu.'
 Invoke-NamedMenu 'Pin to taskbar'
 Trace-Stage 'Pin to taskbar command invoked; taskbar state was not independently verified.'
+try {
+try {
+    $window.Quit()
+} catch {
+    Trace-Stage "Explorer Quit request failed: $($_.Exception.Message)"
+}
+for ($attempt = 0; $attempt -lt 10 -and [PinWindow]::IsTargetWindow($hwnd, $explorerId); $attempt++) {
+    Start-Sleep -Milliseconds 100
+}
+if ([PinWindow]::IsTargetWindow($hwnd, $explorerId)) {
+    Trace-Stage 'Explorer window remains open; sending a close request.'
+    if (![PinWindow]::RequestClose($hwnd, $explorerId)) {
+        Trace-Stage 'Could not send the Explorer window close request.'
+    }
+    for ($attempt = 0; $attempt -lt 10 -and [PinWindow]::IsTargetWindow($hwnd, $explorerId); $attempt++) {
+        Start-Sleep -Milliseconds 100
+    }
+}
+if ([PinWindow]::IsTargetWindow($hwnd, $explorerId)) {
+    Trace-Stage 'Could not close the Explorer window used for taskbar pinning.'
+} else {
+    Trace-Stage 'Closed the Explorer window used for taskbar pinning.'
+}
+} catch {
+    Trace-Stage "Could not close the Explorer window used for taskbar pinning: $($_.Exception.Message)"
+}
 
 '''
 

@@ -20,7 +20,7 @@ def test_missing_csharp_source_reports_error_without_starting_helper(tmp_path, m
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="PowerShell integration test")
-@pytest.mark.parametrize("failure,expected", [("", ["Show more options", "Pin to taskbar"]), ("missing", []), ("missingsecond", ["Show more options"]), ("duplicate", []), ("unsupported", []), ("second", ["Show more options"])])
+@pytest.mark.parametrize("failure,expected", [("", ["Show more options", "Pin to taskbar"]), ("close", ["Show more options", "Pin to taskbar"]), ("silentclose", ["Show more options", "Pin to taskbar"]), ("closefailed", ["Show more options", "Pin to taskbar"]), ("missing", []), ("missingsecond", ["Show more options"]), ("duplicate", []), ("unsupported", []), ("second", ["Show more options"])])
 def test_named_menu_flow_uses_actions_and_stops_on_failure(failure, expected):
     functions = taskbar_pin._SCRIPT.split("function Find-Menu($expected) {", 1)[1].split("\n$explorerId =", 1)[0]
     sequence = taskbar_pin._SCRIPT.split("Trace-Stage 'Right-clicked the built EXE; searching for the first menu.'", 1)[1]
@@ -29,6 +29,13 @@ Add-Type @"
 public class Search { public int Matches; public int RawMatches; public string[] MatchDetails; public string[] Diagnostics; public string Item; public string[] Observed; }
 public static class PinWindow {
     public static string Failure;
+    public static bool WindowOpen = true;
+    public static bool IsTargetWindow(int hwnd, int id) { return WindowOpen; }
+    public static bool RequestClose(int hwnd, int id) {
+        System.Console.WriteLine("fallback close");
+        if (Failure == "closefailed") return false;
+        WindowOpen = false; return true;
+    }
     public static Search FindMenu(int hwnd, int id, string expected) {
         int count = Failure == "missing" ? 0 : (Failure == "duplicate" ? 2 : 1);
         return new Search { Matches = count, RawMatches = count, MatchDetails = new string[0], Item = expected, Observed = new[] { expected } };
@@ -46,6 +53,13 @@ public static class PinWindow {
 "@
 $hwnd = 1; $explorerId = 2
 [PinWindow]::Failure = 'FAILURE'
+$window = New-Object PSObject
+$window | Add-Member ScriptMethod Quit {
+    if ([PinWindow]::Failure -eq 'close') { throw 'close failed' }
+    if ([PinWindow]::Failure -eq 'silentclose' -or [PinWindow]::Failure -eq 'closefailed') { return }
+    [PinWindow]::WindowOpen = $false
+    [Console]::WriteLine('window closed')
+}
 function Trace-Stage($message) { [Console]::WriteLine("stage:$message") }
 function Start-Sleep($Milliseconds) { }
 function Find-Menu($expected) {
@@ -54,7 +68,10 @@ function Find-Menu($expected) {
     result = subprocess.run(["powershell.exe", "-NoProfile", "-EncodedCommand", encoded], text=True, capture_output=True, timeout=15)
     assert result.returncode == 0, result.stderr
     assert [line.removeprefix("invoked:") for line in result.stdout.splitlines() if line.startswith("invoked:")] == expected
-    assert ("stopped" in result.stdout) == bool(failure)
+    assert ("stopped" in result.stdout) == (failure not in ("", "close", "silentclose", "closefailed"))
+    assert ("window closed" in result.stdout) == (failure == "")
+    assert ("fallback close" in result.stdout) == (failure in ("close", "silentclose", "closefailed"))
+    assert ("Could not close the Explorer window" in result.stdout) == (failure == "closefailed")
     if failure == "duplicate":
         assert "2 raw matches, 2 distinct matches" in result.stdout
     if failure == "missingsecond":
