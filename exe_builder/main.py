@@ -90,7 +90,7 @@ from exe_builder.ui.styles import (
 
 APP_FIXED_WIDTH = 850
 PYTHON_APP_FIXED_WIDTH = APP_FIXED_WIDTH + 10
-PYTHON_APP_FIXED_SIZE = (PYTHON_APP_FIXED_WIDTH, 840)
+PYTHON_APP_FIXED_SIZE = (PYTHON_APP_FIXED_WIDTH, 885)
 DOTNET_APP_FIXED_SIZE = (APP_FIXED_WIDTH, 866)
 NAVIGATION_SIDEBAR_WIDTH = 205
 CONTENT_PANE_WIDTH = APP_FIXED_WIDTH - NAVIGATION_SIDEBAR_WIDTH
@@ -1039,7 +1039,7 @@ class EXEBuilderApp(QWidget):
 
         self.status_label = QTextEdit("Ready")
         self.status_label.setReadOnly(True)
-        self.status_label.setFixedSize(420, 75)
+        self.status_label.setFixedSize(420, 120)
         self.status_label.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.status_label.setFont(QFont("Rubik UI", 12, QFont.Bold))

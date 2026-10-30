@@ -37,19 +37,17 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         assert build_options_grid.horizontalSpacing() == 20
         assert build_options_grid.verticalSpacing() == 8
         assert build_options_grid.itemAtPosition(3, 0).widget() is window.open_app_data_btn
-        assert build_options_grid.itemAtPosition(3, 1) is None
+        assert build_options_grid.itemAtPosition(3, 1).widget() is window.pin_built_exe_after_build
         close_font = window.build_options_close_btn.font()
         assert close_font.family() == "Rubik UI"
         assert close_font.pointSize() == 13
         assert close_font.bold()
         assert window.status_label.size().width() == 420
-        assert window.status_label.size().height() == 75
-        assert window.status_label.parentWidget().height() == 145
+        assert window.status_label.size().height() == 120
+        assert window.status_label.parentWidget().height() == 190
         assert window.status_label.parentWidget().width() == 450
         assert window.dotnet_status_label.size().height() == 75
-        assert window.status_label.parentWidget().size() == (
-            window.dotnet_status_label.parentWidget().size()
-        )
+        assert window.dotnet_status_label.parentWidget().height() == 145
         ready_message = (
             "Ready to build.\nThe output folder will open after building."
             "\nThis app will then close."
@@ -83,7 +81,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.set_build_mode("python", save=False)
         app.processEvents()
         assert window.size().width() == 860
-        assert window.size().height() == 840
+        assert window.size().height() == 885
         python_title_center = window.title_label.mapTo(
             window, QPoint(window.title_label.width() // 2, 0)
         ).x()
@@ -430,7 +428,7 @@ def test_build_modes_use_sidebars_and_guided_python_steps(monkeypatch, tmp_path)
         window.set_build_mode("python", save=False)
         app.processEvents()
         assert window.size().width() == 860
-        assert window.size().height() == 840
+        assert window.size().height() == 885
         assert window.python_section_stack.currentIndex() == 4
 
         window.build_cancellation = BuildCancellation(window, window)

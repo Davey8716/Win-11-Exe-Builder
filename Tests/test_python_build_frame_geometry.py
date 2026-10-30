@@ -14,7 +14,7 @@ def test_python_build_frame_matches_the_dotnet_action_panel_geometry():
     assert "build_layout.setContentsMargins(" in MAIN_SOURCE
     assert "build_action_edge_padding, build_action_edge_padding," in MAIN_SOURCE
     assert "build_layout.setSpacing(7)" in MAIN_SOURCE
-    assert "self.status_label.setFixedSize(420, 75)" in MAIN_SOURCE
+    assert "self.status_label.setFixedSize(420, 120)" in MAIN_SOURCE
     assert "build_actions.addStretch()" in MAIN_SOURCE
     assert "build_layout.addStretch()" not in MAIN_SOURCE
     assert "build_frame.setFixedWidth(BUILD_ACTION_FRAME_WIDTH)" in MAIN_SOURCE

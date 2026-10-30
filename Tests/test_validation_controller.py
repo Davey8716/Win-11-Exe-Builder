@@ -204,6 +204,7 @@ def make_app(tmp_path, exe_name="", script_name="main.py", entry_script=None):
         tooltips_checkbox=DummyCheckbox(),
         open_app_data_btn=DummyButton(),
         open_output_dir_after_build=DummyCheckbox(),
+        pin_built_exe_after_build=DummyCheckbox(),
         run_built_app_after_build=DummyCheckbox(),
         minimize_after_build=DummyCheckbox(),
         close_after_build=DummyCheckbox(),
@@ -295,7 +296,7 @@ def test_python_open_output_button_matches_dotnet_availability_styling(monkeypat
         "A build already exists here. Build again to overwrite it, "
         "or choose another output folder."
     )
-    assert app.status_label.size == (420, 75)
+    assert app.status_label.size == (420, 120)
     assert len(scheduled) == 1
     assert scheduled[0][0] == 5000
 
@@ -340,6 +341,7 @@ def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path
     assert app.status_label.text == "Ready to build."
     assert app.status_label.alignment == validation_controller.Qt.AlignCenter
 
+
     app.minimize_after_build.setChecked(True)
     app.open_output_dir_after_build.setChecked(True)
     controller.update_ui_state()
@@ -365,6 +367,23 @@ def test_ready_status_tracks_selected_global_build_options(monkeypatch, tmp_path
     controller.update_ui_state()
     assert app.status_label.text == "Ready to build."
     assert app.status_label.alignment == validation_controller.Qt.AlignCenter
+
+
+def test_ready_status_shows_pin_only_when_it_will_be_attempted(monkeypatch, tmp_path):
+    monkeypatch.setattr(validation_controller, "QCheckBox", DummyCheckbox)
+    app = make_app(tmp_path, exe_name="main")
+    controller = ValidationController(app)
+    app.open_output_dir_after_build.setChecked(True)
+    app.pin_built_exe_after_build.setChecked(True)
+    controller.update_ui_state()
+    assert "The app will pin the built EXE to the taskbar." in app.status_label.text
+    app.pin_built_exe_after_build.setChecked(False)
+    controller.update_ui_state()
+    assert "pin the built EXE" not in app.status_label.text
+    app.pin_built_exe_after_build.setChecked(True)
+    app.open_output_dir_after_build.setChecked(False)
+    controller.update_ui_state()
+    assert "pin the built EXE" not in app.status_label.text
 
 
 def test_exe_refresh_enabled_when_name_empty(monkeypatch, tmp_path):

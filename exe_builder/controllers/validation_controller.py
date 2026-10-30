@@ -148,7 +148,7 @@ class ValidationController:
 
         state["is_ready"] = is_ready
 
-        self.app.status_label.setFixedSize(420, 75)
+        self.app.status_label.setFixedSize(420, 120)
 
         # Track previous state
         self.app._was_build_ready = is_ready
@@ -634,6 +634,11 @@ class ValidationController:
                 opens_output = app.open_output_dir_after_build.isChecked()
                 if opens_output:
                     status_text += "\nThe output folder will open after building."
+                if (pin_checkbox is not None and pin_checkbox.isChecked()
+                        and opens_output and not is_desktop
+                        and getattr(app, "build_mode", "python") == "python"
+                        and self._run_built_app_is_available()):
+                    status_text += "\nThe app will pin the built EXE to the taskbar."
                 runs_built_app = getattr(app, "run_built_app_after_build", None)
                 if runs_built_app is not None and runs_built_app.isChecked():
                     status_text += "\nThe built app will then run."
