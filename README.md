@@ -1,4 +1,4 @@
-**Updated as of 2026-09-22 for the PySide6 QtWidgets Python and C#/.NET build workflows**
+**Updated as of 2026-11-04 for the PySide6 QtWidgets Python and C#/.NET build workflows**
 
 # Win 11 → EXE Builder
 
@@ -31,6 +31,8 @@ Both modes provide controlled PySide6 workflows for selection, validation, outpu
 * Offer a built-in `No Icon` choice, recent file lists, reset helpers, and an explicit output-folder action
 * Provide global build options for opening the output directory, minimizing or closing after a build, exit confirmation, and tooltips
 * Environment Sync for scanning and matching package sets across local Python installs
+* Save and restore named build setups for either mode, with import and export options
+* Optionally run the built app or attempt to pin a Python build to the Windows taskbar
 
 ## Side tab workflow
 
@@ -45,8 +47,8 @@ Selection summaries on later tabs show the earlier choices: Python Icons shows t
 Choose **C# .NET Publish** from the build-mode toggle to publish an SDK-style
 `.csproj` using the installed .NET SDK. The builder publishes `Release` output
 to `<output folder>\<executable name>`. It supports `win-x64` and `win-arm64`
-targets, with self-contained publishing enabled by default and optional
-single-file and trim publishing.
+targets. Choose one publish option: self-contained (the default), single-file,
+or trim.
 
 The executable name and optional `.ico` are passed as publish-time MSBuild
 properties; the selected project file is never changed. With **No Icon**, the
@@ -227,7 +229,9 @@ exe_builder_preferences.json
 On first run after upgrading, a legacy `exe_builder_state.json` file is split
 into these files when no newer state files already exist.
 
-No app state is embedded inside generated executables, and no data is uploaded or transmitted.
+No builder state is embedded inside generated executables. Environment Sync can
+use pip to download packages, and .NET publishing may restore packages over the
+network. Links in the app can also open external websites.
 
 For PyInstaller onedir output, the generated EXE and its `_internal` folder must remain together. The generated application can be moved as long as that output structure is preserved.
 
@@ -248,7 +252,7 @@ For PyInstaller onedir output, the generated EXE and its `_internal` folder must
    python -m pip install pyinstaller
    ```
 
-4. Clone the repository.
+4. Clone the repository and change into its root directory.
 5. Run the app from source:
 
    ```text
@@ -262,6 +266,18 @@ For PyInstaller onedir output, the generated EXE and its `_internal` folder must
 For C#/.NET publishing, install a .NET SDK, start the app, choose **C# .NET
 Publish**, then select an SDK-style `.csproj`, output folder,
 target runtime, and publish options before selecting **Publish**.
+
+### Running the tests
+
+Close any running instance of the builder first, then from the repository root
+install the test dependencies and run the suite:
+
+```text
+python -m pip install -r Tests/requirements-dev.txt
+python -m pytest Tests
+```
+
+Use a compatible Python environment with the GUI runtime packages installed.
 
 ---
 
