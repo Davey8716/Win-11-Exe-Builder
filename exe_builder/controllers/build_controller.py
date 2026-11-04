@@ -1,6 +1,7 @@
 import datetime,os,sys,subprocess,time,warnings,threading
 from PySide6.QtGui import QFont
 from ..build.bundle_validation import validate_bundle_inputs
+from ..build.output_name import executable_name_error
 from ..build.external_python import external_python_environment
 from ..build.taskbar_pin import PIN_IMPLEMENTATION_VERSION, pin_executable
 from ..build.datetime_build_options import (
@@ -444,16 +445,11 @@ class BuildController(QObject):
 
     def _build_name_parts(self, script):
         script = os.path.normpath(script) if script else ""
-        script_name = os.path.splitext(os.path.basename(script))[0].lower() if script else ""
-        parent_name = os.path.basename(os.path.dirname(script)) if script else ""
 
         parts = []
 
         if script:
             parts.append(self.app.exe_name_input.text().strip() or "exe")
-
-            if script_name in {"main", "app", "run"} and parent_name:
-                parts.append(parent_name)
 
         return parts
 
@@ -1477,8 +1473,8 @@ class BuildController(QObject):
             return
 
         exe_name = app.exe_name_input.text().strip()
-        if not exe_name:
-            self._abort_current_build("Please enter an EXE name.")
+        if executable_name_error(exe_name):
+            self._abort_current_build(executable_name_error(exe_name))
             return
 
         # ==================================================
@@ -1557,16 +1553,7 @@ class BuildController(QObject):
         timestamp = self._get_datetime_timestamp_suffix()
         
 
-        script_path = Path(script)
-        script_name = script_path.stem.lower()
-
         parts = [exe_name]
-
-        # 🔑 prevent overwrite for common entry files
-        if script_name in {"main", "app", "run"}:
-            parent_name = script_path.parent.name
-            if parent_name:
-                parts.append(parent_name)
 
         # date/time
         datetime_region = self._get_datetime_region_identifier()

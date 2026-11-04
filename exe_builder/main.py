@@ -9,6 +9,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from ctypes import wintypes
+from exe_builder.build.output_name import output_folder_name, executable_name_error
 from exe_builder.controllers.build_controller import BuildController
 from exe_builder.controllers.dotnet_publish_controller import (
     DotnetPublishController,
@@ -996,7 +997,7 @@ class EXEBuilderApp(QWidget):
         exe_layout.addWidget(self.exe_name_input)
 
         self.refresh_btn = QPushButton("")
-        exe_layout.addWidget(self.refresh_btn)
+        self.refresh_btn.hide()
 
         output_layout.addWidget(exe_row)
         self.main_layout.addWidget(self.output_title_frame, alignment=Qt.AlignHCenter | Qt.AlignTop)
@@ -1280,7 +1281,7 @@ class EXEBuilderApp(QWidget):
         ]:
             output_paths.setReadOnly(True)
 
-        self.exe_name_input.setReadOnly(False)
+        self.exe_name_input.setReadOnly(True)
 
         buttons = [
             self.env_sync_scan_btn,
@@ -1396,10 +1397,9 @@ class EXEBuilderApp(QWidget):
         self.output_refresh_btn.clicked.connect(self.ui_handlers.reset_output_to_desktop)
         self.open_app_data_btn.clicked.connect(self.ui_handlers.open_app_data)
         self.build_options_btn.clicked.connect(self._show_build_options)
-        self.refresh_btn.clicked.connect(self.ui_handlers.reset_exe_name_from_script)
         self.tooltips_checkbox.stateChanged.connect(self.ui_handlers.on_tooltips_toggle)
-        self.exe_name_input.textChanged.connect(self.ui_handlers._on_exe_name_user_edit)
         self.exe_name_input.textChanged.connect(self.ui_handlers.on_exe_name_change)
+        self.output_path_input.textChanged.connect(self._sync_python_output_name)
         self.script_path_input.textChanged.connect(self.ui_handlers.on_script_path_change)
         self.minimize_after_build.stateChanged.connect(self.ui_handlers.on_minimize_toggle)
         self.open_output_dir_after_build.stateChanged.connect(self.ui_handlers.on_open_output_dir_toggle)
@@ -1772,7 +1772,7 @@ class EXEBuilderApp(QWidget):
             isinstance(setup, dict)
             and all(isinstance(setup.get(key), str) for key in
                     ("interpreter", "icon", "script", "output", "name"))
-            and bool(setup["name"].strip())
+            and not executable_name_error(output_folder_name(setup["output"]))
             and os.path.isfile(setup["interpreter"])
             and os.path.isfile(setup["script"])
             and os.path.isdir(setup["output"])
@@ -2024,6 +2024,8 @@ class EXEBuilderApp(QWidget):
             setup for setup in self._saved_setup_collection(mode)
             if self._portable_saved_setup_is_valid(mode, setup)
         ]
+        for setup in [*imported, *existing]:
+            setup["name"] = output_folder_name(setup["output"])
         merged = []
         for setup in [*imported, *existing]:
             if setup not in merged:
@@ -2254,7 +2256,7 @@ class EXEBuilderApp(QWidget):
             self.dotnet_project_input.set_display_path(setup["project"])
             self.dotnet_output_input.set_display_path(setup["output"])
             self.dotnet_icon_input.set_display_path(setup["icon"])
-            self.dotnet_name_input.setText(setup["name"])
+            self.dotnet_name_input.setText(output_folder_name(setup["output"]))
             runtime_index = self.dotnet_runtime_combo.findData(setup["runtime"])
             datetime_index = (
                 self.dotnet_date_time_dropdown.findText(NO_DATETIME_LABEL)
@@ -2278,7 +2280,7 @@ class EXEBuilderApp(QWidget):
         self.dotnet_project_input.set_display_path(setup["project"])
         self.dotnet_output_input.set_display_path(setup["output"])
         self.dotnet_icon_input.set_display_path(setup["icon"])
-        self.dotnet_name_input.setText(setup["name"])
+        self.dotnet_name_input.setText(output_folder_name(setup["output"]))
         self.dotnet_runtime_combo.setCurrentIndex(
             self.dotnet_runtime_combo.findData(setup["runtime"])
         )
@@ -2485,7 +2487,7 @@ class EXEBuilderApp(QWidget):
             (self.icon_path_input, setup["icon"]),
             (self.script_path_input, setup["script"]),
             (self.output_path_input, setup["output"]),
-            (self.exe_name_input, setup["name"]),
+            (self.exe_name_input, output_folder_name(setup["output"])),
         )
         widgets = [field for field, _value in fields]
         widgets.extend((self.date_time_dropdown, self.appened_py_version))
@@ -2503,7 +2505,7 @@ class EXEBuilderApp(QWidget):
             self.script_path = self.entry_script = setup["script"]
             self.project_root = os.path.dirname(setup["script"])
             self.output_path = setup["output"]
-            self.exe_name = setup["name"]
+            self.exe_name = output_folder_name(setup["output"])
             self.interpreter_user_cleared = self.icon_user_cleared = False
             self.script_user_cleared = self.exe_name_user_modified = False
             self.datetime_format = setup.get("datetime_format")
@@ -2736,7 +2738,7 @@ class EXEBuilderApp(QWidget):
             bool(self.script_path_input.text())
         )
         self.output_continue_btn.setVisible(
-            bool(self.output_path_input.text() and self.exe_name_input.text().strip())
+            bool(self.output_path_input.text() and not executable_name_error(self.exe_name_input.text()))
         )
 
     def _continue_from_icons(self):
@@ -2755,7 +2757,7 @@ class EXEBuilderApp(QWidget):
             self.python_section_nav.setCurrentRow(4)
 
     def _continue_to_build(self):
-        if (not self.output_path_input.text() or not self.exe_name_input.text().strip()
+        if (not self.output_path_input.text() or executable_name_error(self.exe_name_input.text())
                 or getattr(self, "_loading_state", False)):
             return
         self._complete_python_step(4)
@@ -2817,7 +2819,7 @@ class EXEBuilderApp(QWidget):
             completed.add(3)
         else:
             completed.discard(3)
-        if is_directory(output_path) and exe_name:
+        if is_directory(output_path) and not executable_name_error(exe_name):
             completed.add(4)
         else:
             completed.discard(4)
@@ -2851,7 +2853,7 @@ class EXEBuilderApp(QWidget):
             reachable = 2
         elif not self.script_path_input.text():
             reachable = 3
-        elif not (self.output_path_input.text() and self.exe_name_input.text().strip()):
+        elif not (self.output_path_input.text() and not executable_name_error(self.exe_name_input.text())):
             reachable = 4
         else:
             reachable = 5
@@ -3245,7 +3247,8 @@ class EXEBuilderApp(QWidget):
         self.dotnet_name_reset_btn = utility_button(REFRESH_BUTTON_ICON, REFRESH_BUTTON_ICON_SIZE, REFRESH_BUTTON_TEXT)
         self.dotnet_name_reset_btn.clicked.connect(self.dotnet_publish_controller.reset_name_from_project)
         name_entry.addWidget(self.dotnet_name_input)
-        name_entry.addWidget(self.dotnet_name_reset_btn)
+        self.dotnet_name_reset_btn.hide()
+        self.dotnet_name_input.setReadOnly(True)
         output_layout.addLayout(name_entry)
 
         panel = QFrame()
@@ -3364,6 +3367,7 @@ class EXEBuilderApp(QWidget):
         self._apply_build_mode_button_state("python")
         self.dotnet_publish_btn.clicked.connect(self.dotnet_publish_controller.publish)
         self.dotnet_open_output_btn.clicked.connect(self.dotnet_publish_controller.open_output_folder)
+        self.dotnet_output_input.textChanged.connect(self._sync_dotnet_output_name)
         for widget in (
             self.dotnet_project_input, self.dotnet_output_input, self.dotnet_icon_input,
             self.dotnet_name_input,
@@ -3591,6 +3595,14 @@ class EXEBuilderApp(QWidget):
             self.dotnet_publish_controller.refresh_ui()
         if save and not getattr(self, "_loading_state", False):
             self.state_ctrl.save_preferences()
+
+    def _sync_python_output_name(self, path):
+        self.output_path = path
+        self.exe_name = output_folder_name(path)
+        self.exe_name_input.setText(self.exe_name)
+
+    def _sync_dotnet_output_name(self, path):
+        self.dotnet_name_input.setText(output_folder_name(path))
 
     def _on_dotnet_settings_changed(self, *_args):
         self.ui_handlers.disable_run_built_app_for_mass_datetime_selection(

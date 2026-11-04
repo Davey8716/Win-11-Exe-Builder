@@ -82,8 +82,8 @@ def test_latest_python_output_uses_newest_matching_suffix_and_script_base(tmp_pa
     )
     controller = BuildController(app)
 
-    first = tmp_path / "Builder_project_2026-05-19"
-    second = tmp_path / "Builder_project_2026-05-19_py3.14"
+    first = tmp_path / "Builder_2026-05-19"
+    second = tmp_path / "Builder_2026-05-19_py3.14"
     for folder in (first, second):
         folder.mkdir()
         (folder / f"{folder.name}.exe").write_bytes(b"complete")
@@ -204,7 +204,7 @@ def test_initialize_debug_log_uses_selected_output_folder(tmp_path):
     log_path = Path(app.debug_log_path)
 
     assert log_path.parent == tmp_path
-    assert log_path.name.startswith("EXE_BUILDER_DEBUG_Builder_project_")
+    assert log_path.name.startswith("EXE_BUILDER_DEBUG_Builder_")
     assert log_path.suffix == ".log"
     assert log_path.exists()
 
@@ -238,7 +238,7 @@ def test_build_debug_log_name_appends_datetime_region_and_timestamp(tmp_path, mo
 
     log_name = controller._build_debug_log_name(str(tmp_path / "project" / "main.py"))
 
-    assert log_name.startswith("EXE_BUILDER_DEBUG_Builder_project_ISO_2026-05-19_")
+    assert log_name.startswith("EXE_BUILDER_DEBUG_Builder_ISO_2026-05-19_")
     assert log_name.endswith(".log")
 
 
@@ -264,7 +264,7 @@ def test_mass_datetime_debug_log_reuses_single_txt_file(tmp_path, monkeypatch):
 
     first_log_path = Path(app.debug_log_path)
     assert first_log_path.parent == tmp_path
-    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_DEBUG_Builder_project_")
+    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_DEBUG_Builder_")
     assert first_log_path.suffix == ".txt"
     assert first_log_path.exists()
 
@@ -310,7 +310,7 @@ def test_iso_mass_datetime_debug_log_reuses_separate_txt_file(tmp_path, monkeypa
 
     first_log_path = Path(app.debug_log_path)
     assert first_log_path.parent == tmp_path
-    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_ISO_DEBUG_Builder_project_ISO_2026-05-19_")
+    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_ISO_DEBUG_Builder_ISO_2026-05-19_")
     assert first_log_path.suffix == ".txt"
     assert first_log_path.exists()
 
@@ -355,7 +355,7 @@ def test_uk_mass_datetime_debug_log_reuses_separate_txt_file(tmp_path, monkeypat
 
     first_log_path = Path(app.debug_log_path)
     assert first_log_path.parent == tmp_path
-    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_UK_DEBUG_Builder_project_UK_19-05-2026_")
+    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_UK_DEBUG_Builder_UK_19-05-2026_")
     assert first_log_path.suffix == ".txt"
     assert first_log_path.exists()
 
@@ -400,7 +400,7 @@ def test_usa_mass_datetime_debug_log_reuses_separate_txt_file(tmp_path, monkeypa
 
     first_log_path = Path(app.debug_log_path)
     assert first_log_path.parent == tmp_path
-    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_USA_DEBUG_Builder_project_USA_05-19-2026_")
+    assert first_log_path.name.startswith("EXE_BUILDER_BUILD_ALL_USA_DEBUG_Builder_USA_05-19-2026_")
     assert first_log_path.suffix == ".txt"
     assert first_log_path.exists()
 
@@ -2172,11 +2172,11 @@ def test_build_exe_adds_project_root_to_paths_and_data(tmp_path, monkeypatch):
         "--collect-all=uiautomation"
     ) < app.captured_cmd.index(str(script))
     assert f"--workpath={output_dir / 'build'}" in app.captured_cmd
-    assert f"--specpath={output_dir / 'spec' / 'Builder_project'}" in app.captured_cmd
+    assert f"--specpath={output_dir / 'spec' / 'Builder'}" in app.captured_cmd
     assert app.current_build_paths == [
-        os.path.join(str(output_dir), "Builder_project"),
-        os.path.join(str(output_dir), "build", "Builder_project"),
-        os.path.join(str(output_dir), "spec", "Builder_project"),
+        os.path.join(str(output_dir), "Builder"),
+        os.path.join(str(output_dir), "build", "Builder"),
+        os.path.join(str(output_dir), "spec", "Builder"),
     ]
 
 

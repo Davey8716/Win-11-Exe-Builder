@@ -16,7 +16,7 @@ PYTHON_SUMMARY_HELP_TEXT = {
     "icon": "File path to Icon if used. Click a valid path to open it in Windows Explorer.",
     "file": "File path to python script folder and file. Click a valid path to open it in Windows Explorer.",
     "output": "File path to the EXE output folder. Click a valid path to open it in Windows Explorer.",
-    "name": "Name of the generated EXE folder and file.\nDo not include .exe.",
+    "name": "Executable base name, taken automatically from the selected output folder.",
     "python_version": "Append the python version to the file name.",
     "datetime": (
         "Select a date/time format to append to the file name.\n"
@@ -30,7 +30,7 @@ DOTNET_SUMMARY_HELP_TEXT = {
     "project": "File path to the selected SDK-style C# project file.",
     "icon": "File path to the optional application icon used for this publish.",
     "output": "File path to the folder that will receive the C# publish output.",
-    "name": "Set the published executable name. Do not include .exe.",
+    "name": "Executable base name, taken automatically from the selected output folder.",
     "runtime": "Choose the Windows architecture for the published application.",
     "datetime": PYTHON_SUMMARY_HELP_TEXT["datetime"],
 }
@@ -485,7 +485,7 @@ def attach_tooltips(app):
 
     QtTooltip(
         app.refresh_btn,
-        "Reset EXE name to match the entry script name.\n"
+        "Executable name comes from the output folder.\n"
         "A python folder must be selected to for this to be ungryed and resettable.\n"
     )
 
@@ -664,7 +664,7 @@ def attach_dotnet_tooltips(app):
         "dotnet_output_select_btn": "Choose the folder where the Release publish output will be created.",
         "dotnet_output_reset_btn": "Reset the publish output folder to Desktop.",
         "dotnet_name_input": DOTNET_SUMMARY_HELP_TEXT["name"],
-        "dotnet_name_reset_btn": "Reset the executable name to match the selected C# project.",
+        "dotnet_name_reset_btn": "Executable name comes from the output folder.",
         "dotnet_runtime_combo": DOTNET_SUMMARY_HELP_TEXT["runtime"],
         "dotnet_self_contained": (
             "Include the .NET runtime in the publish output. This runs without a separate "

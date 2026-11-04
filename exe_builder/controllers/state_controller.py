@@ -1,3 +1,4 @@
+from ..build.output_name import output_folder_name
 import json
 import os
 
@@ -102,6 +103,10 @@ class StateController:
         app.saved_dotnet_build_setups = (
             dotnet_saved_setups if isinstance(dotnet_saved_setups, list) else []
         )
+        for collection in (app.saved_build_setups, app.saved_dotnet_build_setups):
+            for setup in collection:
+                if isinstance(setup, dict) and isinstance(setup.get("output"), str):
+                    setup["name"] = output_folder_name(setup["output"])
         blocked = []
         names = ("tooltips_checkbox", "suppress_exit_dialogue", "pin_built_exe_after_build", "script_path_input", "icon_path_input", "output_path_input", "exe_name_input", "python_entry_input", "appened_py_version", "dotnet_project_input", "dotnet_output_input", "dotnet_icon_input", "dotnet_name_input", "dotnet_runtime_combo", "dotnet_date_time_dropdown", "dotnet_self_contained", "dotnet_single_file", "dotnet_trim")
         for name in names:
@@ -122,7 +127,7 @@ class StateController:
             if app.last_non_desktop_output_dir:
                 app.last_output_dir = app.last_non_desktop_output_dir
             app.python_interpreter_path = norm(python_data.get("python_interpreter_path", "")); app.python_path = app.python_interpreter_path
-            app.exe_name = python_data.get("last_exe_name", ""); app.append_datetime = python_data.get("append_datetime", False); app.datetime_format = python_data.get("datetime_format")
+            app.exe_name = output_folder_name(app.output_path); app.append_datetime = python_data.get("append_datetime", False); app.datetime_format = python_data.get("datetime_format")
             # The selected values must also remain available to the recent-item
             # lists. Those lists are populated immediately after state loading
             # and otherwise clear a valid selection that predates its recents.
@@ -147,7 +152,7 @@ class StateController:
             for field, value, method in (("script_path_input", app.script_path, "set_display_path"), ("icon_path_input", app.icon_path, "set_display_path"), ("output_path_input", app.output_path, "set_display_path"), ("exe_name_input", app.exe_name, "setText"), ("python_entry_input", app.python_interpreter_path, "set_display_path")):
                 if hasattr(app, field): getattr(getattr(app, field), method)(value)
             if hasattr(app, "dotnet_project_input"):
-                app.dotnet_project_input.set_display_path(norm(csharp_data.get("project_path", ""))); app.dotnet_output_input.set_display_path(norm(csharp_data.get("output_folder", ""))); app.dotnet_icon_input.set_display_path(norm(csharp_data.get("icon_path", ""))); app.dotnet_name_input.setText(csharp_data.get("executable_name", ""))
+                app.dotnet_project_input.set_display_path(norm(csharp_data.get("project_path", ""))); app.dotnet_output_input.set_display_path(norm(csharp_data.get("output_folder", ""))); app.dotnet_icon_input.set_display_path(norm(csharp_data.get("icon_path", ""))); app.dotnet_name_input.setText(output_folder_name(csharp_data.get("output_folder", "")))
                 index = app.dotnet_runtime_combo.findData(csharp_data.get("runtime", "win-x64")); app.dotnet_runtime_combo.setCurrentIndex(index if index >= 0 else 0)
                 dropdown = getattr(app, "dotnet_date_time_dropdown", None)
                 if dropdown is not None:

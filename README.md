@@ -22,8 +22,8 @@ Both modes provide controlled PySide6 workflows for selection, validation, outpu
 ## Core Features
 
 * Switch between independent Python and C#/.NET build modes; each retains its own recent selections and build inputs
-* Select and validate Python interpreters, scripts or project entry scripts, `.ico` files, output folders, and executable names
-* Select SDK-style C# `.csproj` files, optional `.ico` files, output folders, executable names, target runtimes, and publish options
+* Select and validate Python interpreters, scripts or project entry scripts, `.ico` files, output folders, and automatically derived executable names
+* Select SDK-style C# `.csproj` files, optional `.ico` files, output folders, automatically derived executable names, target runtimes, and publish options
 * Validate readiness before enabling a build or publish action
 * Run PyInstaller through the selected Python interpreter or publish C# projects in Release configuration through `dotnet`
 * Stream build output to debug logs while a build is running
@@ -34,7 +34,7 @@ Both modes provide controlled PySide6 workflows for selection, validation, outpu
 
 ## Side tab workflow
 
-The Python builder uses side tabs in this order: **Environment Sync → Interpreter → Icons → File → Output → Build**. Each completed selection opens the next tab. The Interpreter and File tabs include continue buttons, while Environment Sync and the icon are optional and can be skipped. Output advances when an output folder and executable name are set. Earlier tabs remain available so you can revise a selection. C# publishing uses side tabs for Icons, File, Output, and Build.
+The Python builder uses side tabs in this order: **Environment Sync → Interpreter → Icons → File → Output → Build**. Each completed selection opens the next tab. The Interpreter and File tabs include continue buttons, while Environment Sync and the icon are optional and can be skipped. Output advances when a valid output folder is selected; its folder name becomes the executable base name. Earlier tabs remain available so you can revise a selection. C# publishing uses side tabs for Icons, File, Output, and Build.
 
 Selection summaries on later tabs show the earlier choices: Python Icons shows the interpreter, File adds the icon, and Output adds the Python file. In C# mode, File shows the icon and Output shows the icon and project file. The Python Build Summary remains the final review of all build inputs.
 
@@ -135,13 +135,12 @@ Practical rule:
 
 ## Output Naming and Multiple Builds
 
-The generated app folder name is based on the EXE name, with optional additions:
+The executable base name comes from the selected output folder name. The generated app folder and executable names include optional additions:
 
-* The parent folder name for common entry files such as `main.py`, `app.py`, or `run.py`
 * The selected date/time format
 * The selected Python-version suffix
 
-If two builds produce the same final name in the same output folder, the later build can replace the earlier generated folder. Choose a date/time format with enough precision, enable the Python-version suffix when useful, or change the EXE name when you need separate outputs.
+If two builds produce the same final name in the same output folder, the later build can replace the earlier generated folder. Choose a date/time format with enough precision, enable the Python-version suffix when useful, or select a different output folder when you need separate outputs.
 
 ---
 
@@ -257,11 +256,11 @@ For PyInstaller onedir output, the generated EXE and its `_internal` folder must
    ```
 
 6. In the app, select the Python interpreter that has PyInstaller installed.
-7. Select the entry script, optional icon, output folder, and EXE name.
+7. Select the entry script, optional icon, and output folder. The folder name becomes the EXE base name.
 8. Start the build.
 
 For C#/.NET publishing, install a .NET SDK, start the app, choose **C# .NET
-Publish**, then select an SDK-style `.csproj`, output folder, executable name,
+Publish**, then select an SDK-style `.csproj`, output folder,
 target runtime, and publish options before selecting **Publish**.
 
 ---

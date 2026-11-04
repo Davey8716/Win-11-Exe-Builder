@@ -1,3 +1,4 @@
+from ..build.output_name import executable_name_error
 import os
 from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QIcon, QTextBlockFormat, QTextCursor
@@ -105,7 +106,7 @@ class ValidationController:
         if not outdir or not os.path.isdir(outdir):
             return False
 
-        if not exe_name:
+        if executable_name_error(exe_name):
             return False
 
         return True
@@ -125,7 +126,7 @@ class ValidationController:
 
         script_ok = bool(script and os.path.isfile(script))
         outdir_ok = bool(outdir and os.path.isdir(outdir))
-        exe_ok = bool(exe_name)
+        exe_ok = not executable_name_error(exe_name)
         python_ok = bool(python and os.path.isfile(python))
         icon_ok = bool(icon_path and os.path.isfile(icon_path))
 
@@ -241,7 +242,7 @@ class ValidationController:
             script_ok and
             outdir and os.path.isdir(outdir) and
             python_ok and
-            exe_name
+            not executable_name_error(exe_name)
         )
 
         # -------------------------------
@@ -541,7 +542,7 @@ class ValidationController:
         )
 
         set_btn(app.refresh_btn, not building and can_revert_name)
-        app.exe_name_input.setReadOnly(building)
+        app.exe_name_input.setReadOnly(True)
 
         # -------------------------------
         # BUTTON COLOR: Python Interpreter
@@ -653,7 +654,7 @@ class ValidationController:
                         if opens_output else "\nThe app will close after building."
                     )
         else:
-            status_text = "Missing required inputs."
+            status_text = executable_name_error(exe_name) if outdir and executable_name_error(exe_name) else "Missing required inputs."
 
         app.status_label.setText(status_text)
         if hasattr(app.status_label, "textCursor"):
@@ -829,7 +830,7 @@ class ValidationController:
         script_ok = bool(script and os.path.isfile(os.path.normpath(script)))
         outdir_ok = bool(outdir and os.path.isdir(os.path.normpath(outdir)))
         python_ok = bool(python_path and os.path.isfile(os.path.normpath(python_path)))
-        exe_ok = bool(exe_name)
+        exe_ok = not executable_name_error(exe_name)
         icon_ok = bool(icon_path and os.path.isfile(os.path.normpath(icon_path)))
 
         # -------------------------------

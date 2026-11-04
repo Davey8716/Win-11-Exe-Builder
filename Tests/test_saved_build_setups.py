@@ -97,7 +97,8 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         window.script_path_input.set_display_path(str(script))
         window.icon_path_input.set_display_path(window.icon_path)
         window.output_path_input.set_display_path(str(output))
-        window.exe_name_input.setText("main")
+        assert window.exe_name_input.text() == "Audio Book"
+        assert window.exe_name_input.isReadOnly()
         window.appened_py_version.setChecked(True)
         window._update_python_navigation()
         assert window.save_build_setup_btn.isEnabled()
@@ -121,11 +122,11 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         window.save_build_setup_btn.click()
         assert len(window.saved_build_setups) == 1
         assert window.saved_build_setup_dropdown.count() == 2
-        assert window.saved_build_setup_dropdown.itemText(1) == "Local Exes / Audio Book / main"
+        assert window.saved_build_setup_dropdown.itemText(1) == "Local Exes / Audio Book / Audio Book"
         saved_file = tmp_path / "EXEBuilder" / "python_exe_builder_state.json"
         assert len(json.loads(saved_file.read_text())["saved_build_setups"]) == 1
 
-        window.exe_name_input.setText("Changed")
+        window.output_path_input.set_display_path(str(alternate_output))
         assert window.saved_build_setup_dropdown.count() == 2
         assert window.saved_build_setup_dropdown.currentIndex() == 0
         assert window.save_build_setup_btn.isEnabled()
@@ -134,7 +135,7 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         assert window.script_path_input.text() == str(script)
         assert window.icon_path_input.text() == (str(icon) if with_icon else "")
         assert window.output_path_input.text() == str(output)
-        assert window.exe_name_input.text() == "main"
+        assert window.exe_name_input.text() == "Audio Book"
         assert window.appened_py_version.isChecked()
         assert window.python_section_nav.currentRow() == 5
         assert not window.building
@@ -147,18 +148,24 @@ def test_save_restore_restart_and_delete_build_setup(monkeypatch, tmp_path, with
         window._is_closing = True
         window.close()
 
+    saved_data = json.loads(saved_file.read_text())
+    saved_data["last_exe_name"] = "old-script-name"
+    saved_data["saved_build_setups"][0]["name"] = "old-script-name"
+    saved_file.write_text(json.dumps(saved_data))
+
     reopened = EXEBuilderApp()
     try:
+        assert reopened.exe_name_input.text() == "Audio Book"
         assert reopened.saved_build_setup_dropdown.count() == 2
-        reopened.exe_name_input.setText("Changed again")
+        reopened.output_path_input.set_display_path(str(alternate_output))
         reopened.saved_build_setup_dropdown.setCurrentIndex(1)
         assert reopened.script_path_input.text() == str(script)
-        assert reopened.exe_name_input.text() == "main"
+        assert reopened.exe_name_input.text() == "Audio Book"
         assert reopened.delete_build_setup_btn.isEnabled()
         confirmations = []
         reopened._confirm_delete_saved_build_setup = lambda name: confirmations.append(name) or False
         reopened._delete_selected_build_setup()
-        assert confirmations == ["Local Exes / Audio Book / main"]
+        assert confirmations == ["Local Exes / Audio Book / Audio Book"]
         assert reopened.saved_build_setup_dropdown.count() == 2
         reopened._confirm_delete_saved_build_setup = lambda _name: True
         reopened._delete_selected_build_setup()
@@ -258,7 +265,8 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         window.dotnet_project_input.set_display_path(str(project))
         window.dotnet_output_input.set_display_path(str(output))
         window.dotnet_icon_input.set_display_path(str(icon))
-        window.dotnet_name_input.setText("Reader")
+        assert window.dotnet_name_input.text() == "Reader"
+        assert window.dotnet_name_input.isReadOnly()
         window.dotnet_runtime_combo.setCurrentIndex(
             window.dotnet_runtime_combo.findData("win-arm64")
         )
@@ -296,7 +304,7 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         saved_file = tmp_path / "EXEBuilder" / "csharp_exe_builder_state.json"
         assert len(json.loads(saved_file.read_text())["saved_build_setups"]) == 1
 
-        window.dotnet_name_input.setText("Changed")
+        window.dotnet_output_input.set_display_path(str(alternate_output))
         assert window.saved_dotnet_build_setup_dropdown.currentIndex() == 0
         assert window.dotnet_save_build_setup_btn.isEnabled()
         window.saved_dotnet_build_setup_dropdown.setCurrentIndex(1)
@@ -322,10 +330,16 @@ def test_save_restore_restart_and_delete_dotnet_build_setup(monkeypatch, tmp_pat
         window._is_closing = True
         window.close()
 
+    saved_data = json.loads(saved_file.read_text())
+    saved_data["executable_name"] = "old-project-name"
+    saved_data["saved_build_setups"][0]["name"] = "old-project-name"
+    saved_file.write_text(json.dumps(saved_data))
+
     reopened = EXEBuilderApp()
     try:
+        assert reopened.dotnet_name_input.text() == "Reader"
         assert reopened.saved_dotnet_build_setup_dropdown.count() == 2
-        reopened.dotnet_name_input.setText("Changed again")
+        reopened.dotnet_output_input.set_display_path(str(alternate_output))
         reopened.saved_dotnet_build_setup_dropdown.setCurrentIndex(1)
         assert reopened.dotnet_project_input.text() == str(project)
         assert reopened.dotnet_name_input.text() == "Reader"

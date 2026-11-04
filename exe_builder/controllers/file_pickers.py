@@ -212,8 +212,6 @@ class FilePickerController:
         # Capture previous state BEFORE change
         # ------------------------------------
 
-        previous_script = getattr(self.app, "entry_script", "")
-        previous_exe_name = getattr(self.app, "exe_name", "").strip()
 
         # ------------------------------------
         # Apply new script selection
@@ -233,27 +231,6 @@ class FilePickerController:
         self.app.project_root = os.path.dirname(full_path)
         self.app.script_path = full_path
 
-        # ------------------------------------
-        # Auto-update EXE name ONLY if safe
-        # ------------------------------------
-
-        old_derived = ""
-        if previous_script:
-            previous_script = os.path.normpath(previous_script)
-            old_derived = os.path.splitext(os.path.basename(previous_script))[0]
-
-        new_derived = os.path.splitext(os.path.basename(full_path))[0]
-
-        if not previous_exe_name or previous_exe_name in {
-            old_derived,
-            new_derived
-        }:
-            self.app.exe_name = new_derived
-
-            if hasattr(self.app, "exe_name_input"):
-                self.app.exe_name_input.setText(new_derived)
-
-      
         # ------------------------------------
         # Persist + revalidate
         # ------------------------------------
@@ -384,17 +361,6 @@ class FilePickerController:
             getattr(self.app, "output_btn", None),
             getattr(self.app, "output_path_input", None),
         )
-
-        # Auto-derive exe name ONLY if empty
-        if not getattr(self.app, "exe_name", "").strip():
-            script = getattr(self.app, "entry_script", "") or getattr(self.app, "script_path", "")
-            if script:
-                script = os.path.normpath(script)
-                base = os.path.splitext(os.path.basename(script))[0]
-                self.app.exe_name = base
-
-                if hasattr(self.app, "exe_name_input"):
-                    self.app.exe_name_input.setText(base)
 
         self.app.state_ctrl.save_state()
         self.app.validator.validation_status_message()

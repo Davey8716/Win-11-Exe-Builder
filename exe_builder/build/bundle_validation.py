@@ -1,3 +1,4 @@
+from .output_name import executable_name_error
 
 import os
 import subprocess
@@ -73,6 +74,10 @@ def validate_bundle_inputs(app):
     # 4. EXE name
     # ---------------------------------------------------------
     exe_name = getattr(app, "exe_name", "").strip()
+
+    name_error = executable_name_error(exe_name)
+    if name_error:
+        return False, name_error
 
     if not exe_name:
         return False, "EXE name is empty."
